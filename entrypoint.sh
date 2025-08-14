@@ -8,6 +8,9 @@ chmod -R g+w /app
 # Write all VITE_* env vars dynamically to .env (use tee for permissions)
 printenv | grep '^VITE_' | tee .env > /dev/null
 
+# Ensure SvelteKit uses adapter-node so build/handler.js exists
+export ADAPTER=node
+
 # Build the application
 echo "Building application..."
 npm run build
