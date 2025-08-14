@@ -18,6 +18,7 @@
 		"@sveltejs/kit": "^2.22.0",
 		"@sveltejs/vite-plugin-svelte": "^6.0.0",
 		"@types/node": "^24.2.1",
+		"eslint": "^9.33.0",
 		"jsdom": "^26.1.0",
 		"svelte": "^5.0.0",
 		"svelte-check": "^4.0.0",
