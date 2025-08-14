@@ -1,0 +1,288 @@
+@font-face {
+	font-family: 'BC Sans';
+	src: url('/fonts/BCSans-Regular.ttf') format('truetype');
+	font-weight: 400; 
+	 font-style: normal; 
+	font-display: swap;
+}
+@font-face {
+	font-family: 'BC Sans';
+	src: url('/fonts/BCSans-Bold.ttf') format('truetype');
+	font-weight: 700;
+	font-style: normal;
+	font-display: swap;
+}
+
+:root {
+  --border-color: #ccc;
+  --border-width: 1px solid;
+  --fixed-bg-color: #fff;
+  --box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --z-index-top: 1000;
+  --dark-red: #b30000;
+  --default-font-family: "BC Sans", sans-serif;
+  --default-font-size: 16px;
+  --default-font-color: #000;
+  --outer-padding: 0px 60px;
+  --label-font-size: 16px;
+  --label-font-weight: bold;
+  --label-font-style: normal;
+}
+
+html, body {
+  font-family: var(--default-font-family), sans-serif !important;
+}
+
+.group-container {
+  margin: 0px 0;
+  margin-bottom: 32px;
+}
+
+.common-container {
+  border: 1px solid var(--border-color);
+  padding: 15px;
+  margin: 0px 0;
+  border-radius: 5px;
+}
+.cds--row {
+  display: grid !important;
+  grid-template-columns: repeat(1, 1fr) !important;
+}
+
+.group-fields-grid {
+  display: grid !important;
+  grid-template-columns: repeat(1, 1fr) !important;
+  padding: 16px;
+}
+
+.group-item-container {
+  border: var(--border-width) var(--border-color);
+  margin-bottom: 20px;
+  border-radius: 5px;
+  font-family: "BC Sans";
+  font-size: 30px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 125%;
+}
+
+
+
+.group-header {
+  color: #000;
+  font-family: var(--default-font-family);
+  font-size: 28px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: normal;
+  margin-bottom: 15px;
+}
+
+.group-item-header {
+  display: flex;
+  height: 58px;
+  padding: 12px 24px;
+  justify-content: space-between;
+  align-items: center;
+  align-self: stretch;
+  background: #F2F2F2;
+}
+
+.text-block {
+  padding: 10px 0px;
+  font: initial;
+  font-weight: normal;
+  font-family: var(--default-font-family);
+  font-size: var(--default-font-size);
+}
+
+.text-block h1 {
+  font-size: 32px;
+  font-weight: 700;
+}
+.text-block h2 {
+  font-size: 28px;
+}
+h1 {
+  font-size: 36px;
+  font-weight: 700;
+}
+
+.field-container {
+  margin-bottom: 20px !important;
+}
+
+
+
+
+.cds--form__helper-text {
+  color: #525252;
+  font-size: 1rem;
+}
+
+.cds--label {
+  font-weight: var(--label-font-weight);
+  font-size: var(--label-font-size);
+  font-style: var(--label-font-style);
+}
+/* 
+.print-only {
+  display: hidden;
+}
+
+.hidden-on-screen {
+  display: none;
+}
+.cds--toggle__label-text {
+  padding: 10px 0px;
+  font: initial;
+  font-weight: normal;
+  font-family: var(--default-font-family);
+  font-size: var(--default-font-size);
+  color: #000;
+}
+
+.cds--text-input,
+.cds--dropdown,
+.cds--date-picker__input,
+.cds--text-area {
+  border: 1px solid #8D8D8D;
+  background: none;
+}
+
+.cds--text-input-wrapper--readonly .cds--text-input,
+.cds--date-picker__input[readonly],
+.cds--dropdown--readonly .cds--list-box__field,
+.cds--text-area__wrapper--readonly .cds--text-area {
+  background: #f4f4f4;
+  border: none;
+}
+
+.cds--checkbox-label-text {
+  font-size: 16px;
+}
+.custom-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 16px;
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(8px);
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.loading-message {
+  font-size: 18px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.custom-buttons-only {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.custom-buttons-no-bg {
+  display: flex;
+  flex-wrap: wrap;
+}
+.print-only {
+  display: hidden;
+}
+
+.hidden-on-screen {
+  display: none;
+}
+.cds--toggle__label-text {
+  padding: 10px 0px;
+  font: initial;
+  font-weight: normal;
+  font-family: var(--default-font-family);
+  font-size: var(--default-font-size);
+  color: #000;
+}
+
+.cds--text-input,
+.cds--dropdown,
+.cds--date-picker__input,
+.cds--text-area {
+  border: 1px solid #8D8D8D;
+  background: none;
+}
+
+.cds--text-input-wrapper--readonly .cds--text-input,
+.cds--date-picker__input[readonly],
+.cds--dropdown--readonly .cds--list-box__field,
+.cds--text-area__wrapper--readonly .cds--text-area {
+  background: #f4f4f4;
+  border: none;
+}
+
+.cds--checkbox-label-text {
+  font-size: 16px;
+}
+.custom-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 16px;
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(8px);
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.loading-message {
+  font-size: 18px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.custom-buttons-only {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.custom-buttons-no-bg {
+  display: flex;
+  flex-wrap: wrap;
+} */

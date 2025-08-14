@@ -1,0 +1,141 @@
+/* Shared, screen-only layout styles for RenderFrame and page structure */
+
+/* Overall frame layout for the app shell */
+.full-frame {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Sticky header container */
+.fixed {
+  position: sticky;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+  flex-wrap: wrap;
+  background: var(--fixed-bg-color, #fff);
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+}
+
+/* Header content row (logo + buttons or title) */
+.header-section {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 836px;
+  margin: auto;
+  padding: var(--outer-padding, 0 60px);
+  background: var(--fixed-bg-color, #fff);
+  min-height: 70px;
+  height: auto;
+  gap: 10px;
+}
+
+/* Header logo row wrapper */
+.header-image {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  justify-content: space-between;
+}
+
+/* Right-side action buttons */
+.header-buttons-only {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Print header title container (hidden on screen) */
+.form-title {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1 0;
+}
+
+/* Secondary header bar showing form id */
+.header-form-id {
+  display: flex;
+  background: #eceae8;
+  color: #525252;
+  font-family: 'BC Sans', sans-serif !important;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 150%;
+  letter-spacing: 0.32px;
+  width: 100%;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: auto;
+  min-height: 70px;
+  height: auto;
+}
+
+/* Inner container for the form id */
+.form-id-section {
+  display: flex;
+  width: 100%;
+  padding: 0px 60px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 836px;
+  margin: auto;
+}
+
+/* Primary title styling in the main header */
+.header-title-only {
+  color: #2d2d2d;
+  font-family: 'BC Sans', sans-serif;
+  font-size: 36px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 125%;
+  margin-top: 40px;
+  margin-bottom: 25px;
+}
+
+/* Scroll/content containers below the header */
+.scrollable-content {
+  margin-top: 0;
+  width: 100%;
+}
+
+/* Main page content wrapper (centers + constrains width) */
+.content-wrapper {
+  display: flex;
+  width: 100%;
+  padding: 0px 60px;
+  flex-direction: column;
+  gap: 42px;
+  max-width: 836px;
+  margin: auto;
+}
+
+/* Utility class to hide content on screen (used to reveal in print) */
+.hidden-on-screen {
+  display: none;
+}
+
+/* Default grid for the form renderer on screen */
+.form-renderer {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1rem;
+}
+
+/* When in "printing" state during HTML print prep */
+.form-renderer.printing {
+  display: block;
+  gap: 0;
+}
+

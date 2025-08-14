@@ -1,0 +1,75 @@
+/* Toggle visibility between web inputs and print rows */
+.print-row,
+.web-input {
+	display: none;
+}
+
+.print-row.visible,
+.web-input.visible {
+	display: block;
+}
+
+/* Print row layout: label/value columns and row baseline */
+.print-row {
+	grid-template-columns: 200px 1fr;
+	align-items: center;
+	border-bottom: 1px solid #000;
+	font-size: 12px;
+	min-height: 32px;
+	page-break-inside: avoid;
+}
+
+/* Ensure grid display when visible in print mode */
+.print-row.visible {
+	display: grid;
+}
+
+/* Label cell styling (background and right border) */
+.print-label {
+	background-color: #f4f4f4;
+	padding: 6px;
+	font-weight: 500;
+	border-right: 1px solid #000;
+}
+
+/* Value cell styling (padding and dividing left border) */
+.print-value {
+	display: flex;
+	align-items: flex-start;
+	flex-direction: column;
+	white-space: pre-wrap;
+	padding: 6px;
+	border-left: 1px solid #ccc;
+}
+
+/* Static text info block reset to app defaults */
+.text-info-field {
+	padding: 10px 0px;
+	font: initial;
+	font-weight: initial;
+	font-size: initial;
+	font-family: initial;
+	font-weight: normal;
+	font-family: var(--default-font-family);
+	font-size: var(--default-font-size);
+}
+
+/* Only TextArea needs this extra style */
+.text-area-field .print-value {
+	white-space: pre-wrap;
+}
+
+/* Required mark color */
+.required {
+    color: red;
+}
+
+/* Ensure shaded label backgrounds are preserved in printed output */
+@media print {
+	.print-label {
+		/* Force browsers to render background colors when printing */
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+		background-color: #f4f4f4 !important;
+	}
+}
