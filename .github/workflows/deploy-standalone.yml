@@ -68,7 +68,7 @@ jobs:
   deploy:
     needs: build_and_push
     runs-on: ubuntu-latest
-    environment: prod
+    environment: tools
 
     steps:
       - name: Checkout the repository
