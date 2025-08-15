@@ -77,6 +77,7 @@
 
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<TextArea
+			id={item.uuid}
 			class={item.class}
 			{placeholder}
 			{helperText}

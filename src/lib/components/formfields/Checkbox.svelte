@@ -21,6 +21,14 @@
 	let readonly = $state(item.is_read_only ?? false);
 	let touched = $state(false);
 
+	const filteredAttributes = $derived.by(() => {
+		const attrs = { ...(item.attributes ?? {}) } as Record<string, any>;
+		delete attrs.checked;
+		delete attrs.defaultChecked;
+		delete attrs.disabled;
+		return attrs;
+	});
+
 	const rules = $derived.by(() =>
 		rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'boolean' })
 	);
@@ -77,11 +85,11 @@
 		class:read-only={readonly}
 	>
 		<Checkbox
+			{...filteredAttributes}
 			id={item.uuid}
 			class={item.class}
 			bind:checked
 			disabled={readonly}
-			{...item.attributes}
 			{onchange}
 			{onblur}
 		>
