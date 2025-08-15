@@ -72,7 +72,11 @@
 </script>
 
 <div class="field-container select-field">
-	<div class="print-row" class:visible={printing && item.visible_pdf !== false}>
+	<div
+		class="print-row"
+		class:visible={printing && item.visible_pdf !== false}
+		id={printing && item.visible_pdf !== false ? item.uuid : undefined}
+	>
 		<div class="print-label">{@html labelText}</div>
 		<div class="print-value">{selectedLabel || ''}</div>
 	</div>

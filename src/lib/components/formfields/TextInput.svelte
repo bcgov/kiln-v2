@@ -79,7 +79,11 @@
 </script>
 
 <div class="field-container text-input-field">
-	<div class="print-row" class:visible={printing && item.visible_pdf !== false}>
+	<div
+		class="print-row"
+		class:visible={printing && item.visible_pdf !== false}
+		id={printing && item.visible_pdf !== false ? item.uuid : undefined}
+	>
 		<div class="print-label">{@html labelText}</div>
 		<div class="print-value">{value || ''}</div>
 	</div>
@@ -109,6 +113,7 @@
 		{:else}
 			<TextInput
 				id={item.uuid}
+				class={item.class}
 				{placeholder}
 				{helperText}
 				bind:value
