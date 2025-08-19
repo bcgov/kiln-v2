@@ -16,6 +16,7 @@
 
 	import { setReadOnlyFields } from './utils/helpers';
 	import { validateAllFields } from './utils/validation';
+	import { initExternalUpdateBridge } from '$lib/utils/valueSync';
 
 	let {
 		saveData = undefined,
@@ -297,6 +298,14 @@
 			(window as any).__kilnFormDefinition = mergedFormData;
 			(window as any).__kilnFormState = (window as any).__kilnFormState || {};
 		}
+	});
+
+	$effect(() => {
+		// Install the external-update bridge
+		const cleanup = initExternalUpdateBridge();
+		return () => {
+			cleanup?.();
+		};
 	});
 </script>
 

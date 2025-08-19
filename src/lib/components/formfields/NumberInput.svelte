@@ -8,7 +8,7 @@
 		publishToGlobalFormState
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { requiredLabel } from '$lib/utils/helpers';
+	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 
 	let { item, printing = false } = $props<{ item: Item; printing?: boolean }>();
@@ -72,6 +72,7 @@
 
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<NumberInput
+			{...filterAttributes(item?.attributes)}
 			id={item.uuid}
 			class={item.class}
 			{helperText}
@@ -79,7 +80,6 @@
 			{readonly}
 			invalid={!!anyError}
 			invalidText={anyError}
-			{...item.attributes}
 			{oninput}
 			{onblur}
 		>

@@ -43,3 +43,11 @@ export function setReadOnlyFields(formData: any) {
 		}
 		return formData;
 	}
+
+export function filterAttributes<T extends Record<string, any> | null | undefined>(
+  attrs: T
+): Partial<NonNullable<T>> {
+  if (!attrs) return {};
+  const entries = Object.entries(attrs).filter(([, v]) => v !== null && v !== undefined && v !== "");
+  return Object.fromEntries(entries) as Partial<NonNullable<T>>;
+}

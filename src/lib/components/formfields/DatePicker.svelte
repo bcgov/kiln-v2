@@ -9,7 +9,7 @@
 	} from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
-	import { requiredLabel } from '$lib/utils/helpers';
+	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -74,13 +74,13 @@
 
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<DatePicker
+			{...filterAttributes(item.attributes)}
 			class={item.class}
 			datePickerType="single"
 			bind:value
-			disabled={readOnly}
-			{...item.attributes}
 		>
 			<DatePickerInput
+				{...filterAttributes(item.attributes)}
 				id={item.uuid}
 				{helperText}
 				disabled={readOnly}

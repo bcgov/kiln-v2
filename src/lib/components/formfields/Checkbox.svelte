@@ -8,7 +8,7 @@
 		publishToGlobalFormState
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { requiredLabel } from '$lib/utils/helpers';
+	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 
 	const { item, printing = false } = $props<{
@@ -85,7 +85,7 @@
 		class:read-only={readonly}
 	>
 		<Checkbox
-			{...filteredAttributes}
+			{...filterAttributes(filteredAttributes)}
 			id={item.uuid}
 			class={item.class}
 			bind:checked

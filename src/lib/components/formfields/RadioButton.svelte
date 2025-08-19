@@ -9,14 +9,14 @@
 	} from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
-	import { requiredLabel } from '$lib/utils/helpers';
+	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
 
 	const { item, printing = false } = $props<{
 		item: Item;
 		printing?: boolean;
 	}>();
 
-	let value = $state(
+	let selected = $state(
 		item?.value ?? item.attributes?.selected ?? item.attributes?.defaultSelected ?? ''
 	);
 	let error = $state(item.attributes?.error ?? '');
@@ -26,11 +26,6 @@
 	let options = item.options ?? [];
 	let touched = $state(false);
 
-	let selectedLabel = $derived.by(() => {
-		const option = options.find((opt: FormOption) => opt.value === value);
-		return option?.label || value;
-	});
-
 	const rules = $derived.by(() =>
 		rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'string' })
 	);
@@ -39,7 +34,7 @@
 		if (error) return error;
 		if (readonly) return '';
 		return (
-			validateValue(value, rules, {
+			validateValue(selected, rules, {
 				type: 'string',
 				fieldLabel: item.attributes?.labelText ?? item.name
 			}).firstError ?? ''
@@ -53,9 +48,9 @@
 	$effect(() => {
 		return createValueSyncEffect({
 			item,
-			getValue: () => value,
+			getValue: () => selected,
 			setValue: (newValue) => {
-				value = newValue;
+				selected = newValue;
 			},
 			componentName: 'RadioButton',
 			parser: parsers.string,
@@ -64,7 +59,7 @@
 	});
 
 	$effect(() => {
-		publishToGlobalFormState({ item, value });
+		publishToGlobalFormState({ item, value: selected });
 	});
 </script>
 
@@ -77,7 +72,13 @@
 		<div class="print-label">{@html labelText}</div>
 		<div class="print-value">
 			{#each options as opt}
-				<RadioButton value={opt.value} labelText={opt.label} />
+				<div
+					class="bx--radio-button-wrapper"
+					style="display: flex; align-items: center; gap: 10px;"
+				>
+					<div>{selected === opt.value ? '◉' : '○'}</div>
+					<div>{opt.label}</div>
+				</div>
 			{/each}
 		</div>
 	</div>
@@ -88,12 +89,13 @@
 		class:visible={!printing && item.visible_web !== false}
 	>
 		<RadioButtonGroup
+			{...filterAttributes(item?.attributes)}
 			id={item.uuid}
 			class={item.class}
-			selected={value}
 			name={item.uuid}
-			bind:value
-			{...item.attributes}
+			bind:selected
+			role="radiogroup"
+			data-selected={selected}
 			{onchange}
 		>
 			<span slot="legendText">{@html labelText}</span>

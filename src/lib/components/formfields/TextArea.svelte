@@ -8,7 +8,7 @@
 		publishToGlobalFormState
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { requiredLabel } from '$lib/utils/helpers';
+	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 
 	const { item, printing = false } = $props<{
@@ -77,6 +77,7 @@
 
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<TextArea
+			{...filterAttributes(item?.attributes)}
 			id={item.uuid}
 			class={item.class}
 			{placeholder}
@@ -86,7 +87,6 @@
 			invalid={!!anyError}
 			invalidText={anyError}
 			{maxlength}
-			{...item.attributes}
 			{oninput}
 			{onblur}
 		>

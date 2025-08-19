@@ -8,7 +8,7 @@
 		publishToGlobalFormState
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { requiredLabel } from '$lib/utils/helpers';
+	import { filterAttributes, requiredLabel } from '$lib/utils/helpers';
 	import { maska } from 'maska/svelte';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 
@@ -91,6 +91,7 @@
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		{#if mask}
 			<input
+				{...filterAttributes(item?.attributes)}
 				id={item.uuid}
 				class="bx--text-input {item.class}"
 				{placeholder}
@@ -100,7 +101,6 @@
 				readonly={readOnly}
 				aria-invalid={!!anyError}
 				{...maxCount ? { maxlength: maxCount } : {}}
-				{...item.attributes}
 				{oninput}
 				{onblur}
 			/>
@@ -112,6 +112,7 @@
 			{/if}
 		{:else}
 			<TextInput
+				{...filterAttributes(item?.attributes)}
 				id={item.uuid}
 				class={item.class}
 				{placeholder}
@@ -122,7 +123,6 @@
 				invalidText={anyError}
 				{hideLabel}
 				{...maxCount ? { maxlength: maxCount } : {}}
-				{...item.attributes}
 				{oninput}
 				{onblur}
 			>
