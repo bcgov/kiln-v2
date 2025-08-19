@@ -36,6 +36,70 @@
 	let children = $derived(item.children ?? []);
 	let groupCount = $derived(groups.length);
 
+	function win(): any | undefined {
+		return typeof window === 'undefined' ? undefined : (window as any);
+	}
+
+	function activeGroupIds(): string[] {
+		return groups.map((g) => g.id);
+	}
+
+	function syncActiveGroupsRegistry() {
+		const w = win();
+		if (!w) return;
+		w.__kilnActiveGroups = w.__kilnActiveGroups || {};
+		w.__kilnActiveGroups[item.uuid] = activeGroupIds();
+	}
+
+	function cleanupStaleFormState() {
+		const w = win();
+		if (!w) return;
+		const state: Record<string, any> = (w.__kilnFormState = w.__kilnFormState || {});
+		const prefix = `${item.uuid}-`;
+		const active = new Set(activeGroupIds());
+
+		for (const key of Object.keys(state)) {
+			if (!key.startsWith(prefix)) continue;
+			// key format for repeatable children is: <containerUuid>-<groupId>-<childUuid>
+			const rest = key.slice(prefix.length);
+			const groupId = rest.split('-')[0];
+			if (!active.has(groupId)) {
+				delete state[key];
+			}
+		}
+
+		// Also reset per-container computed group rows so validators won’t use stale rows
+		w.__kilnGroupState = w.__kilnGroupState || {};
+		w.__kilnGroupState[item.uuid] = [];
+	}
+
+	// Keep registry fresh and clear stale state on mount and whenever group list changes
+	$effect(() => {
+		syncActiveGroupsRegistry();
+		cleanupStaleFormState();
+		// NEW: sync initial data so validator sees preloaded values
+		syncInitialGroupDataToFormState();
+	});
+
+	// NEW: write initial group data into global form state under stable keys
+	function syncInitialGroupDataToFormState() {
+		const w = win();
+		if (!w) return;
+		const state: Record<string, any> = (w.__kilnFormState = w.__kilnFormState || {});
+		for (const group of groups) {
+			for (const child of children) {
+				const originalUuid = child.uuid;
+				const v = group?.data?.[originalUuid];
+				if (v !== undefined) {
+					const stableKey = `${item.uuid}-${group.id}-${originalUuid}`;
+					if (state[stableKey] === undefined) {
+						state[stableKey] = v;
+					}
+				}
+			}
+		}
+	}
+
 	function addGroup() {
 		const newGroup = {
 			id: crypto.randomUUID(),
@@ -44,12 +108,17 @@
 		};
 		groups.push(newGroup);
 		groups = groups;
+		// keep registry in sync
+		syncActiveGroupsRegistry();
 	}
 
 	function removeGroup(index: number) {
 		if (groups.length <= 1) return;
 		groups.splice(index, 1);
 		groups = groups.map((group, idx) => ({ ...group, index: idx }));
+		// update registry and purge any stale keys that belonged to the removed group
+		syncActiveGroupsRegistry();
+		cleanupStaleFormState();
 	}
 
 	function getGroupSpecificChildren(group: { id: string; data: any; index: number }) {

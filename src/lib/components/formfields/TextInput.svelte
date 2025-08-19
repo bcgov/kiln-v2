@@ -5,7 +5,8 @@
 		createValueSyncEffect,
 		parsers,
 		comparators,
-		publishToGlobalFormState
+		publishToGlobalFormState,
+		createAttributeSyncEffect
 	} from '$lib/utils/valueSync';
 	import './fields.css';
 	import { filterAttributes, requiredLabel } from '$lib/utils/helpers';
@@ -35,6 +36,8 @@
 	let hideLabel = item.attributes?.hideLabel ?? false;
 	let maxCount = item.attributes?.maxCount ?? undefined;
 	let touched = $state(false);
+
+	let extAttrs = $state<Record<string, any>>({});
 
 	// Derived validation rules and computed error (gives precedence to server-provided error)
 	const rules = $derived.by(() =>
@@ -72,6 +75,18 @@
 		});
 	});
 
+	$effect(() => {
+		return createAttributeSyncEffect({
+			item,
+			onAttr: (name, value) => {
+				if (name === 'class' || name === 'style') return;
+				if (extAttrs[name] !== value && value !== undefined) {
+					extAttrs = { ...extAttrs, [name]: value };
+				}
+			}
+		});
+	});
+
 	// publish value to a shared global state for saving
 	$effect(() => {
 		publishToGlobalFormState({ item, value });
@@ -92,6 +107,7 @@
 		{#if mask}
 			<input
 				{...filterAttributes(item?.attributes)}
+				{...extAttrs as any}
 				id={item.uuid}
 				class="bx--text-input {item.class}"
 				{placeholder}
@@ -113,6 +129,7 @@
 		{:else}
 			<TextInput
 				{...filterAttributes(item?.attributes)}
+				{...extAttrs as any}
 				id={item.uuid}
 				class={item.class}
 				{placeholder}

@@ -5,7 +5,8 @@
 		createValueSyncEffect,
 		parsers,
 		comparators,
-		publishToGlobalFormState
+		publishToGlobalFormState,
+		createAttributeSyncEffect
 	} from '$lib/utils/valueSync';
 	import './fields.css';
 	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
@@ -19,6 +20,8 @@
 	let labelText = requiredLabel(item.attributes?.labelText ?? item.name, item.is_required ?? false);
 	let helperText = item.help_text ?? item.description ?? '';
 	let touched = $state(false);
+
+	let extAttrs = $state<Record<string, any>>({});
 
 	const rules = $derived.by(() =>
 		rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'number' })
@@ -56,6 +59,18 @@
 	});
 
 	$effect(() => {
+		return createAttributeSyncEffect({
+			item,
+			onAttr: (name, value) => {
+				if (name === 'class' || name === 'style') return;
+				if (extAttrs[name] !== value && value !== undefined) {
+					extAttrs = { ...extAttrs, [name]: value };
+				}
+			}
+		});
+	});
+
+	$effect(() => {
 		publishToGlobalFormState({ item, value });
 	});
 </script>
@@ -73,6 +88,7 @@
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<NumberInput
 			{...filterAttributes(item?.attributes)}
+			{...extAttrs as any}
 			id={item.uuid}
 			class={item.class}
 			{helperText}

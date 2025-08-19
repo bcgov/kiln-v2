@@ -17,6 +17,8 @@
 	import { setReadOnlyFields } from './utils/helpers';
 	import { validateAllFields } from './utils/validation';
 	import { initExternalUpdateBridge } from '$lib/utils/valueSync';
+	// Add Interfaces component
+	import Interfaces from './components/Interfaces.svelte';
 
 	let {
 		saveData = undefined,
@@ -307,6 +309,24 @@
 			cleanup?.();
 		};
 	});
+
+	function handleInterfaceResult(e: CustomEvent) {
+		const detail = (e as any)?.detail || {};
+		if (detail?.validationErrors?.length) {
+			showModal('validation', undefined, detail.validationErrors);
+			return;
+		}
+		if (detail?.ok) {
+			showModal('success');
+		} else {
+			const msg =
+				detail?.error?.message ||
+				detail?.error?.statusText ||
+				(detail?.error?.data ? JSON.stringify(detail.error.data) : null) ||
+				'Action failed';
+			showModal('error', msg);
+		}
+	}
 </script>
 
 <!-- Inject dynamic styles and scripts -->
@@ -346,7 +366,13 @@
 				</div>
 
 				<div class="header-buttons-only no-print">
-					{#if mode === FORM_MODE.edit}
+					<Interfaces
+						items={mergedFormData?.interface || formData?.interface || []}
+						disabled={typeof goBack === 'function'}
+						on:action-result={handleInterfaceResult}
+					/>
+					<!-- Temp removal while reviewing interface implementation -->
+					<!-- {#if mode === FORM_MODE.edit}
 						<Button kind="tertiary" class="no-print" onclick={handleSave}>Save</Button>
 						<Button kind="tertiary" class="no-print" onclick={handleSaveAndClose}>
 							Save And Close
@@ -359,19 +385,11 @@
 
 					{#if (mode === FORM_MODE.edit || mode === FORM_MODE.preview) && formDelivery === 'portal'}
 						<div class="header-buttons-only no-print">
-							{#each formData.interface as btn, idx (idx)}
-								<Button
-									kind="tertiary"
-									disabled={typeof goBack === 'function'}
-									onclick={() => onButtonClick(btn)}
-								>
-									{btn.label || btn.text || 'Button'}
-								</Button>
-							{/each}
+							<!-- Replace inline mapping with reusable Interfaces component 
 							<Button onclick={handleCancel} kind="tertiary" id="generate">Cancel</Button>
 							<Button onclick={handleSubmit} kind="tertiary" id="generate">Submit</Button>
 						</div>
-					{/if}
+				{/if}  -->
 
 					{#if goBack}
 						<Button kind="tertiary" class="no-print" onclick={goBack}>Back</Button>

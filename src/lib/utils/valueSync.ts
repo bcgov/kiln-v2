@@ -133,6 +133,57 @@ export function initExternalUpdateBridge() {
 	// Track elements currently dispatching to avoid recursion
 	const dispatchingElements = new WeakSet<EventTarget>();
 
+	// Generic: mirror common attributes to properties so setAttribute works universally
+	function syncPropsFromAttributes(target: HTMLElement, attributeName?: string) {
+		const attr = attributeName?.toLowerCase();
+
+		// Option element
+		if (target instanceof HTMLOptionElement) {
+			if (!attributeName || attr === 'selected') {
+				const present = target.hasAttribute('selected');
+				if (target.selected !== present) target.selected = present;
+			}
+			if (!attributeName || attr === 'disabled') {
+				const present = target.hasAttribute('disabled');
+				if (target.disabled !== present) target.disabled = present;
+			}
+			if (!attributeName || attr === 'value') {
+				const v = target.getAttribute('value') ?? '';
+				if (target.value !== v) target.value = v;
+			}
+			return;
+		}
+
+		// Inputs, textareas, selects
+		if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
+			// value
+			if (!attributeName || attr === 'value') {
+				const v = target.getAttribute('value');
+				if (v !== null && (target as any).value !== v) (target as any).value = v;
+			}
+			// boolean attributes
+			const bools = ['checked', 'disabled', 'readonly', 'required', 'multiple'];
+			for (const b of bools) {
+				if (!attributeName || attr === b) {
+					const present = target.hasAttribute(b);
+					if (b === 'readonly') {
+						if ((target as any).readOnly !== present) (target as any).readOnly = present;
+					} else if ((target as any)[b] !== undefined && (target as any)[b] !== present) {
+						(target as any)[b] = present;
+					}
+				}
+			}
+			// string attributes mirrored to properties
+			const strings = ['min', 'max', 'step', 'placeholder', 'pattern', 'name'];
+			for (const s of strings) {
+				if (!attributeName || attr === s) {
+					const val = target.getAttribute(s);
+					if (val !== null && (target as any)[s] !== val) (target as any)[s] = val;
+				}
+			}
+		}
+	}
+
 	function dispatchSvelteUpdate(target: EventTarget | null) {
 		if (!target || dispatchingElements.has(target)) return;
 
@@ -142,7 +193,6 @@ export function initExternalUpdateBridge() {
 
 			const tag = target.tagName;
 			if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
-				// For checkbox/radio, prefer boolean checked and also provide a normalized string value
 				if (
 					tag === 'INPUT' &&
 					((target as HTMLInputElement).type === 'checkbox' || (target as HTMLInputElement).type === 'radio')
@@ -155,27 +205,31 @@ export function initExternalUpdateBridge() {
 								checked: !!el.checked,
 								value: valueStr,
 								valueString: valueStr
-							}
+							},
+							bubbles: true,
+							composed: true
 						})
 					);
 					target.dispatchEvent(new Event('change', { bubbles: true }));
 				} else if (tag === 'SELECT') {
-					// For selects, dispatch 'change' for widest compatibility
 					const el = target as HTMLSelectElement;
 					const valueStr = String(el.value ?? '');
 					target.dispatchEvent(
 						new CustomEvent('external-update', {
-							detail: { value: valueStr, valueString: valueStr }
+							detail: { value: valueStr, valueString: valueStr },
+							bubbles: true,
+							composed: true
 						})
 					);
 					target.dispatchEvent(new Event('change', { bubbles: true }));
 				} else {
-					// INPUT (non checkbox/radio) and TEXTAREA -> dispatch 'input'
 					const el = target as HTMLInputElement | HTMLTextAreaElement;
 					const valueStr = String(el.value ?? '');
 					target.dispatchEvent(
 						new CustomEvent('external-update', {
-							detail: { value: valueStr, valueString: valueStr }
+							detail: { value: valueStr, valueString: valueStr },
+							bubbles: true,
+							composed: true
 						})
 					);
 					target.dispatchEvent(new Event('input', { bubbles: true }));
@@ -184,7 +238,9 @@ export function initExternalUpdateBridge() {
 				const valueStr = String(target.textContent ?? '');
 				target.dispatchEvent(
 					new CustomEvent('external-update', {
-						detail: { value: valueStr, valueString: valueStr }
+						detail: { value: valueStr, valueString: valueStr },
+						bubbles: true,
+						composed: true
 					})
 				);
 			}
@@ -199,17 +255,59 @@ export function initExternalUpdateBridge() {
 	document.addEventListener('input', inputListener, true);
 	document.addEventListener('change', changeListener, true);
 
-	// Attribute observers
+	// Attribute observers (curated for controls; wrappers are observed without a filter)
+	const OBS_ATTRS = [
+		'value', 'checked', 'selected',
+		'disabled', 'readonly', 'required', 'multiple',
+		'min', 'max', 'step',
+		'placeholder', 'pattern', 'name'
+	];
+
+	function isFormControl(el: Element | null): el is HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | HTMLOptionElement {
+		return !!el && (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement || el instanceof HTMLOptionElement);
+	}
+
+	function findFirstDescendantControl(el: HTMLElement): HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null {
+		return (el.querySelector('input, textarea, select') as any) ?? null;
+	}
+
 	const attributeObserver = new MutationObserver((mutations) => {
 		for (const mutation of mutations) {
 			if (mutation.type !== 'attributes') continue;
 			const { attributeName, target } = mutation;
+			if (!attributeName || !(target instanceof HTMLElement)) continue;
 
-			if (!(target instanceof HTMLElement)) continue;
+			// If this is a wrapper (non-control) element, propagate any attribute to its first descendant control.
+			if (!isFormControl(target)) {
+				// Ignore purely stylistic attrs
+				if (attributeName === 'class' || attributeName === 'style') continue;
+				const inner = findFirstDescendantControl(target);
+				if (inner) {
+					const newVal = target.getAttribute(attributeName);
+					const oldVal = inner.getAttribute(attributeName);
+					if (newVal !== oldVal) {
+						// Propagate attribute value to the control
+						if (newVal === null) inner.removeAttribute(attributeName);
+						else inner.setAttribute(attributeName, newVal);
+						// Also notify generically from the control
+						inner.dispatchEvent(new CustomEvent('external-update', {
+							detail: { attr: attributeName, value: newVal },
+							bubbles: true,
+							composed: true
+						}));
+					}
+				}
+				// Continue processing to also emit generic notification for the wrapper itself
+			}
 
+			// Mirror attributes -> properties for universal behavior (only meaningful for controls)
+			syncPropsFromAttributes(target, attributeName);
+
+			// Synthesize form events for meaningful attributes
+			const upper = target.tagName;
 			if (
 				(attributeName === 'value' || attributeName === 'checked') &&
-				['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+				['INPUT', 'TEXTAREA', 'SELECT'].includes(upper)
 			) {
 				dispatchSvelteUpdate(target);
 			} else if (attributeName === 'selected' && target instanceof HTMLOptionElement) {
@@ -217,6 +315,15 @@ export function initExternalUpdateBridge() {
 				if (select && select.tagName === 'SELECT') {
 					dispatchSvelteUpdate(select);
 				}
+			} else {
+				// Generic attribute change notification (bubbling)
+				target.dispatchEvent(
+					new CustomEvent('external-update', {
+						detail: { attr: attributeName, value: target.getAttribute(attributeName) },
+						bubbles: true,
+						composed: true
+					})
+				);
 			}
 		}
 	});
@@ -224,15 +331,25 @@ export function initExternalUpdateBridge() {
 	function observeElement(el: Element) {
 		try {
 			if (!(el instanceof HTMLElement)) return;
-			const attrs = el.tagName === 'OPTION' ? ['selected'] : ['value', 'checked'];
-			attributeObserver.observe(el, { attributes: true, attributeFilter: attrs });
+
+			// Controls/options: filtered attributes to avoid churn
+			if (isFormControl(el)) {
+				const attrs = el.tagName === 'OPTION' ? ['selected', 'disabled', 'value'] : OBS_ATTRS;
+				attributeObserver.observe(el, { attributes: true, attributeFilter: attrs, attributeOldValue: true });
+				return;
+			}
+
+			// Wrapper with an id that contains a control: observe ALL attributes (to catch arbitrary names like "mindate")
+			if (el.hasAttribute('id') && el.querySelector('input, textarea, select')) {
+				attributeObserver.observe(el, { attributes: true, attributeOldValue: true });
+			}
 		} catch {
 			// ignore
 		}
 	}
 
-	// Initial observe
-	document.querySelectorAll('input, textarea, select, option').forEach(observeElement);
+	// Initial observe (controls, options, and wrappers-with-controls)
+	document.querySelectorAll('input, textarea, select, option, [id]').forEach(observeElement);
 
 	// Child list observer for dynamic elements
 	const treeObserver = new MutationObserver((mutations) => {
@@ -240,21 +357,18 @@ export function initExternalUpdateBridge() {
 			for (const node of Array.from(mutation.addedNodes)) {
 				if (!(node instanceof Element)) continue;
 
-				if (node.matches('input, textarea, select, option')) {
-					observeElement(node);
-				}
-				node.querySelectorAll?.('input, textarea, select, option').forEach(observeElement);
+				observeElement(node);
+				node.querySelectorAll?.('input, textarea, select, option, [id]').forEach(observeElement);
 			}
 		}
 	});
 	treeObserver.observe(document.body, { childList: true, subtree: true });
 
-	// Property overrides (not reverted on cleanup; installed once)
+	// Property overrides (limit to safe core props; bail early on no-op)
 	function overrideProperty(proto: any, propName: string) {
 		const descriptor = Object.getOwnPropertyDescriptor(proto, propName);
 		if (!descriptor || !descriptor.set) return;
 
-		// Avoid double-wrapping if already overridden
 		const originalSetter = descriptor.set;
 		const originalGetter = descriptor.get;
 
@@ -262,10 +376,9 @@ export function initExternalUpdateBridge() {
 			get: originalGetter,
 			set(this: any, value: any) {
 				const oldValue = originalGetter ? originalGetter.call(this) : this[propName];
-				if (value === oldValue) {
-					originalSetter!.call(this, value);
-					return;
-				}
+				// No-op guard: if unchanged, skip setter and events
+				if (value === oldValue) return;
+
 				originalSetter!.call(this, value);
 
 				// If option.selected, dispatch on parent select
@@ -285,6 +398,7 @@ export function initExternalUpdateBridge() {
 	}
 
 	try {
+		// Minimal, safe overrides
 		overrideProperty(HTMLInputElement.prototype, 'value');
 		overrideProperty(HTMLInputElement.prototype, 'checked');
 		overrideProperty(HTMLTextAreaElement.prototype, 'value');
@@ -300,10 +414,57 @@ export function initExternalUpdateBridge() {
 		document.removeEventListener('change', changeListener, true);
 		attributeObserver.disconnect();
 		treeObserver.disconnect();
-		// Property overrides remain; safe since installed once
 	};
 
 	win.__kilnExternalBridge = { installed: true, cleanup };
 
 	return cleanup;
+}
+
+/**
+ * Listens for bubbling 'external-update' events with {attr, value} and invokes onAttr
+ * only when the event originated from this field's element (by composedPath and id).
+ */
+export interface AttributeSyncOptions {
+	item: Item;
+	onAttr: (name: string, value: any) => void;
+	filter?: (name: string, value: any) => boolean;
+}
+
+export function createAttributeSyncEffect(options: AttributeSyncOptions) {
+	const { item, onAttr, filter } = options;
+
+	const handler = (e: Event) => {
+		const ce = e as CustomEvent<any>;
+		const d = ce?.detail || {};
+		if (!('attr' in d)) return;
+
+		// Prefer composedPath when available
+		const path = (ce as any).composedPath?.() as any[] | undefined;
+		let hit = false;
+
+		if (path && path.length) {
+			hit = path.some((n) => n instanceof HTMLElement && n.id === item.uuid);
+		} else {
+			// Fallback: relate by containment/closest in the DOM
+			const el = document.getElementById(item.uuid);
+			const tgt = (ce.target as HTMLElement) || null;
+			if (el && tgt) {
+				hit = el === tgt || el.contains(tgt) || tgt.contains(el);
+			}
+		}
+		if (!hit) return;
+
+		let name = String(d.attr || '');
+		if (!name) return;
+
+		// Optional filter
+		if (filter && !filter(name, d.value)) return;
+
+		onAttr(name, d.value);
+
+	};
+
+	document.addEventListener('external-update', handler, true);
+	return () => document.removeEventListener('external-update', handler, true);
 }

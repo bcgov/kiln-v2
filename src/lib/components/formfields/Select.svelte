@@ -5,7 +5,8 @@
 		createValueSyncEffect,
 		parsers,
 		comparators,
-		publishToGlobalFormState
+		publishToGlobalFormState,
+		createAttributeSyncEffect
 	} from '$lib/utils/valueSync';
 	import './fields.css';
 	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
@@ -25,6 +26,8 @@
 	let helperText = item.help_text ?? item.description ?? '';
 	let options = item.options ?? [];
 	let touched = $state(false);
+
+	let extAttrs = $state<Record<string, any>>({});
 
 	let selectedLabel = $derived.by(() => {
 		const option = options.find((opt: FormOption) => opt.value === selected);
@@ -67,6 +70,18 @@
 	});
 
 	$effect(() => {
+		return createAttributeSyncEffect({
+			item,
+			onAttr: (name, value) => {
+				if (name === 'class' || name === 'style') return;
+				if (extAttrs[name] !== value && value !== undefined) {
+					extAttrs = { ...extAttrs, [name]: value };
+				}
+			}
+		});
+	});
+
+	$effect(() => {
 		publishToGlobalFormState({ item, value: selected });
 	});
 </script>
@@ -84,6 +99,7 @@
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<Select
 			{...filterAttributes(item?.attributes)}
+			{...extAttrs as any}
 			id={item.uuid}
 			class={item.class}
 			{helperText}

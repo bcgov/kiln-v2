@@ -5,7 +5,8 @@
 		createValueSyncEffect,
 		parsers,
 		comparators,
-		publishToGlobalFormState
+		publishToGlobalFormState,
+		createAttributeSyncEffect
 	} from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
@@ -21,6 +22,8 @@
 	let labelText = requiredLabel(item.attributes?.labelText ?? item.name, item.is_required);
 	let helperText = item.help_text ?? item.description ?? '';
 	let touched = $state(false);
+
+	let extAttrs = $state<Record<string, any>>({});
 
 	const rules = $derived.by(() =>
 		rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'date' })
@@ -58,6 +61,18 @@
 	});
 
 	$effect(() => {
+		return createAttributeSyncEffect({
+			item,
+			onAttr: (name, value) => {
+				if (name === 'class' || name === 'style') return;
+				if (extAttrs[name] !== value && value !== undefined) {
+					extAttrs = { ...extAttrs, [name]: value };
+				}
+			}
+		});
+	});
+
+	$effect(() => {
 		publishToGlobalFormState({ item, value });
 	});
 </script>
@@ -75,18 +90,19 @@
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<DatePicker
 			{...filterAttributes(item.attributes)}
+			{...extAttrs as any}
 			class={item.class}
 			datePickerType="single"
 			bind:value
 		>
 			<DatePickerInput
 				{...filterAttributes(item.attributes)}
+				{...extAttrs as any}
 				id={item.uuid}
 				{helperText}
 				disabled={readOnly}
 				invalid={!!anyError}
 				invalidText={anyError}
-				{...item.attributes}
 				{oninput}
 				{onblur}
 			>

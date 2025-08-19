@@ -268,23 +268,32 @@ export function validateAllFields(
     const rows: Record<string, FieldValue>[] = [];
     const childUuids = new Set((container.children || []).map((c) => c.uuid));
     const prefix = `${container.uuid}-`;
+
+    // NEW: respect active group IDs if provided by Container.svelte
+    const activeList: string[] | undefined = win?.__kilnActiveGroups?.[container.uuid];
+    const active = Array.isArray(activeList) && activeList.length ? new Set(activeList) : undefined;
+
     const byGroupId = new Map<string, Record<string, FieldValue>>();
 
     for (const key of Object.keys(state)) {
       if (!key.startsWith(prefix)) continue;
       const matchedChildUuid = [...childUuids].find((cu) => key.endsWith(`-${cu}`));
       if (!matchedChildUuid) continue;
+
       const rest = key.slice(prefix.length); // "<groupId>-<childUuid>"
       const suffix = `-${matchedChildUuid}`;
       const groupId = rest.slice(0, rest.length - suffix.length);
+
+      // Skip stale/removed groups when we know the active set
+      if (active && !active.has(groupId)) continue;
 
       const groupObj = byGroupId.get(groupId) ?? {};
       groupObj[matchedChildUuid] = state[key];
       byGroupId.set(groupId, groupObj);
     }
 
-    for (const row of byGroupId.values()) {
-      if (Object.keys(row).length > 0) rows.push(row);
+    for (const [gid, row] of byGroupId.entries()) {
+      if (!active || active.has(gid)) rows.push(row);
     }
     return rows;
   }
@@ -345,7 +354,13 @@ export function validateAllFields(
     const type = getType(item);
     const rules = rulesFromAttributes(item.attributes, { is_required: item.is_required, type });
     const fieldLabel = labelOf(item);
-    const value = state[item.uuid];
+
+    // Use state first; if missing, fall back to item-provided value (e.g., preloaded/bound)
+    let value = state[item.uuid];
+    if (value === undefined || value === null || value === '') {
+      const fallback = item.attributes?.value ?? (item as any).value;
+      if (fallback !== undefined) value = fallback;
+    }
 
     const { firstError } = validateValue(value, rules, { type, fieldLabel });
     if (firstError) {

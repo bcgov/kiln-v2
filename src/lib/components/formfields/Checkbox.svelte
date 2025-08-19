@@ -5,7 +5,8 @@
 		createValueSyncEffect,
 		parsers,
 		comparators,
-		publishToGlobalFormState
+		publishToGlobalFormState,
+		createAttributeSyncEffect
 	} from '$lib/utils/valueSync';
 	import './fields.css';
 	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
@@ -20,6 +21,8 @@
 	let labelText = requiredLabel(item.attributes?.labelText ?? item.name, item.is_required ?? false);
 	let readonly = $state(item.is_read_only ?? false);
 	let touched = $state(false);
+
+	let extAttrs = $state<Record<string, any>>({});
 
 	const filteredAttributes = $derived.by(() => {
 		const attrs = { ...(item.attributes ?? {}) } as Record<string, any>;
@@ -65,6 +68,18 @@
 	});
 
 	$effect(() => {
+		return createAttributeSyncEffect({
+			item,
+			onAttr: (name, value) => {
+				if (name === 'class' || name === 'style') return;
+				if (extAttrs[name] !== value && value !== undefined) {
+					extAttrs = { ...extAttrs, [name]: value };
+				}
+			}
+		});
+	});
+
+	$effect(() => {
 		publishToGlobalFormState({ item, value: checked });
 	});
 </script>
@@ -86,6 +101,7 @@
 	>
 		<Checkbox
 			{...filterAttributes(filteredAttributes)}
+			{...extAttrs as any}
 			id={item.uuid}
 			class={item.class}
 			bind:checked
