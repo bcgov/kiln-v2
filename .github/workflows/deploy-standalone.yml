@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - dev
+      - test
   workflow_dispatch:
 
 env:
@@ -69,7 +70,7 @@ jobs:
   deploy:
     needs: build_and_push
     runs-on: ubuntu-latest
-    environment: tools
+    environment: ${{ github.ref == 'refs/heads/main' && 'tools' || (github.ref == 'refs/heads/dev' && 'dev') || github.ref == 'refs/heads/test' && 'test' }}
 
     steps:
       - name: Checkout the repository
@@ -96,8 +97,20 @@ jobs:
             RELEASE_NAME="kiln-v2"
           fi
 
-          helm upgrade --install "$RELEASE_NAME" ./helm --set image.tag=${{ needs.build_and_push.outputs.image_tag }}
+          DEPLOYMENT_NAME="$RELEASE_NAME"
+
+          helm upgrade --install "$RELEASE_NAME" ./helm \
+            --set image.tag=${{ needs.build_and_push.outputs.image_tag }} \
+            --set fullnameOverride="$DEPLOYMENT_NAME"
 
       - name: Trigger OpenShift Rollout
         run: |
-         oc rollout restart deployment/kiln-v2    
+          if [[ "${GITHUB_REF##*/}" == "dev" ]]; then
+            DEPLOYMENT_NAME="kiln-v2-dev"
+          elif [[ "${GITHUB_REF##*/}" == "test" ]]; then
+            DEPLOYMENT_NAME="kiln-v2-test"
+          else
+            DEPLOYMENT_NAME="kiln-v2"
+          fi
+
+          oc rollout restart deployment/$DEPLOYMENT_NAME
