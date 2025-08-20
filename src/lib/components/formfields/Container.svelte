@@ -30,9 +30,9 @@
 	}
 
 	let isRepeatable = $derived(item.attributes?.isRepeatable === true);
-	let legend = $derived(item.attributes?.legend ?? item.name);
+	let legend = $derived(item.attributes?.legend ?? '');
 	let level = $derived(item.attributes?.level ?? 2);
-	let repeaterItemLabel = $derived(item.attributes?.repeater_item_label ?? item.name);
+	let repeaterItemLabel = $derived(item.attributes?.repeaterItemLabel ?? null);
 	let children = $derived(item.children ?? []);
 	let groupCount = $derived(groups.length);
 
@@ -196,8 +196,10 @@
 			<div class="group-item-container">
 				{#if !printing}
 					<div class="group-item-header">
-						{repeaterItemLabel}
-						{idx + 1}
+						<span
+							>{repeaterItemLabel}
+							{repeaterItemLabel ? idx + 1 : ' '}</span
+						>
 						{#if groupCount > 1 && !item.is_read_only}
 							<Button
 								kind="ghost"
@@ -213,7 +215,7 @@
 				{:else}
 					<div class="print-group-header">
 						{repeaterItemLabel}
-						{idx + 1}
+						{repeaterItemLabel ? idx + 1 : ' '}
 					</div>
 				{/if}
 				<div

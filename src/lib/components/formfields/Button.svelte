@@ -5,7 +5,7 @@
 	import { syncExternalAttributes } from '$lib/utils/valueSync';
 
 	let { item, printing = false }: { item: Item; printing?: boolean; [key: string]: any } = $props();
-	let labelText = $derived(item.attributes?.text ?? item.name);
+	let labelText = $derived(item.attributes?.text ?? '');
 	let readonly = $state(item.is_read_only ?? false);
 
 	let extAttrs = $state<Record<string, any>>({});
