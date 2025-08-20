@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kiln-v2
+  name: {{ include "kiln-v2.fullname" . }}
   labels:
-    app.kubernetes.io/name: kiln-v2
+    app.kubernetes.io/name: {{ include "kiln-v2.fullname" . }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: kiln-v2
+      app.kubernetes.io/name: {{ include "kiln-v2.fullname" . }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: kiln-v2
+        app.kubernetes.io/name: {{ include "kiln-v2.fullname" . }}
     spec:
       containers:
-        - name: kiln-v2
+        - name: {{ include "kiln-v2.fullname" . }}
           image: "{{ .Values.image.tag }}"
           imagePullPolicy: Always
           ports:

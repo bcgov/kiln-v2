@@ -1,13 +1,13 @@
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: kiln-v2
+  name: {{ include "kiln-v2.fullname" . }}
   labels:
-    app.kubernetes.io/name: kiln-v2
+    app.kubernetes.io/name: {{ include "kiln-v2.fullname" . }}
 spec:
   to:
     kind: Service
-    name: kiln-v2
+    name: {{ include "kiln-v2.fullname" . }}
   port:
     targetPort: 8080
   tls:
