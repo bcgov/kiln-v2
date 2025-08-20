@@ -41,7 +41,7 @@ try {
       "SvelteKit handler not found at build/handler.js. Build with @sveltejs/adapter-node to enable SSR/endpoints."
     );
   }
-} catch (e) {
+} catch {
   console.error("Failed to load SvelteKit handler:", e);
 }
 

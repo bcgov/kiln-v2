@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - dev
   workflow_dispatch:
 
 env:
@@ -87,7 +88,15 @@ jobs:
 
       - name: Deploy with Helm
         run: |
-          helm upgrade --install kiln-v2 ./helm --set image.tag=${{ needs.build_and_push.outputs.image_tag }}
+          if [[ "${GITHUB_REF##*/}" == "dev" ]]; then
+            RELEASE_NAME="kiln-v2-dev"
+          elif [[ "${GITHUB_REF##*/}" == "test" ]]; then
+            RELEASE_NAME="kiln-v2-test"
+          else
+            RELEASE_NAME="kiln-v2"
+          fi
+
+          helm upgrade --install "$RELEASE_NAME" ./helm --set image.tag=${{ needs.build_and_push.outputs.image_tag }}
 
       - name: Trigger OpenShift Rollout
         run: |
