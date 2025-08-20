@@ -18,7 +18,7 @@
 	}>();
 
 	let checked = $state(item?.value ?? item.attributes?.defaultChecked ?? false);
-	let labelText = requiredLabel(item.attributes?.labelText ?? item.name, item.is_required ?? false);
+	let labelText = requiredLabel(item.attributes?.labelText ?? '', item.is_required ?? false);
 	let readonly = $state(item.is_read_only ?? false);
 	let touched = $state(false);
 

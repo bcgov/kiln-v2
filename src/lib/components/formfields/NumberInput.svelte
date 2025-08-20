@@ -17,7 +17,7 @@
 	let value = $state(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? 0);
 	let error = $state(item.attributes?.error ?? '');
 	let readonly = $state(item.is_read_only ?? false);
-	let labelText = requiredLabel(item.attributes?.labelText ?? item.name, item.is_required ?? false);
+	let labelText = requiredLabel(item.attributes?.labelText ?? '', item.is_required ?? false);
 	let helperText = item.help_text ?? item.description ?? '';
 	let touched = $state(false);
 
