@@ -58,7 +58,6 @@ export function createValueSyncEffect<T = any>(options: ValueSyncOptions<T>) {
 	element.addEventListener('change', handleExternalChange);
 	element.addEventListener('external-update', handleExternalUpdate);
 
-	// Dispatch initial update event
 	element.dispatchEvent(
 		new CustomEvent('svelte:updated', {
 			detail: { component: componentName, value: getValue() }
@@ -130,14 +129,12 @@ export function initExternalUpdateBridge() {
 			: () => {};
 	}
 
-	// Track elements currently dispatching to avoid recursion
 	const dispatchingElements = new WeakSet<EventTarget>();
 
-	// Generic: mirror common attributes to properties so setAttribute works universally
+	// Mirror common attributes to properties so setAttribute works universally
 	function syncPropsFromAttributes(target: HTMLElement, attributeName?: string) {
 		const attr = attributeName?.toLowerCase();
 
-		// Option element
 		if (target instanceof HTMLOptionElement) {
 			if (!attributeName || attr === 'selected') {
 				const present = target.hasAttribute('selected');
@@ -156,12 +153,10 @@ export function initExternalUpdateBridge() {
 
 		// Inputs, textareas, selects
 		if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
-			// value
 			if (!attributeName || attr === 'value') {
 				const v = target.getAttribute('value');
 				if (v !== null && (target as any).value !== v) (target as any).value = v;
 			}
-			// boolean attributes
 			const bools = ['checked', 'disabled', 'readonly', 'required', 'multiple'];
 			for (const b of bools) {
 				if (!attributeName || attr === b) {
@@ -173,7 +168,6 @@ export function initExternalUpdateBridge() {
 					}
 				}
 			}
-			// string attributes mirrored to properties
 			const strings = ['min', 'max', 'step', 'placeholder', 'pattern', 'name'];
 			for (const s of strings) {
 				if (!attributeName || attr === s) {
@@ -277,19 +271,17 @@ export function initExternalUpdateBridge() {
 			const { attributeName, target } = mutation;
 			if (!attributeName || !(target instanceof HTMLElement)) continue;
 
-			// If this is a wrapper (non-control) element, propagate any attribute to its first descendant control.
+			// Propagate any attribute to its first descendant control if wrapper.
+			// Ignore purely stylistic attributes like class/style
 			if (!isFormControl(target)) {
-				// Ignore purely stylistic attrs
 				if (attributeName === 'class' || attributeName === 'style') continue;
 				const inner = findFirstDescendantControl(target);
 				if (inner) {
 					const newVal = target.getAttribute(attributeName);
 					const oldVal = inner.getAttribute(attributeName);
 					if (newVal !== oldVal) {
-						// Propagate attribute value to the control
 						if (newVal === null) inner.removeAttribute(attributeName);
 						else inner.setAttribute(attributeName, newVal);
-						// Also notify generically from the control
 						inner.dispatchEvent(new CustomEvent('external-update', {
 							detail: { attr: attributeName, value: newVal },
 							bubbles: true,
@@ -297,13 +289,10 @@ export function initExternalUpdateBridge() {
 						}));
 					}
 				}
-				// Continue processing to also emit generic notification for the wrapper itself
 			}
 
-			// Mirror attributes -> properties for universal behavior (only meaningful for controls)
 			syncPropsFromAttributes(target, attributeName);
 
-			// Synthesize form events for meaningful attributes
 			const upper = target.tagName;
 			if (
 				(attributeName === 'value' || attributeName === 'checked') &&
@@ -316,7 +305,6 @@ export function initExternalUpdateBridge() {
 					dispatchSvelteUpdate(select);
 				}
 			} else {
-				// Generic attribute change notification (bubbling)
 				target.dispatchEvent(
 					new CustomEvent('external-update', {
 						detail: { attr: attributeName, value: target.getAttribute(attributeName) },
@@ -332,14 +320,12 @@ export function initExternalUpdateBridge() {
 		try {
 			if (!(el instanceof HTMLElement)) return;
 
-			// Controls/options: filtered attributes to avoid churn
 			if (isFormControl(el)) {
 				const attrs = el.tagName === 'OPTION' ? ['selected', 'disabled', 'value'] : OBS_ATTRS;
 				attributeObserver.observe(el, { attributes: true, attributeFilter: attrs, attributeOldValue: true });
 				return;
 			}
 
-			// Wrapper with an id that contains a control: observe ALL attributes (to catch arbitrary names like "mindate")
 			if (el.hasAttribute('id') && el.querySelector('input, textarea, select')) {
 				attributeObserver.observe(el, { attributes: true, attributeOldValue: true });
 			}
@@ -351,7 +337,6 @@ export function initExternalUpdateBridge() {
 	// Initial observe (controls, options, and wrappers-with-controls)
 	document.querySelectorAll('input, textarea, select, option, [id]').forEach(observeElement);
 
-	// Child list observer for dynamic elements
 	const treeObserver = new MutationObserver((mutations) => {
 		for (const mutation of mutations) {
 			for (const node of Array.from(mutation.addedNodes)) {
@@ -364,7 +349,7 @@ export function initExternalUpdateBridge() {
 	});
 	treeObserver.observe(document.body, { childList: true, subtree: true });
 
-	// Property overrides (limit to safe core props; bail early on no-op)
+	// Property overrides
 	function overrideProperty(proto: any, propName: string) {
 		const descriptor = Object.getOwnPropertyDescriptor(proto, propName);
 		if (!descriptor || !descriptor.set) return;
@@ -376,12 +361,10 @@ export function initExternalUpdateBridge() {
 			get: originalGetter,
 			set(this: any, value: any) {
 				const oldValue = originalGetter ? originalGetter.call(this) : this[propName];
-				// No-op guard: if unchanged, skip setter and events
 				if (value === oldValue) return;
 
 				originalSetter!.call(this, value);
 
-				// If option.selected, dispatch on parent select
 				if (this instanceof HTMLOptionElement && propName === 'selected') {
 					const select = this.parentElement;
 					if (select && select.tagName === 'SELECT') {
@@ -398,14 +381,12 @@ export function initExternalUpdateBridge() {
 	}
 
 	try {
-		// Minimal, safe overrides
 		overrideProperty(HTMLInputElement.prototype, 'value');
 		overrideProperty(HTMLInputElement.prototype, 'checked');
 		overrideProperty(HTMLTextAreaElement.prototype, 'value');
 		overrideProperty(HTMLSelectElement.prototype, 'value');
 		overrideProperty(HTMLOptionElement.prototype, 'selected');
 	} catch {
-		// ignore environments where overriding is restricted
 	}
 
 	// Register global handle for idempotency and cleanup
@@ -439,14 +420,12 @@ export function createAttributeSyncEffect(options: AttributeSyncOptions) {
 		const d = ce?.detail || {};
 		if (!('attr' in d)) return;
 
-		// Prefer composedPath when available
 		const path = (ce as any).composedPath?.() as any[] | undefined;
 		let hit = false;
 
 		if (path && path.length) {
 			hit = path.some((n) => n instanceof HTMLElement && n.id === item.uuid);
 		} else {
-			// Fallback: relate by containment/closest in the DOM
 			const el = document.getElementById(item.uuid);
 			const tgt = (ce.target as HTMLElement) || null;
 			if (el && tgt) {

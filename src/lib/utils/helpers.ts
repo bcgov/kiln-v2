@@ -1,3 +1,6 @@
+/**
+ * Resolve an API URL considering dev overrides and hosted path prefixes.
+ */
 export function getApiUrl(path: string, envVar?: string): string {
     const isDev = import.meta.env.DEV;
     if (isDev && envVar) {
@@ -10,7 +13,6 @@ export function getApiUrl(path: string, envVar?: string): string {
         const match = window.location.pathname.match(/^\/(formfoundry-[^/]+)/);
         const prefix = match ? `/${match[1]}` : "";
         
-        // ensure path starts with a slash
         const cleanPath = path.startsWith("/") ? path : `/${path}`;
         
         
@@ -26,6 +28,7 @@ export function requiredLabel(labelText: string, required: boolean): string {
   return labelText;
 }
 
+/** Set is_read_only on all items under formData.elements. */
 export function setReadOnlyFields(formData: any) {
 		function recurse(items: any[]) {
 			if (!Array.isArray(items)) return;
@@ -44,6 +47,7 @@ export function setReadOnlyFields(formData: any) {
 		return formData;
 	}
 
+/** Drop null/undefined/empty-string values from an attributes object. */
 export function filterAttributes<T extends Record<string, any> | null | undefined>(
   attrs: T
 ): Partial<NonNullable<T>> {

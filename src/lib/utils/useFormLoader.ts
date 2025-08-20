@@ -1,24 +1,7 @@
 import { writable, type Writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { loadFormData } from './load';
-
-export interface UseFormLoaderOptions {
-	apiEndpoint: string | (() => Promise<any>);
-	parseSaveData?: boolean;
-	// New: when using generate endpoints, read result.save_data for form payload
-	expectSaveData?: boolean;
-	// Optional passthrough flags for loadFormData behavior
-	parseErrorBody?: boolean;
-	includeOriginalServer?: boolean;
-}
-
-export interface UseFormLoaderReturn {
-	isLoading: Writable<boolean>;
-	error: Writable<string | null>;
-	formData: Writable<object>;
-	saveData: Writable<object>;
-	load: () => Promise<void>;
-}
+import type { UseFormLoaderOptions, UseFormLoaderReturn } from '$lib/types/load';
 
 function getCookie(name: string): string | null {
 	if (!browser) return null;
@@ -28,6 +11,10 @@ function getCookie(name: string): string | null {
 	return match ? decodeURIComponent(match[1]) : null;
 }
 
+/**
+ * Compose a small loader with stores for form payload and loading/error state.
+ * Reads URL params once (persisting to sessionStorage) and uses loadFormData for I/O.
+ */
 export function useFormLoader({
 	apiEndpoint,
 	expectSaveData = false,
@@ -46,7 +33,7 @@ export function useFormLoader({
 		error.set(null);
 
 		try {
-			// Collect params from URL once and persist to sessionStorage to mimic old behavior
+			// Collect params from URL once and persist to sessionStorage
 			const { search, pathname } = window.location;
 			let params: Record<string, string> = {};
 

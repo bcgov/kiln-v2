@@ -1,7 +1,4 @@
-/**
- * Returns a mock response object (or text) when running under Vitest and the
- * endpoint's last path segment matches a known mock mapping. Returns null otherwise.
- */
+/** Return a mock response for known endpoints when running under Vitest; else null. */
 export async function getMockResponseIfEnabled(endpoint: string): Promise<any | null> {
   const IS_VITEST =
     (import.meta as any).env?.VITE_VITEST === "true" ||
