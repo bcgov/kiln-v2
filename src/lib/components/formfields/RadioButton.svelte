@@ -6,7 +6,7 @@
 		parsers,
 		comparators,
 		publishToGlobalFormState,
-		createAttributeSyncEffect
+		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
@@ -62,13 +62,11 @@
 	});
 
 	$effect(() => {
-		return createAttributeSyncEffect({
+		return syncExternalAttributes({
 			item,
-			onAttr: (name, value) => {
-				if (name === 'class' || name === 'style') return;
-				if (extAttrs[name] !== value && value !== undefined) {
-					extAttrs = { ...extAttrs, [name]: value };
-				}
+			get: () => extAttrs,
+			set: (next) => {
+				extAttrs = next;
 			}
 		});
 	});

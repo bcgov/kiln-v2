@@ -19,7 +19,7 @@
 
 	let value = $state(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
-	let labelText = requiredLabel(item.attributes?.labelText ?? item.name, item.is_required);
+	let labelText = requiredLabel(item.attributes?.labelText ?? '', item.is_required);
 	let helperText = item.help_text ?? item.description ?? '';
 	let touched = $state(false);
 

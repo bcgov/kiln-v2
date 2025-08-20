@@ -6,7 +6,7 @@
 		parsers,
 		comparators,
 		publishToGlobalFormState,
-		createAttributeSyncEffect
+		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
 	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
@@ -59,13 +59,11 @@
 	});
 
 	$effect(() => {
-		return createAttributeSyncEffect({
+		return syncExternalAttributes({
 			item,
-			onAttr: (name, value) => {
-				if (name === 'class' || name === 'style') return;
-				if (extAttrs[name] !== value && value !== undefined) {
-					extAttrs = { ...extAttrs, [name]: value };
-				}
+			get: () => extAttrs,
+			set: (next) => {
+				extAttrs = next;
 			}
 		});
 	});

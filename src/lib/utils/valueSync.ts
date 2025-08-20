@@ -468,3 +468,30 @@ export function createAttributeSyncEffect(options: AttributeSyncOptions) {
 	document.addEventListener('external-update', handler, true);
 	return () => document.removeEventListener('external-update', handler, true);
 }
+export interface SyncExternalAttributesOptions<T extends Record<string, any> = Record<string, any>> {
+	item: Item;
+	get: () => T;
+	set: (next: T) => void;
+	// keys to ignore
+	exclude?: string[];
+}
+
+export function syncExternalAttributes<T extends Record<string, any> = Record<string, any>>(
+	options: SyncExternalAttributesOptions<T>
+) {
+	const { item, get, set, exclude = ['class', 'style'] } = options;
+
+	return createAttributeSyncEffect({
+		item,
+		filter: (name, value) => {
+			if (exclude.includes(name)) return false;
+			if (value === undefined) return false;
+			const curr = get();
+			return curr?.[name] !== value;
+		},
+		onAttr: (name, value) => {
+			const curr = get();
+			set({ ...(curr as any), [name]: value });
+		}
+	});
+}
