@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: {{ include "kiln-v2.fullname" . }}
-          image: "{{ .values.image.repository }}:{{ .values.image.tag }}" # ensure repo:tag is used
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: 8080
