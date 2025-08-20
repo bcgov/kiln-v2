@@ -33,11 +33,11 @@ jobs:
 
   build_and_push:
     runs-on: ubuntu-latest
-    # needs: lint
-
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -61,17 +61,17 @@ jobs:
           context: .
           file: ./Dockerfile.standalone
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
 
     outputs:
-      image_tag: ${{ steps.meta.outputs.tags }}
+      image_tag: ${{ github.sha }}
 
   deploy:
     needs: build_and_push
     runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'tools' || (github.ref == 'refs/heads/dev' && 'dev') || github.ref == 'refs/heads/test' && 'test' }}
-
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v4
@@ -89,9 +89,11 @@ jobs:
 
       - name: Deploy with Helm
         run: |
-          if [[ "${GITHUB_REF##*/}" == "dev" ]]; then
+          BRANCH="${GITHUB_REF##*/}"
+
+          if [[ "$BRANCH" == "dev" ]]; then
             RELEASE_NAME="kiln-v2-dev"
-          elif [[ "${GITHUB_REF##*/}" == "test" ]]; then
+          elif [[ "$BRANCH" == "test" ]]; then
             RELEASE_NAME="kiln-v2-test"
           else
             RELEASE_NAME="kiln-v2"
@@ -100,14 +102,17 @@ jobs:
           DEPLOYMENT_NAME="$RELEASE_NAME"
 
           helm upgrade --install "$RELEASE_NAME" ./helm \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} \
             --set image.tag=${{ needs.build_and_push.outputs.image_tag }} \
             --set fullnameOverride="$DEPLOYMENT_NAME"
 
       - name: Trigger OpenShift Rollout
         run: |
-          if [[ "${GITHUB_REF##*/}" == "dev" ]]; then
+          BRANCH="${GITHUB_REF##*/}"
+
+          if [[ "$BRANCH" == "dev" ]]; then
             DEPLOYMENT_NAME="kiln-v2-dev"
-          elif [[ "${GITHUB_REF##*/}" == "test" ]]; then
+          elif [[ "$BRANCH" == "test" ]]; then
             DEPLOYMENT_NAME="kiln-v2-test"
           else
             DEPLOYMENT_NAME="kiln-v2"
