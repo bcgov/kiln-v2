@@ -21,7 +21,7 @@
 	let value = $state(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? '');
 	let error = $state(item.attributes?.error ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
-	let labelText = requiredLabel(item.attributes?.labelText ?? '', item.is_required ?? false);
+	let labelText = $state(item.attributes?.labelText ?? '');
 	let placeholder = item.attributes?.placeholder ?? '';
 	let helperText = item.help_text ?? item.description ?? '';
 
@@ -114,6 +114,7 @@
 				use:maska={mask}
 				readonly={readOnly}
 				aria-invalid={!!anyError}
+				required={item.is_required}
 				{...maxCount ? { maxlength: maxCount } : {}}
 				{oninput}
 				{onblur}
@@ -137,6 +138,7 @@
 				invalid={!!anyError}
 				invalidText={anyError}
 				{hideLabel}
+				required={item.is_required}
 				{...maxCount ? { maxlength: maxCount } : {}}
 				{oninput}
 				{onblur}

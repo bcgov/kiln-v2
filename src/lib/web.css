@@ -139,3 +139,9 @@
   gap: 0;
 }
 
+/* Add red asterisk to "required" labels */
+.bx--label--required::after {
+  content: '*';
+  color: #da1e28;  /* Carbon red60 */
+  margin-left: 2px;
+}
