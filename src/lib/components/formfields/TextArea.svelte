@@ -98,7 +98,6 @@
 			id={item.uuid}
 			class={item.class}
 			{placeholder}
-			{helperText}
 			bind:value
 			readonly={readOnly}
 			invalid={!!anyError}

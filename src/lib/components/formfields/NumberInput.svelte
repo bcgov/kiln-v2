@@ -100,7 +100,6 @@
 			{...filterAttributes(item?.attributes)}
 			id={item.uuid}
 			class={item.class}
-			{helperText}
 			{readonly}
 			hideSteppers
 			allowEmpty

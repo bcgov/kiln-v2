@@ -103,7 +103,6 @@
 			{...filterAttributes(item?.attributes)}
 			id={item.uuid}
 			class={item.class}
-			{helperText}
 			bind:selected
 			disabled={readOnly}
 			invalid={!!anyError}
