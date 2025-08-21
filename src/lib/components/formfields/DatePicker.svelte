@@ -13,18 +13,35 @@
 	import { filterAttributes, buildFieldAria } from '$lib/utils/helpers';
 	import PrintRow from './common/PrintRow.svelte';
 
-	const { item, printing = false } = $props<{
-		item: Item;
-		printing?: boolean;
-	}>();
+	const { item, printing = false } = $props<{ item: Item; printing?: boolean }>();
+	let value: string | null = $state(
+		(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? null) || null
+	);
 
-	let value = $state(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
 	let labelText = $state(item.attributes?.labelText ?? '');
 	let helperText = item.help_text ?? '';
 	let touched = $state(false);
 
 	let extAttrs = $state<Record<string, any>>({});
+
+	function toFlatpickrFormat(fmt: string | undefined): string {
+		if (!fmt) return 'Y/m/d';
+		return fmt
+			.replace(/YYYY|yyyy/g, 'Y')
+			.replace(/YY|yy/g, 'y')
+			.replace(/MM/g, 'm')
+			.replace(/\bM\b/g, 'n')
+			.replace(/DD/g, 'd')
+			.replace(/\bD\b/g, 'j');
+	}
+	const dateFormat = $derived(
+		toFlatpickrFormat(
+			(item.attributes?.dateFormat || item.attributes?.displayFormat || item.attributes?.format) as
+				| string
+				| undefined
+		)
+	);
 
 	const rules = $derived.by(() =>
 		rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'date' })
@@ -34,7 +51,7 @@
 		if (item.attributes?.error) return item.attributes.error;
 		if (readOnly) return '';
 		return (
-			validateValue(value, rules, {
+			validateValue(value ?? '', rules, {
 				type: 'date',
 				fieldLabel: item.attributes?.labelText ?? item.name
 			}).firstError ?? ''
@@ -53,28 +70,32 @@
 			item,
 			getValue: () => value,
 			setValue: (newValue) => {
-				value = newValue;
+				if (newValue == null || newValue === '') {
+					value = null;
+				} else {
+					value = newValue as string;
+				}
 			},
 			componentName: 'DatePicker',
 			parser: parsers.string,
-			comparator: comparators.string
+			comparator: comparators.date
 		});
 	});
 
 	$effect(() => {
 		return createAttributeSyncEffect({
 			item,
-			onAttr: (name, value) => {
+			onAttr: (name, val) => {
 				if (name === 'class' || name === 'style') return;
-				if (extAttrs[name] !== value && value !== undefined) {
-					extAttrs = { ...extAttrs, [name]: value };
+				if (extAttrs[name] !== val && val !== undefined) {
+					extAttrs = { ...extAttrs, [name]: val };
 				}
 			}
 		});
 	});
 
 	$effect(() => {
-		publishToGlobalFormState({ item, value });
+		publishToGlobalFormState({ item, value: value ?? '' });
 	});
 
 	const a11y = buildFieldAria({
@@ -87,7 +108,7 @@
 </script>
 
 <div class="field-container date-picker-field">
-	<PrintRow {item} {printing} {labelText} value={value || ''} />
+	<PrintRow {item} {printing} {labelText} value={value ?? ''} />
 
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<DatePicker
@@ -95,6 +116,7 @@
 			{...extAttrs as any}
 			class={item.class}
 			datePickerType="single"
+			{dateFormat}
 			bind:value
 		>
 			<DatePickerInput
@@ -133,7 +155,6 @@
 		color: black !important;
 		cursor: text !important;
 	}
-
 	:global(input:disabled::placeholder, textarea:disabled::placeholder) {
 		color: black !important;
 		opacity: 1 !important;

@@ -241,7 +241,7 @@
 											attributes: {
 												...(child.attributes || {}),
 												id: child._indexUuid,
-												name: child._indexUuid
+												name: child._stableKey
 											}
 										}
 									]
