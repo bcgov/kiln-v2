@@ -10,7 +10,7 @@
 	} from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
-	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
+	import { filterAttributes } from '$lib/utils/helpers';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -19,7 +19,7 @@
 
 	let value = $state(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
-	let labelText = requiredLabel(item.attributes?.labelText ?? '', item.is_required);
+	let labelText = $state(item.attributes?.labelText ?? '');
 	let helperText = item.help_text ?? item.description ?? '';
 	let touched = $state(false);
 

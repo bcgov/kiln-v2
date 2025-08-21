@@ -10,7 +10,7 @@
 	} from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
-	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
+	import { filterAttributes } from '$lib/utils/helpers';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -22,7 +22,7 @@
 	);
 	let error = $state(item.attributes?.error ?? '');
 	let readonly = $state(item.is_read_only ?? false);
-	let labelText = requiredLabel(item.attributes?.labelText ?? '', item.is_required ?? false);
+	let labelText = $state(item.attributes?.labelText ?? '');
 	let helperText = item.help_text ?? item.description ?? '';
 	let options = item.options ?? [];
 	let touched = $state(false);
@@ -110,6 +110,7 @@
 			bind:selected
 			role="radiogroup"
 			data-selected={selected}
+			required={item.is_required}
 			{onchange}
 		>
 			<span slot="legendText">{@html labelText}</span>

@@ -9,7 +9,7 @@
 		createAttributeSyncEffect
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
+	import { filterAttributes } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 
 	const { item, printing = false } = $props<{
@@ -18,7 +18,7 @@
 	}>();
 
 	let checked = $state(item?.value ?? item.attributes?.defaultChecked ?? false);
-	let labelText = requiredLabel(item.attributes?.labelText ?? '', item.is_required ?? false);
+	let labelText = $state(item.attributes?.labelText ?? '');
 	let readonly = $state(item.is_read_only ?? false);
 	let touched = $state(false);
 
@@ -106,6 +106,7 @@
 			class={item.class}
 			bind:checked
 			disabled={readonly}
+			required={item.is_required}
 			{onchange}
 			{onblur}
 		>

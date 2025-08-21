@@ -9,7 +9,7 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
+	import { filterAttributes } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 
 	const { item, printing = false } = $props<{
@@ -20,7 +20,7 @@
 	let value = $state(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? '');
 	let error = $state(item.attributes?.error ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
-	let labelText = requiredLabel(item.attributes?.labelText ?? '', item.is_required ?? false);
+	let labelText = $state(item.attributes?.labelText ?? '');
 	let placeholder = item.attributes?.placeholder ?? '';
 	let helperText = item.help_text ?? item.description ?? '';
 	let maxlength = item.attributes?.maxCount ?? undefined;
@@ -100,6 +100,7 @@
 			readonly={readOnly}
 			invalid={!!anyError}
 			invalidText={anyError}
+			required={item.is_required}
 			{maxlength}
 			{oninput}
 			{onblur}
