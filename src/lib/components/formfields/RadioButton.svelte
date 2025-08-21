@@ -10,7 +10,7 @@
 	} from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
-	import { filterAttributes } from '$lib/utils/helpers';
+	import { filterAttributes, buildFieldAria } from '$lib/utils/helpers';
 	import PrintRow from './common/PrintRow.svelte';
 
 	const { item, printing = false } = $props<{
@@ -24,7 +24,7 @@
 	let error = $state(item.attributes?.error ?? '');
 	let readonly = $state(item.is_read_only ?? false);
 	let labelText = $state(item.attributes?.labelText ?? '');
-	let helperText = item.help_text ?? item.description ?? '';
+	let helperText = item.help_text ?? '';
 	let options = item.options ?? [];
 	let touched = $state(false);
 
@@ -75,6 +75,14 @@
 	$effect(() => {
 		publishToGlobalFormState({ item, value: selected });
 	});
+
+	const a11y = buildFieldAria({
+		uuid: item.uuid,
+		labelText,
+		helperText,
+		isRequired: item.is_required,
+		readOnly: readonly
+	});
 </script>
 
 {#snippet value()}
@@ -96,26 +104,29 @@
 	>
 		<RadioButtonGroup
 			{...filterAttributes(item?.attributes)}
-			{...extAttrs as any}
 			id={item.uuid}
 			class={item.class}
 			name={item.uuid}
 			bind:selected
 			role="radiogroup"
 			data-selected={selected}
+			{...a11y.ariaProps}
 			{onchange}
+			{...extAttrs as any}
 		>
-			<span slot="legendText" class:required={item.is_required}>{@html labelText}</span>
+			<span slot="legendText" id={a11y.labelId} class:required={item.is_required}
+				>{@html labelText}</span
+			>
 
 			{#each options as opt, index}
 				<RadioButton value={opt.value} labelText={opt.label} id={`${item.uuid}-option-${index}`} />
 			{/each}
 		</RadioButtonGroup>
 		{#if helperText}
-			<div class="helper-text">{helperText}</div>
+			<div id={a11y.helperId} class="helper-text">{helperText}</div>
 		{/if}
 		{#if anyError}
-			<div class="invalid-text">{anyError}</div>
+			<div id={a11y.errorId} class="invalid-text" role="alert">{anyError}</div>
 		{/if}
 	</div>
 </div>

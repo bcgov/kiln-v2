@@ -179,6 +179,8 @@
 	);
 	let containerClass = $derived(containerTypeClassMap[containerType] ?? 'container-fieldset');
 	let containerStyle = $derived(containerTypeStyleMap[containerType] ?? '');
+
+	const legendId = `${item.uuid}-legend`;
 </script>
 
 {#if isRepeatable}
@@ -186,14 +188,20 @@
 		class="container-repeatable container-group {containerClass} {item.class}"
 		class:printing
 		style={containerStyle}
+		id={item.uuid}
+		aria-labelledby={legend ? legendId : undefined}
 	>
 		{#if legend}
-			<legend>
+			<legend id={legendId}>
 				{@html `<h${level}>${legend}</h${level}>`}
 			</legend>
 		{/if}
 		{#each groups as group, idx (group.id)}
-			<div class="group-item-container">
+			<div
+				class="group-item-container"
+				role="group"
+				aria-label={`${repeaterItemLabel || 'Group'} ${idx + 1}`}
+			>
 				{#if !printing}
 					<div class="group-item-header">
 						<span
@@ -233,7 +241,7 @@
 											attributes: {
 												...(child.attributes || {}),
 												id: child._indexUuid,
-												name: child._indexUuid
+												name: child._stableKey
 											}
 										}
 									]
@@ -257,9 +265,10 @@
 		class="container-regular container-group {containerClass} {item.class}"
 		class:printing
 		style={containerStyle}
+		aria-labelledby={legend ? legendId : undefined}
 	>
 		{#if legend}
-			<legend>
+			<legend id={legendId}>
 				{@html `<h${level}>${legend}</h${level}>`}
 			</legend>
 		{/if}
