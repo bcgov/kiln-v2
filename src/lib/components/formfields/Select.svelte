@@ -9,8 +9,9 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
+	import { filterAttributes } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
+	import PrintRow from './common/PrintRow.svelte';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -22,7 +23,7 @@
 	);
 	let error = $state(item.attributes?.error ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
-	let labelText = requiredLabel(item.attributes?.labelText ?? '', item.is_required ?? false);
+	let labelText = $state(item.attributes?.labelText ?? '');
 	let helperText = item.help_text ?? item.description ?? '';
 	let options = item.options ?? [];
 	let touched = $state(false);
@@ -85,14 +86,7 @@
 </script>
 
 <div class="field-container select-field">
-	<div
-		class="print-row"
-		class:visible={printing && item.visible_pdf !== false}
-		id={printing && item.visible_pdf !== false ? item.uuid : undefined}
-	>
-		<div class="print-label">{@html labelText}</div>
-		<div class="print-value">{selectedLabel || ''}</div>
-	</div>
+	<PrintRow {item} {printing} {labelText} value={selectedLabel || ''} />
 
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<Select
@@ -108,7 +102,7 @@
 			{onchange}
 			{onblur}
 		>
-			<span slot="labelText">{@html labelText}</span>
+			<span slot="labelText" class:required={item.is_required}>{@html labelText}</span>
 			<SelectItem value="" text="Please select an option" />
 			{#each options as opt}
 				<SelectItem value={opt.value} text={opt.label} />

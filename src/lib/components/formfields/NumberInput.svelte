@@ -9,15 +9,16 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
+	import { filterAttributes } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
+	import PrintRow from './common/PrintRow.svelte';
 
 	let { item, printing = false } = $props<{ item: Item; printing?: boolean }>();
 
 	let value = $state(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? 0);
 	let error = $state(item.attributes?.error ?? '');
 	let readonly = $state(item.is_read_only ?? false);
-	let labelText = requiredLabel(item.attributes?.labelText ?? '', item.is_required ?? false);
+	let labelText = $state(item.attributes?.labelText ?? '');
 	let helperText = item.help_text ?? item.description ?? '';
 	let touched = $state(false);
 
@@ -74,15 +75,7 @@
 </script>
 
 <div class="field-container number-input-field">
-	<div
-		class="print-row"
-		class:visible={printing && item.visible_pdf !== false}
-		id={printing && item.visible_pdf !== false ? item.uuid : undefined}
-	>
-		<div class="print-label">{@html labelText}</div>
-		<div class="print-value">{value ?? ''}</div>
-	</div>
-
+	<PrintRow {item} {printing} {labelText} value={value || ''} />
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<NumberInput
 			{...filterAttributes(item?.attributes)}
@@ -97,7 +90,7 @@
 			{oninput}
 			{onblur}
 		>
-			<span slot="label">{@html labelText}</span>
+			<span slot="label" class:required={item.is_required}>{@html labelText}</span>
 		</NumberInput>
 	</div>
 </div>

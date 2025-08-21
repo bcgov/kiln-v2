@@ -9,9 +9,10 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { filterAttributes, requiredLabel } from '$lib/utils/helpers';
+	import { filterAttributes } from '$lib/utils/helpers';
 	import { maska } from 'maska/svelte';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
+	import PrintRow from './common/PrintRow.svelte';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -21,7 +22,7 @@
 	let value = $state(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? '');
 	let error = $state(item.attributes?.error ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
-	let labelText = requiredLabel(item.attributes?.labelText ?? '', item.is_required ?? false);
+	let labelText = $state(item.attributes?.labelText ?? '');
 	let placeholder = item.attributes?.placeholder ?? '';
 	let helperText = item.help_text ?? item.description ?? '';
 
@@ -92,14 +93,7 @@
 </script>
 
 <div class="field-container text-input-field">
-	<div
-		class="print-row"
-		class:visible={printing && item.visible_pdf !== false}
-		id={printing && item.visible_pdf !== false ? item.uuid : undefined}
-	>
-		<div class="print-label">{@html labelText}</div>
-		<div class="print-value">{value || ''}</div>
-	</div>
+	<PrintRow {item} {printing} {labelText} value={value || ''} />
 
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		{#if mask}
@@ -108,6 +102,7 @@
 				{...extAttrs as any}
 				id={item.uuid}
 				class="bx--text-input {item.class}"
+				class:required={item.is_required}
 				{placeholder}
 				aria-label={labelText}
 				bind:value
@@ -141,7 +136,7 @@
 				{oninput}
 				{onblur}
 			>
-				<span slot="labelText">{@html labelText}</span>
+				<span slot="labelText" class:required={item.is_required}>{@html labelText}</span>
 			</TextInput>
 		{/if}
 	</div>

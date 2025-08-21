@@ -21,13 +21,6 @@ export function getApiUrl(path: string, envVar?: string): string {
       return `/api${path}`;
 }
 
-export function requiredLabel(labelText: string, required: boolean): string {
-  if (required) {
-    return `${labelText} <span class="required">*</span>`;
-  }
-  return labelText;
-}
-
 /** Set is_read_only on all items under formData.elements. */
 export function setReadOnlyFields(formData: any) {
 		function recurse(items: any[]) {

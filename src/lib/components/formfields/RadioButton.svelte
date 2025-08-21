@@ -10,7 +10,8 @@
 	} from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
-	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
+	import { filterAttributes } from '$lib/utils/helpers';
+	import PrintRow from './common/PrintRow.svelte';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -22,7 +23,7 @@
 	);
 	let error = $state(item.attributes?.error ?? '');
 	let readonly = $state(item.is_read_only ?? false);
-	let labelText = requiredLabel(item.attributes?.labelText ?? '', item.is_required ?? false);
+	let labelText = $state(item.attributes?.labelText ?? '');
 	let helperText = item.help_text ?? item.description ?? '';
 	let options = item.options ?? [];
 	let touched = $state(false);
@@ -76,25 +77,17 @@
 	});
 </script>
 
-<div class="field-container radio-button-field">
-	<div
-		class="print-row"
-		class:visible={printing && item.visible_pdf !== false}
-		id={printing && item.visible_pdf !== false ? item.uuid : undefined}
-	>
-		<div class="print-label">{@html labelText}</div>
-		<div class="print-value">
-			{#each options as opt}
-				<div
-					class="bx--radio-button-wrapper"
-					style="display: flex; align-items: center; gap: 10px;"
-				>
-					<div>{selected === opt.value ? '◉' : '○'}</div>
-					<div>{opt.label}</div>
-				</div>
-			{/each}
+{#snippet value()}
+	{#each options as opt}
+		<div class="bx--radio-button-wrapper" style="display: flex; align-items: center; gap: 10px;">
+			<div>{selected === opt.value ? '◉' : '○'}</div>
+			<div>{opt.label}</div>
 		</div>
-	</div>
+	{/each}
+{/snippet}
+
+<div class="field-container radio-button-field">
+	<PrintRow {item} {printing} {labelText} {value} />
 
 	<div
 		class="web-input"
@@ -112,7 +105,7 @@
 			data-selected={selected}
 			{onchange}
 		>
-			<span slot="legendText">{@html labelText}</span>
+			<span slot="legendText" class:required={item.is_required}>{@html labelText}</span>
 
 			{#each options as opt, index}
 				<RadioButton value={opt.value} labelText={opt.label} id={`${item.uuid}-option-${index}`} />
