@@ -59,9 +59,13 @@
 	white-space: pre-wrap;
 }
 
-/* Required mark color */
-.required {
-    color: red;
+
+/* Add red asterisk to required labels (print and web) */
+.print-label.required::after,
+.bx--label > .required::after {
+  content: '*';
+  color: #da1e28;  /* Carbon red60 */
+  margin-left: 2px;
 }
 
 /* Ensure shaded label backgrounds are preserved in printed output */

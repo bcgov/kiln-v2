@@ -10,7 +10,7 @@
 	} from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
-	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
+	import { filterAttributes } from '$lib/utils/helpers';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -19,7 +19,7 @@
 
 	let value = $state(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
-	let labelText = requiredLabel(item.attributes?.labelText ?? '', item.is_required);
+	let labelText = $state(item.attributes?.labelText ?? '');
 	let helperText = item.help_text ?? item.description ?? '';
 	let touched = $state(false);
 
@@ -83,7 +83,7 @@
 		class:visible={printing && item.visible_pdf !== false}
 		id={printing && item.visible_pdf !== false ? item.uuid : undefined}
 	>
-		<div class="print-label">{@html labelText}</div>
+		<div class="print-label" class:required={item.is_required}>{@html labelText}</div>
 		<div class="print-value">{value || ''}</div>
 	</div>
 
@@ -106,7 +106,7 @@
 				{oninput}
 				{onblur}
 			>
-				<span slot="labelText">{@html labelText}</span>
+				<span slot="labelText" class:required={item.is_required}>{@html labelText}</span>
 			</DatePickerInput>
 		</DatePicker>
 	</div>
