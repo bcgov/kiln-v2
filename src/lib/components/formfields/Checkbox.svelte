@@ -11,6 +11,7 @@
 	import './fields.css';
 	import { filterAttributes } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
+	import PrintRow from './common/PrintRow.svelte';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -85,14 +86,7 @@
 </script>
 
 <div class="field-container checkbox-field">
-	<div
-		class="print-row"
-		class:visible={printing && item.visible_pdf !== false}
-		id={printing && item.visible_pdf !== false ? item.uuid : undefined}
-	>
-		<div class="print-label" class:required={item.is_required}>{@html labelText}</div>
-		<div class="print-value">{checked ? '☑' : '☐'}</div>
-	</div>
+	<PrintRow {item} {printing} {labelText} value={checked ? '☑' : '☐'} />
 
 	<div
 		class="web-input"

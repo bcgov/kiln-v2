@@ -12,6 +12,7 @@
 	import { filterAttributes } from '$lib/utils/helpers';
 	import { maska } from 'maska/svelte';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
+	import PrintRow from './common/PrintRow.svelte';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -92,14 +93,7 @@
 </script>
 
 <div class="field-container text-input-field">
-	<div
-		class="print-row"
-		class:visible={printing && item.visible_pdf !== false}
-		id={printing && item.visible_pdf !== false ? item.uuid : undefined}
-	>
-		<div class="print-label" class:required={item.is_required}>{@html labelText}</div>
-		<div class="print-value">{value || ''}</div>
-	</div>
+	<PrintRow {item} {printing} {labelText} value={value || ''} />
 
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		{#if mask}

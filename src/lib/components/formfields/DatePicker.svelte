@@ -11,6 +11,7 @@
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
 	import { filterAttributes } from '$lib/utils/helpers';
+	import PrintRow from './common/PrintRow.svelte';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -78,14 +79,7 @@
 </script>
 
 <div class="field-container date-picker-field">
-	<div
-		class="print-row"
-		class:visible={printing && item.visible_pdf !== false}
-		id={printing && item.visible_pdf !== false ? item.uuid : undefined}
-	>
-		<div class="print-label" class:required={item.is_required}>{@html labelText}</div>
-		<div class="print-value">{value || ''}</div>
-	</div>
+	<PrintRow {item} {printing} {labelText} value={value || ''} />
 
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<DatePicker

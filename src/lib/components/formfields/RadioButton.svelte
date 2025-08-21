@@ -11,6 +11,7 @@
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
 	import { filterAttributes } from '$lib/utils/helpers';
+	import PrintRow from './common/PrintRow.svelte';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -76,25 +77,17 @@
 	});
 </script>
 
-<div class="field-container radio-button-field">
-	<div
-		class="print-row"
-		class:visible={printing && item.visible_pdf !== false}
-		id={printing && item.visible_pdf !== false ? item.uuid : undefined}
-	>
-		<div class="print-label" class:required={item.is_required}>{@html labelText}</div>
-		<div class="print-value">
-			{#each options as opt}
-				<div
-					class="bx--radio-button-wrapper"
-					style="display: flex; align-items: center; gap: 10px;"
-				>
-					<div>{selected === opt.value ? '◉' : '○'}</div>
-					<div>{opt.label}</div>
-				</div>
-			{/each}
+{#snippet value()}
+	{#each options as opt}
+		<div class="bx--radio-button-wrapper" style="display: flex; align-items: center; gap: 10px;">
+			<div>{selected === opt.value ? '◉' : '○'}</div>
+			<div>{opt.label}</div>
 		</div>
-	</div>
+	{/each}
+{/snippet}
+
+<div class="field-container radio-button-field">
+	<PrintRow {item} {printing} {labelText} {value} />
 
 	<div
 		class="web-input"
