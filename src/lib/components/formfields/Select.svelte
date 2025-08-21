@@ -9,7 +9,7 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { filterAttributes } from '$lib/utils/helpers';
+	import { filterAttributes, buildFieldAria } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
 
@@ -24,7 +24,7 @@
 	let error = $state(item.attributes?.error ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
 	let labelText = $state(item.attributes?.labelText ?? '');
-	let helperText = item.help_text ?? item.description ?? '';
+	let helperText = item.help_text ?? '';
 	let options = item.options ?? [];
 	let touched = $state(false);
 
@@ -83,6 +83,16 @@
 	$effect(() => {
 		publishToGlobalFormState({ item, value: selected });
 	});
+
+	const a11y = $derived.by(() =>
+		buildFieldAria({
+			uuid: item.uuid,
+			labelText,
+			helperText,
+			isRequired: item.is_required,
+			readOnly: readOnly
+		})
+	);
 </script>
 
 <div class="field-container select-field">
@@ -91,7 +101,6 @@
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<Select
 			{...filterAttributes(item?.attributes)}
-			{...extAttrs as any}
 			id={item.uuid}
 			class={item.class}
 			{helperText}
@@ -99,15 +108,25 @@
 			disabled={readOnly}
 			invalid={!!anyError}
 			invalidText={anyError}
+			{...a11y.ariaProps}
 			{onchange}
 			{onblur}
+			{...extAttrs as any}
 		>
-			<span slot="labelText" class:required={item.is_required}>{@html labelText}</span>
+			<span slot="labelText" id={a11y.labelId} class:required={item.is_required}
+				>{@html labelText}</span
+			>
 			<SelectItem value="" text="Please select an option" />
 			{#each options as opt}
 				<SelectItem value={opt.value} text={opt.label} />
 			{/each}
 		</Select>
+		{#if anyError}
+			<div id={a11y.errorId} class="invalid-text" role="alert">{anyError}</div>
+		{/if}
+		{#if helperText}
+			<div id={a11y.helperId} class="helper-text">{helperText}</div>
+		{/if}
 	</div>
 </div>
 

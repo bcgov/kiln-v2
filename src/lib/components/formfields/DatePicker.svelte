@@ -10,7 +10,7 @@
 	} from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
-	import { filterAttributes } from '$lib/utils/helpers';
+	import { filterAttributes, buildFieldAria } from '$lib/utils/helpers';
 	import PrintRow from './common/PrintRow.svelte';
 
 	const { item, printing = false } = $props<{
@@ -21,7 +21,7 @@
 	let value = $state(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
 	let labelText = $state(item.attributes?.labelText ?? '');
-	let helperText = item.help_text ?? item.description ?? '';
+	let helperText = item.help_text ?? '';
 	let touched = $state(false);
 
 	let extAttrs = $state<Record<string, any>>({});
@@ -76,6 +76,14 @@
 	$effect(() => {
 		publishToGlobalFormState({ item, value });
 	});
+
+	const a11y = buildFieldAria({
+		uuid: item.uuid,
+		labelText,
+		helperText,
+		isRequired: item.is_required,
+		readOnly
+	});
 </script>
 
 <div class="field-container date-picker-field">
@@ -91,18 +99,24 @@
 		>
 			<DatePickerInput
 				{...filterAttributes(item.attributes)}
-				{...extAttrs as any}
 				id={item.uuid}
-				{helperText}
 				disabled={readOnly}
 				invalid={!!anyError}
 				invalidText={anyError}
 				{oninput}
 				{onblur}
+				{...a11y.ariaProps}
+				{...extAttrs as any}
 			>
 				<span slot="labelText" class:required={item.is_required}>{@html labelText}</span>
 			</DatePickerInput>
 		</DatePicker>
+		{#if anyError}
+			<div id={a11y.errorId} class="bx--form-requirement" role="alert">{anyError}</div>
+		{/if}
+		{#if helperText}
+			<div id={a11y.helperId} class="bx--form__helper-text">{helperText}</div>
+		{/if}
 	</div>
 </div>
 

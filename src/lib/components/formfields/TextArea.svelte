@@ -9,7 +9,7 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { filterAttributes } from '$lib/utils/helpers';
+	import { filterAttributes, buildFieldAria } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
 
@@ -23,7 +23,7 @@
 	let readOnly = $state(item.is_read_only ?? false);
 	let labelText = $state(item.attributes?.labelText ?? '');
 	let placeholder = item.attributes?.placeholder ?? '';
-	let helperText = item.help_text ?? item.description ?? '';
+	let helperText = item.help_text ?? '';
 	let maxlength = item.attributes?.maxCount ?? undefined;
 	let touched = $state(false);
 
@@ -77,6 +77,16 @@
 	$effect(() => {
 		publishToGlobalFormState({ item, value });
 	});
+
+	const a11y = $derived.by(() =>
+		buildFieldAria({
+			uuid: item.uuid,
+			labelText,
+			helperText,
+			isRequired: item.is_required,
+			readOnly
+		})
+	);
 </script>
 
 <div class="field-container text-area-field">
@@ -85,7 +95,6 @@
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<TextArea
 			{...filterAttributes(item?.attributes)}
-			{...extAttrs as any}
 			id={item.uuid}
 			class={item.class}
 			{placeholder}
@@ -95,10 +104,20 @@
 			invalid={!!anyError}
 			invalidText={anyError}
 			{maxlength}
+			{...a11y.ariaProps}
 			{oninput}
 			{onblur}
+			{...extAttrs as any}
 		>
-			<span slot="labelText" class:required={item.is_required}>{@html labelText}</span>
+			<span slot="labelText" id={a11y.labelId} class:required={item.is_required}
+				>{@html labelText}</span
+			>
 		</TextArea>
+		{#if anyError}
+			<div id={a11y.errorId} class="bx--form-requirement" role="alert">{anyError}</div>
+		{/if}
+		{#if helperText}
+			<div id={a11y.helperId} class="bx--form__helper-text">{helperText}</div>
+		{/if}
 	</div>
 </div>
