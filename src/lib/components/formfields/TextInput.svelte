@@ -9,9 +9,10 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { filterAttributes, requiredLabel } from '$lib/utils/helpers';
+	import { filterAttributes, buildFieldAria } from '$lib/utils/helpers';
 	import { maska } from 'maska/svelte';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
+	import PrintRow from './common/PrintRow.svelte';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -21,7 +22,7 @@
 	let value = $state(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? '');
 	let error = $state(item.attributes?.error ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
-	let labelText = requiredLabel(item.attributes?.labelText ?? '', item.is_required ?? false);
+	let labelText = $state(item.attributes?.labelText ?? '');
 	let placeholder = item.attributes?.placeholder ?? '';
 	let helperText = item.help_text ?? item.description ?? '';
 
@@ -36,10 +37,8 @@
 	let hideLabel = item.attributes?.hideLabel ?? false;
 	let maxCount = item.attributes?.maxCount ?? undefined;
 	let touched = $state(false);
-
 	let extAttrs = $state<Record<string, any>>({});
 
-	// Derived validation rules and computed error (gives precedence to server-provided error)
 	const rules = $derived.by(() =>
 		rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'string' })
 	);
@@ -89,60 +88,57 @@
 	$effect(() => {
 		publishToGlobalFormState({ item, value });
 	});
+
+	const a11y = buildFieldAria({
+		uuid: item.uuid,
+		labelText,
+		helperText,
+		isRequired: item.is_required,
+		readOnly: readOnly
+	});
+
+	// Apply mask to the real input element once it exists
+	let maskApplied = false;
+	$effect(() => {
+		if (!mask || maskApplied || typeof document === 'undefined') return;
+		const el = document.getElementById(item.uuid) as HTMLInputElement | null;
+		if (el) {
+			maska(el, mask);
+			maskApplied = true;
+		}
+	});
 </script>
 
 <div class="field-container text-input-field">
-	<div
-		class="print-row"
-		class:visible={printing && item.visible_pdf !== false}
-		id={printing && item.visible_pdf !== false ? item.uuid : undefined}
-	>
-		<div class="print-label">{@html labelText}</div>
-		<div class="print-value">{value || ''}</div>
-	</div>
+	<PrintRow {item} {printing} {labelText} value={value || ''} />
 
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
-		{#if mask}
-			<input
-				{...filterAttributes(item?.attributes)}
-				{...extAttrs as any}
-				id={item.uuid}
-				class="bx--text-input {item.class}"
-				{placeholder}
-				aria-label={labelText}
-				bind:value
-				use:maska={mask}
-				readonly={readOnly}
-				aria-invalid={!!anyError}
-				{...maxCount ? { maxlength: maxCount } : {}}
-				{oninput}
-				{onblur}
-			/>
-			{#if anyError}
-				<div class="bx--form-requirement">{anyError}</div>
-			{/if}
-			{#if helperText}
-				<div class="bx--form__helper-text">{helperText}</div>
-			{/if}
-		{:else}
-			<TextInput
-				{...filterAttributes(item?.attributes)}
-				{...extAttrs as any}
-				id={item.uuid}
-				class={item.class}
-				{placeholder}
-				{helperText}
-				bind:value
-				readonly={readOnly}
-				invalid={!!anyError}
-				invalidText={anyError}
-				{hideLabel}
-				{...maxCount ? { maxlength: maxCount } : {}}
-				{oninput}
-				{onblur}
+		<TextInput
+			{...filterAttributes(item?.attributes)}
+			id={item.uuid}
+			class={item.class}
+			{placeholder}
+			bind:value
+			readonly={readOnly}
+			invalid={!!anyError}
+			invalidText={anyError}
+			aria-label={labelText}
+			{...a11y.ariaProps}
+			{hideLabel}
+			{...maxCount ? { maxlength: maxCount } : {}}
+			{oninput}
+			{onblur}
+			{...extAttrs as any}
+		>
+			<span slot="labelText" id={a11y.labelId} class:required={item.is_required}
+				>{@html labelText}</span
 			>
-				<span slot="labelText">{@html labelText}</span>
-			</TextInput>
+		</TextInput>
+		{#if anyError}
+			<div id={a11y.errorId} class="bx--form-requirement" role="alert">{anyError}</div>
+		{/if}
+		{#if helperText}
+			<div id={a11y.helperId} class="bx--form__helper-text">{helperText}</div>
 		{/if}
 	</div>
 </div>

@@ -9,16 +9,19 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
+	import { filterAttributes, buildFieldAria } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
+	import PrintRow from './common/PrintRow.svelte';
 
 	let { item, printing = false } = $props<{ item: Item; printing?: boolean }>();
 
-	let value = $state(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? 0);
+	let value = $state(
+		item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? null
+	);
 	let error = $state(item.attributes?.error ?? '');
 	let readonly = $state(item.is_read_only ?? false);
-	let labelText = requiredLabel(item.attributes?.labelText ?? '', item.is_required ?? false);
-	let helperText = item.help_text ?? item.description ?? '';
+	let labelText = $state(item.attributes?.labelText ?? '');
+	let helperText = item.help_text ?? '';
 	let touched = $state(false);
 
 	let extAttrs = $state<Record<string, any>>({});
@@ -38,10 +41,14 @@
 		);
 	});
 
-	function oninput() {
-		touched = true;
-	}
-	function onblur() {
+	function handleInput(e: any) {
+		const raw = e?.detail?.value ?? e?.target?.value ?? '';
+		if (raw === '') {
+			value = null;
+		} else {
+			const n = Number(raw);
+			if (!Number.isNaN(n)) value = n;
+		}
 		touched = true;
 	}
 
@@ -71,33 +78,47 @@
 	$effect(() => {
 		publishToGlobalFormState({ item, value });
 	});
+
+	const a11y = buildFieldAria({
+		uuid: item.uuid,
+		labelText,
+		helperText,
+		isRequired: item.is_required,
+		readOnly: readonly
+	});
 </script>
 
 <div class="field-container number-input-field">
-	<div
-		class="print-row"
-		class:visible={printing && item.visible_pdf !== false}
-		id={printing && item.visible_pdf !== false ? item.uuid : undefined}
-	>
-		<div class="print-label">{@html labelText}</div>
-		<div class="print-value">{value ?? ''}</div>
-	</div>
-
+	<PrintRow
+		{item}
+		{printing}
+		{labelText}
+		value={value !== null && value !== undefined ? (value === 0 ? value.toString() : value) : ''}
+	/>
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<NumberInput
 			{...filterAttributes(item?.attributes)}
-			{...extAttrs as any}
 			id={item.uuid}
 			class={item.class}
-			{helperText}
-			bind:value
 			{readonly}
+			hideSteppers
+			allowEmpty
+			value={value ?? ''}
 			invalid={!!anyError}
 			invalidText={anyError}
-			{oninput}
-			{onblur}
+			{...a11y.ariaProps}
+			onchange={handleInput}
+			onblur={handleInput}
+			{...extAttrs as any}
 		>
-			<span slot="label">{@html labelText}</span>
+			<span slot="label" id={a11y.labelId} class:required={item.is_required}>{@html labelText}</span
+			>
 		</NumberInput>
+		{#if anyError}
+			<div id={a11y.errorId} class="bx--form-requirement" role="alert">{anyError}</div>
+		{/if}
+		{#if helperText}
+			<div id={a11y.helperId} class="bx--form__helper-text">{helperText}</div>
+		{/if}
 	</div>
 </div>

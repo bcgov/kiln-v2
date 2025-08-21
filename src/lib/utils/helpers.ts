@@ -21,13 +21,6 @@ export function getApiUrl(path: string, envVar?: string): string {
       return `/api${path}`;
 }
 
-export function requiredLabel(labelText: string, required: boolean): string {
-  if (required) {
-    return `${labelText} <span class="required">*</span>`;
-  }
-  return labelText;
-}
-
 /** Set is_read_only on all items under formData.elements. */
 export function setReadOnlyFields(formData: any) {
 		function recurse(items: any[]) {
@@ -54,4 +47,40 @@ export function filterAttributes<T extends Record<string, any> | null | undefine
   if (!attrs) return {};
   const entries = Object.entries(attrs).filter(([, v]) => v !== null && v !== undefined && v !== "");
   return Object.fromEntries(entries) as Partial<NonNullable<T>>;
+}
+
+export interface BuildFieldAriaConfig {
+	uuid: string;
+	labelText?: string;
+	helperText?: string;
+	isRequired?: boolean;
+	readOnly?: boolean;
+	includeLabelledBy?: boolean; 
+}
+
+export function buildFieldAria(cfg: BuildFieldAriaConfig) {
+	const {
+		uuid,
+		labelText,
+		helperText,
+		isRequired,
+		readOnly,
+		includeLabelledBy = true
+	} = cfg;
+	const labelId = labelText && includeLabelledBy ? `${uuid}-label` : undefined;
+	const helperId = helperText ? `${uuid}-helper` : undefined;
+	const errorId = `${uuid}-error`;
+	const describedByIds = [errorId, helperId].filter(Boolean).join(' ');
+	const ariaProps: Record<string, any> = {};
+	if (labelId) ariaProps['aria-labelledby'] = labelId;
+	if (describedByIds) ariaProps['aria-describedby'] = describedByIds;
+	if (isRequired) ariaProps['aria-required'] = true;
+	if (readOnly) ariaProps['aria-readonly'] = true;
+	return {
+		labelId,
+		helperId,
+		errorId,
+		describedBy: describedByIds || undefined,
+		ariaProps
+	};
 }

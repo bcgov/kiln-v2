@@ -9,8 +9,9 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
+	import { filterAttributes, buildFieldAria } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
+	import PrintRow from './common/PrintRow.svelte';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -20,9 +21,9 @@
 	let value = $state(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? '');
 	let error = $state(item.attributes?.error ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
-	let labelText = requiredLabel(item.attributes?.labelText ?? '', item.is_required ?? false);
+	let labelText = $state(item.attributes?.labelText ?? '');
 	let placeholder = item.attributes?.placeholder ?? '';
-	let helperText = item.help_text ?? item.description ?? '';
+	let helperText = item.help_text ?? '';
 	let maxlength = item.attributes?.maxCount ?? undefined;
 	let touched = $state(false);
 
@@ -76,35 +77,46 @@
 	$effect(() => {
 		publishToGlobalFormState({ item, value });
 	});
+
+	const a11y = $derived.by(() =>
+		buildFieldAria({
+			uuid: item.uuid,
+			labelText,
+			helperText,
+			isRequired: item.is_required,
+			readOnly
+		})
+	);
 </script>
 
 <div class="field-container text-area-field">
-	<div
-		class="print-row"
-		class:visible={printing && item.visible_pdf !== false}
-		id={printing && item.visible_pdf !== false ? item.uuid : undefined}
-	>
-		<div class="print-label">{@html labelText}</div>
-		<div class="print-value">{value || ''}</div>
-	</div>
+	<PrintRow {item} {printing} {labelText} value={value || ''} />
 
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<TextArea
 			{...filterAttributes(item?.attributes)}
-			{...extAttrs as any}
 			id={item.uuid}
 			class={item.class}
 			{placeholder}
-			{helperText}
 			bind:value
 			readonly={readOnly}
 			invalid={!!anyError}
 			invalidText={anyError}
 			{maxlength}
+			{...a11y.ariaProps}
 			{oninput}
 			{onblur}
+			{...extAttrs as any}
 		>
-			<span slot="labelText">{@html labelText}</span>
+			<span slot="labelText" id={a11y.labelId} class:required={item.is_required}
+				>{@html labelText}</span
+			>
 		</TextArea>
+		{#if anyError}
+			<div id={a11y.errorId} class="bx--form-requirement" role="alert">{anyError}</div>
+		{/if}
+		{#if helperText}
+			<div id={a11y.helperId} class="bx--form__helper-text">{helperText}</div>
+		{/if}
 	</div>
 </div>

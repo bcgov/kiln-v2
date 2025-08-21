@@ -10,20 +10,38 @@
 	} from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
-	import { requiredLabel, filterAttributes } from '$lib/utils/helpers';
+	import { filterAttributes, buildFieldAria } from '$lib/utils/helpers';
+	import PrintRow from './common/PrintRow.svelte';
 
-	const { item, printing = false } = $props<{
-		item: Item;
-		printing?: boolean;
-	}>();
+	const { item, printing = false } = $props<{ item: Item; printing?: boolean }>();
+	let value: string | null = $state(
+		(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? null) || null
+	);
 
-	let value = $state(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
-	let labelText = requiredLabel(item.attributes?.labelText ?? '', item.is_required);
-	let helperText = item.help_text ?? item.description ?? '';
+	let labelText = $state(item.attributes?.labelText ?? '');
+	let helperText = item.help_text ?? '';
 	let touched = $state(false);
 
 	let extAttrs = $state<Record<string, any>>({});
+
+	function toFlatpickrFormat(fmt: string | undefined): string {
+		if (!fmt) return 'Y/m/d';
+		return fmt
+			.replace(/YYYY|yyyy/g, 'Y')
+			.replace(/YY|yy/g, 'y')
+			.replace(/MM/g, 'm')
+			.replace(/\bM\b/g, 'n')
+			.replace(/DD/g, 'd')
+			.replace(/\bD\b/g, 'j');
+	}
+	const dateFormat = $derived(
+		toFlatpickrFormat(
+			(item.attributes?.dateFormat || item.attributes?.displayFormat || item.attributes?.format) as
+				| string
+				| undefined
+		)
+	);
 
 	const rules = $derived.by(() =>
 		rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'date' })
@@ -33,7 +51,7 @@
 		if (item.attributes?.error) return item.attributes.error;
 		if (readOnly) return '';
 		return (
-			validateValue(value, rules, {
+			validateValue(value ?? '', rules, {
 				type: 'date',
 				fieldLabel: item.attributes?.labelText ?? item.name
 			}).firstError ?? ''
@@ -52,40 +70,45 @@
 			item,
 			getValue: () => value,
 			setValue: (newValue) => {
-				value = newValue;
+				if (newValue == null || newValue === '') {
+					value = null;
+				} else {
+					value = newValue as string;
+				}
 			},
 			componentName: 'DatePicker',
 			parser: parsers.string,
-			comparator: comparators.string
+			comparator: comparators.date
 		});
 	});
 
 	$effect(() => {
 		return createAttributeSyncEffect({
 			item,
-			onAttr: (name, value) => {
+			onAttr: (name, val) => {
 				if (name === 'class' || name === 'style') return;
-				if (extAttrs[name] !== value && value !== undefined) {
-					extAttrs = { ...extAttrs, [name]: value };
+				if (extAttrs[name] !== val && val !== undefined) {
+					extAttrs = { ...extAttrs, [name]: val };
 				}
 			}
 		});
 	});
 
 	$effect(() => {
-		publishToGlobalFormState({ item, value });
+		publishToGlobalFormState({ item, value: value ?? '' });
+	});
+
+	const a11y = buildFieldAria({
+		uuid: item.uuid,
+		labelText,
+		helperText,
+		isRequired: item.is_required,
+		readOnly
 	});
 </script>
 
 <div class="field-container date-picker-field">
-	<div
-		class="print-row"
-		class:visible={printing && item.visible_pdf !== false}
-		id={printing && item.visible_pdf !== false ? item.uuid : undefined}
-	>
-		<div class="print-label">{@html labelText}</div>
-		<div class="print-value">{value || ''}</div>
-	</div>
+	<PrintRow {item} {printing} {labelText} value={value ?? ''} />
 
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<DatePicker
@@ -93,22 +116,29 @@
 			{...extAttrs as any}
 			class={item.class}
 			datePickerType="single"
+			{dateFormat}
 			bind:value
 		>
 			<DatePickerInput
 				{...filterAttributes(item.attributes)}
-				{...extAttrs as any}
 				id={item.uuid}
-				{helperText}
 				disabled={readOnly}
 				invalid={!!anyError}
 				invalidText={anyError}
 				{oninput}
 				{onblur}
+				{...a11y.ariaProps}
+				{...extAttrs as any}
 			>
-				<span slot="labelText">{@html labelText}</span>
+				<span slot="labelText" class:required={item.is_required}>{@html labelText}</span>
 			</DatePickerInput>
 		</DatePicker>
+		{#if anyError}
+			<div id={a11y.errorId} class="bx--form-requirement" role="alert">{anyError}</div>
+		{/if}
+		{#if helperText}
+			<div id={a11y.helperId} class="bx--form__helper-text">{helperText}</div>
+		{/if}
 	</div>
 </div>
 
@@ -125,7 +155,6 @@
 		color: black !important;
 		cursor: text !important;
 	}
-
 	:global(input:disabled::placeholder, textarea:disabled::placeholder) {
 		color: black !important;
 		opacity: 1 !important;
