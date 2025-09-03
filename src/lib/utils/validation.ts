@@ -164,7 +164,6 @@ export function validateValue(
     }
     if (rules.isUrl) {
       try {
-        // eslint-disable-next-line no-new
         new URL(s);
       } catch {
         errors.push(buildErrorMessage('url', {}, label));

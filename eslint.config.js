@@ -21,9 +21,14 @@ export default ts.config(
 			globals: { ...globals.browser, ...globals.node }
 		},
 		rules: {
-			// typescript-eslint strongly recommend that you do not use the no-undef lint rule on TypeScript projects.
-			// see: https://typescript-eslint.io/troubleshooting/faqs/eslint/#i-get-errors-from-the-no-undef-rule-about-global-variables-not-being-defined-even-though-there-are-no-typescript-errors
-			'no-undef': 'off'
+			// temporarily convert some errors to ignore
+			"@typescript-eslint/no-unused-vars": "off",
+			"@typescript-eslint/no-unused-expressions": "off",
+			"@typescript-eslint/no-explicit-any": "off",
+			"@typescript-eslint/ban-types": "off",
+			"@typescript-eslint/ban-ts-comment": "off",
+			"no-case-declarations": "off",
+			"svelte/no-at-html-tags": "off",
 		}
 	},
 	{

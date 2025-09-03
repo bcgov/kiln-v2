@@ -41,7 +41,7 @@ try {
       "SvelteKit handler not found at build/handler.js. Build with @sveltejs/adapter-node to enable SSR/endpoints."
     );
   }
-} catch {
+} catch (e) {
   console.error("Failed to load SvelteKit handler:", e);
 }
 
@@ -68,6 +68,7 @@ const server = http.createServer((req, res) => {
     const parsed = new URL(req.url, `http://${req.headers.host || "localhost"}`);
     pathname = decodeURIComponent(parsed.pathname || "/");
   } catch (e) {
+    console.error("Error parsing URL:", e);
     const parsedUrl = url.parse(req.url || "/");
     pathname = decodeURIComponent(parsedUrl.pathname || "/");
   }
