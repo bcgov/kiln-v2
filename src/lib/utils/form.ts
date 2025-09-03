@@ -261,8 +261,8 @@ export async function unlockICMFinalFlags(): Promise<string> {
     if (response.ok) {
       try {
         const result = await response.json();
-      } catch {
-
+      } catch (e){
+        console.warn('Unlock ICM Final Flags: No JSON response body', e);
       }
       return 'success';
     } else {
@@ -313,7 +313,7 @@ export async function submitForButtonAction(buttonConfig: any): Promise<string> 
     const { API } = await import('$lib/utils/api');
     const submitForButtonAction = API.submitForButtonAction;
 
-		try {
+    try {
 			const state = sessionStorage.getItem('formParams');
 			const params = state ? JSON.parse(state) : {};
 			const savedJson = {

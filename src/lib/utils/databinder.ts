@@ -109,7 +109,7 @@ function injectValues(
 	debugMap: Record<string, any>
 ): any[] {
 	return items.map((item) => {
-		let newItem = { ...item };
+		const newItem = { ...item };
 
 		const isRepeater = newItem.attributes?.isRepeatable || newItem.repeater;
 		const lookupKey = newItem.id || newItem.uuid;

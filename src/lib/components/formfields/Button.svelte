@@ -5,7 +5,7 @@
 	import { syncExternalAttributes } from '$lib/utils/valueSync';
 	import { buildFieldAria } from '$lib/utils/helpers';
 
-	let { item, printing = false }: { item: Item; printing?: boolean; [key: string]: any } = $props();
+	let { item, printing = false } = $props<{ item: Item; printing?: boolean; [key: string]: any }>();
 	let labelText = $derived(item.attributes?.text ?? '');
 	let readonly = $state(item.is_read_only ?? false);
 
