@@ -1,17 +1,17 @@
 # Stage 1: Build dependencies
-FROM node:20 as deps
+FROM node:22 as deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
 
 # Stage 2: Copy source
-FROM node:20 as build-src
+FROM node:22 as build-src
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Stage 3: Runtime container with build-on-start
-FROM node:20-alpine
+FROM node:22-alpine
 WORKDIR /app
 
 # Copy app source and deps
