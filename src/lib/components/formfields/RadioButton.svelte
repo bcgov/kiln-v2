@@ -86,7 +86,7 @@
 </script>
 
 {#snippet value()}
-	{#each options as opt}
+	{#each options as opt (opt.id)}
 		<div class="bx--radio-button-wrapper" style="display: flex; align-items: center; gap: 10px;">
 			<div>{selected === opt.value ? '◉' : '○'}</div>
 			<div>{opt.label}</div>
@@ -118,7 +118,7 @@
 				>{@html labelText}</span
 			>
 
-			{#each options as opt, index}
+			{#each options as opt, index (opt.id)}
 				<RadioButton value={opt.value} labelText={opt.label} id={`${item.uuid}-option-${index}`} />
 			{/each}
 		</RadioButtonGroup>

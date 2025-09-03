@@ -387,7 +387,8 @@ export function initExternalUpdateBridge() {
 		overrideProperty(HTMLTextAreaElement.prototype, 'value');
 		overrideProperty(HTMLSelectElement.prototype, 'value');
 		overrideProperty(HTMLOptionElement.prototype, 'selected');
-	} catch {
+	} catch (e) {
+		console.warn('Could not override element properties for external updates:', e);
 	}
 
 	// Register global handle for idempotency and cleanup
@@ -435,7 +436,7 @@ export function createAttributeSyncEffect(options: AttributeSyncOptions) {
 		}
 		if (!hit) return;
 
-		let name = String(d.attr || '');
+		const name = String(d.attr || '');
 		if (!name) return;
 
 		// Optional filter

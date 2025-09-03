@@ -79,7 +79,6 @@
 	function getToken(): string | undefined {
 		try {
 			// Try globals then localStorage as a fallback
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const w = (window as any) || {};
 			return w.__kilnAuth?.token || localStorage.getItem('token') || undefined;
 		} catch {
@@ -89,7 +88,6 @@
 
 	function baseContext(): Record<string, any> {
 		// Fill common context keys used in placeholders (e.g., @@token@@)
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const w = (window as any) || {};
 		return {
 			token: getToken(),

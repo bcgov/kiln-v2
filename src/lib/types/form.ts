@@ -72,8 +72,8 @@ export interface GroupFieldValueItem {
 export interface SavedData {
 	data: SavedFieldData;
 	form_definition: Template;
-	metadata: {};
-	params?: {};
+	metadata: object;
+	params?: object;
 }
 
 export type GroupState = { [key: string]: string }[];

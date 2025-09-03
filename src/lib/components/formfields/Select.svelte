@@ -116,7 +116,7 @@
 				>{@html labelText}</span
 			>
 			<SelectItem value="" text="Please select an option" />
-			{#each options as opt}
+			{#each options as opt (opt.id)}
 				<SelectItem value={opt.value} text={opt.label} />
 			{/each}
 		</Select>
