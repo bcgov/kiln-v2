@@ -9,7 +9,12 @@
 	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
 	const { isLoading, error, formData, saveData } = useFormLoader({
-		apiEndpoint: isPortalIntegrated ? API.loadPortalForm : API.loadICMData
+		apiEndpoint: API.loadBoundForm,
+		expectSaveData: false,
+		transformParams: (params) => ({
+			...params,
+			isPortalIntegrated
+		})
 	});
 </script>
 

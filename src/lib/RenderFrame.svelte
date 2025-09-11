@@ -4,7 +4,6 @@
 	import { Button, Form, Modal, Loading } from 'carbon-components-svelte';
 	import FormRenderer from './components/FormRenderer.svelte';
 	import ScriptStyleInjection from './components/ScriptStyleInjection.svelte';
-	import { bindDataToForm } from './utils/databinder';
 	import { FORM_MODE } from './constants/formMode';
 	import {
 		saveDataToICMApi,
@@ -64,18 +63,12 @@
 
 	let mergedFormData = $derived.by(() => {
 		if (!formData) return null;
+
 		if (mode === 'view') {
 			setReadOnlyFields(formData);
 		}
-		if (saveData && formData) {
-			const { mappedFormDef } = bindDataToForm({
-				data: saveData.data,
-				form_definition: formData
-			});
-			return mappedFormDef;
-		} else {
-			return formData;
-		}
+		
+		return formData;
 	});
 
 	let ministryLogoPath = $derived.by(() => {
