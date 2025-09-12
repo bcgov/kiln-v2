@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { TextArea, Form, Button, InlineNotification } from 'carbon-components-svelte';
+	import { TextArea, Form, Button, InlineNotification, InlineLoading } from 'carbon-components-svelte';
 	import RenderFrame from '$lib/RenderFrame.svelte';
 	import { FORM_DELIVERY_MODE, FORM_MODE } from '$lib/constants/formMode';
+	import { API } from '$lib/utils/api';
 
 	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
@@ -10,35 +11,68 @@
 	let content = $state('');
 	let error = $state('');
 	let saveData = $state<{ data: any } | undefined>(undefined);
+	let isLoading = $state(false);
 
-	function handleSubmit(event: Event) {
+	async function handleSubmit(event: Event) {
 		event.preventDefault();
 		error = '';
+		isLoading = true;
 
 		if (!content.trim()) {
 			error = 'Content cannot be empty. Please enter valid JSON.';
+			isLoading = false;
 			return;
 		}
 
 		try {
 			const parsedJSON = JSON.parse(content);
+			let formData;
 
-			// If both data and form_definition exist, treat as form_with_data
 			if (parsedJSON.data && parsedJSON.form_definition) {
-				saveData = { data: parsedJSON.data };
-				jsonContent = parsedJSON.form_definition;
-			} else if (parsedJSON.formversion) {
-				// If formversion exists, treat as example-form.json
-				jsonContent = parsedJSON.formversion;
-				saveData = undefined;
-			} else {
-				// fallback: treat as plain form definition
-				jsonContent = parsedJSON;
-				saveData = undefined;
+				
+				formData = {
+					data: parsedJSON.data,
+					form_definition: parsedJSON.form_definition,
+					metadata: parsedJSON.metadata || null
+				};
+			} else if (parsedJSON.formversion) {				
+				formData = {
+					data: null,
+					form_definition: parsedJSON.formversion,
+					metadata: null
+				};
+			} else {				
+				formData = {
+					data: null,
+					form_definition: parsedJSON,
+					metadata: null
+				};
 			}
+
+			// Call the API to bind the data
+			const response = await fetch(API.bindPreviewForm, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({ formData })
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || 'Failed to bind form data');
+			}
+
+			const boundData = await response.json();
+			
+			// Set the bound form definition and save data
+			jsonContent = boundData.form_definition || {};
+			saveData = boundData.data ? { data: boundData.data } : undefined;
 			present = true;
 		} catch (e) {
-			error = 'Invalid JSON format. Please correct it.';
+			error = e instanceof Error ? e.message : 'Invalid JSON format or API error. Please correct it.';
+		} finally {
+			isLoading = false;
 		}
 	}
 
@@ -68,22 +102,26 @@
 			/>
 		{/if}
 
-		<Form onsubmit={handleSubmit}>
-			<TextArea
-				bind:value={content}
-				style="margin-bottom: 10px; padding: 10px; font-size: 16px;"
-				cols={50}
-				helperText="Please enter your json for the form definition"
-				id="jsonData"
-				invalid={!!error}
-				invalidText={error}
-				labelText="Form Template JSON"
-				placeholder="Enter your form json"
-				rows={15}
-			/>
-			<br />
+		{#if isLoading}
+			<InlineLoading description="Processing form data..." status="active" />
+		{:else}
+			<Form onsubmit={handleSubmit}>
+				<TextArea
+					bind:value={content}
+					style="margin-bottom: 10px; padding: 10px; font-size: 16px;"
+					cols={50}
+					helperText="Please enter your json for the form definition"
+					id="jsonData"
+					invalid={!!error}
+					invalidText={error}
+					labelText="Form Template JSON"
+					placeholder="Enter your form json"
+					rows={15}
+				/>
+				<br />
 
-			<Button kind="secondary" type="submit">Preview</Button>
-		</Form>
+				<Button kind="secondary" type="submit" disabled={isLoading}>Preview</Button>
+			</Form>
+		{/if}
 	</div>
 {/if}
