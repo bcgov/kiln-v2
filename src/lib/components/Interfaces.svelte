@@ -2,10 +2,11 @@
 	import { Button } from 'carbon-components-svelte';
 	import { validateAllFields } from '$lib/utils/validation';
 	import { createEventDispatcher } from 'svelte';
+	import { onMount } from 'svelte';
 
 	type InterfaceAction = {
 		label?: string;
-		action_type?: 'endpoint' | string;
+		action_type?: 'endpoint' | 'builtin' | 'noop' | string;
 		type?: string; // HTTP method
 		host?: string;
 		path?: string;
@@ -15,6 +16,10 @@
 		params?: Record<string, any>;
 		order?: number;
 		[key: string]: any;
+		name?: 'save' | 'saveAndClose' | 'unlock';
+		condition?: string;
+		// default = 'stop' to preserve current behavior
+		onFailure?: 'continue' | 'stop';
 	};
 
 	type InterfaceButton = {
@@ -28,10 +33,41 @@
 		[key: string]: any;
 	};
 
+	// ICM config
+	type IcmConfig = {
+		save: { method: string; url: string; headers?: Record<string, string> };
+		unlock: { method: string; url: string; headers?: Record<string, string> };
+		isIntegrated: boolean;
+	};
+
+	type BuiltinResult = { ok: boolean; data?: any; error?: any };
+
+	type InterfaceApi = {
+		save?: () => Promise<BuiltinResult>;
+		saveAndClose?: () => Promise<BuiltinResult>;
+		unlock?: () => Promise<BuiltinResult>;
+	};
+
+	const ENV = (window as any).__KILN_ENV__ ?? {
+		VITE_IS_ICM_INTEGRATED: import.meta.env.VITE_IS_ICM_INTEGRATED,
+		VITE_COMM_API_ICM_SAVE_METHOD: import.meta.env.VITE_COMM_API_ICM_SAVE_METHOD || 'POST',
+		VITE_COMM_API_SAVEDATA_ICM_ENDPOINT_URL:
+			import.meta.env.VITE_COMM_API_SAVEDATA_ICM_ENDPOINT_URL || '',
+		VITE_COMM_API_ICM_UNLOCK_METHOD: import.meta.env.VITE_COMM_API_ICM_UNLOCK_METHOD || 'POST',
+		VITE_COMM_API_UNLOCK_ICM_FORM_URL: import.meta.env.VITE_COMM_API_UNLOCK_ICM_FORM_URL || ''
+	};
+
 	const props = $props();
 
 	// Make items reactive so updates from the parent re-render buttons
-	let items: InterfaceButton[] = $derived.by(() => props.items ?? []);
+	let items: InterfaceButton[] = $derived.by(() => {
+		const incoming = props.items ?? [];
+		return incoming.length
+			? incoming
+			: (props.icm?.isIntegrated ?? false)
+				? defaultIcmButtons()
+				: [];
+	});
 	// Snapshotting other props is fine; update similarly if you expect them to change dynamically
 	let disabled: boolean = props.disabled ?? false;
 	let size: 'small' | 'default' | 'lg' = props.size ?? 'small';
@@ -39,10 +75,51 @@
 	let ariaLabel: string = props.ariaLabel ?? 'Form actions';
 	let context: Record<string, any> = props.context ?? undefined;
 
+	const envFlag =
+		String(ENV.VITE_IS_ICM_INTEGRATED || '')
+			.trim()
+			.toLowerCase() === 'true';
+
+	// icm props
+	let icm: IcmConfig = props.icm ?? {
+		isIntegrated: props.icm?.isIntegrated ?? envFlag,
+		save: {
+			method: 'POST',
+			url: ENV.VITE_COMM_API_SAVEDATA_ICM_ENDPOINT_URL
+		},
+		unlock: {
+			method: 'POST',
+			url: ENV.VITE_COMM_API_UNLOCK_ICM_FORM_URL
+		}
+	};
+
+	let api: InterfaceApi = props.api ?? {};
+
 	// Remove callback-prop approach; use Svelte dispatcher
 	const dispatch = createEventDispatcher();
 
 	let pending = $state<Record<number, 'idle' | 'loading' | 'success' | 'error'>>({});
+
+	// Merge whenever props.items or icm changes
+	$effect(() => {
+		const fromJson = (props.items ?? []) as InterfaceButton[];
+
+		const merged: InterfaceButton[] = [...fromJson];
+
+		if (icm.isIntegrated) {
+			const defaults = defaultIcmButtons();
+			const existingLabels = new Set(
+				merged.map((b) => (b.label || '').trim().toLowerCase()).filter(Boolean)
+			);
+			for (const d of defaults) {
+				const key = (d.label || '').trim().toLowerCase();
+				if (!existingLabels.has(key)) merged.push(d);
+			}
+		}
+
+		merged.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+		items = merged;
+	});
 
 	function mapKind(
 		style: string | null | undefined
@@ -125,6 +202,45 @@
 		}
 	}
 
+	// icm buttons
+	function defaultIcmButtons(): InterfaceButton[] {
+		return [
+			{
+				label: 'Save',
+				type: 'button',
+				style: 'primary',
+				condition: '{ return true }',
+				actions: [{ action_type: 'builtin', name: 'save', order: 1 }],
+				order: 9000 // large default so JSON can place before if desired
+			},
+			{
+				label: 'Save & Close',
+				type: 'button',
+				style: 'secondary',
+				condition: '{ return true }',
+				actions: [
+					{ action_type: 'builtin', name: 'save', order: 1 },
+					{ action_type: 'builtin', name: 'unlock', order: 2 },
+					{ action_type: 'builtin', name: 'saveAndClose', order: 3 }
+				],
+				order: 9010
+			}
+		];
+	}
+
+	function runCondition(code: string | undefined, ctx: any): boolean {
+		if (!code || !code.trim()) return true;
+		try {
+			// Strings are stored like "{ return something }" – strip outer braces if present
+			const src = code.trim().replace(/^\{\s*|\s*\}$/g, '');
+			// eslint-disable-next-line no-new-func
+			const fn = new Function('ctx', src);
+			return !!fn(ctx);
+		} catch {
+			return false; // on parse error, treat as false (skip)
+		}
+	}
+
 	async function executeAction(action: InterfaceAction, ctx: Record<string, any>) {
 		const method = (action.type || 'GET').toUpperCase();
 		const url = buildUrl(interpolate(action.host, ctx), interpolate(action.path, ctx));
@@ -194,18 +310,58 @@
 			const actions = [...(btn.actions || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
 
 			let lastResult: any = null;
+			const errors: any[] = []; // collect when onFailure === 'continue'
+
 			for (const action of actions) {
-				if ((action.action_type || '').toLowerCase() !== 'endpoint') continue;
-				// Execute sequentially; break on first failure
-				const result = await executeAction(action, ctx);
+				// NEW: per-action condition
+				if (!runCondition(action.condition, ctx)) {
+					continue; // skip silently if condition is false
+				}
+
+				const type = (action.action_type || '').toLowerCase();
+				let result: any = { ok: true };
+
+				if (type === 'builtin') {
+					const name = action.name as keyof InterfaceApi;
+					if (name && typeof api?.[name] === 'function') {
+						result = await api[name]!();
+					} else {
+						result = { ok: false, error: { message: `Unknown builtin: ${String(action.name)}` } };
+					}
+				} else if (type === 'noop' && action.label === '__KILN_CLOSE_WINDOW__') {
+					window.close();
+					continue;
+				} else if (type === 'endpoint') {
+					result = await executeAction(action, ctx);
+				} else {
+					// ignore unknown kinds
+					continue;
+				}
+
 				lastResult = result;
+
 				if (!result.ok) {
+					const behavior = action.onFailure ?? 'stop'; // default preserves current behavior
+					if (behavior === 'continue') {
+						errors.push({
+							action: action.label ?? '(unnamed)',
+							error: result.error ?? {
+								status: result.status,
+								statusText: result.statusText,
+								data: result.data
+							}
+						});
+						// keep going
+						continue;
+					}
+
+					// stop (existing behavior)
 					pending[idx] = 'error';
 					dispatch('action-result', {
 						index: idx,
 						label: btn?.label,
 						ok: false,
-						error: {
+						error: result.error ?? {
 							status: result.status,
 							statusText: result.statusText,
 							data: result.data
@@ -215,8 +371,17 @@
 				}
 			}
 
-			pending[idx] = 'success';
-			dispatch('action-result', { index: idx, label: btn?.label, ok: true });
+			// If we got here, all actions either succeeded or failed with onFailure='continue'
+			const ok = errors.length === 0;
+			pending[idx] = ok ? 'success' : 'error';
+			dispatch('action-result', {
+				index: idx,
+				label: btn?.label,
+				ok,
+				lastResult,
+				// surface accumulated errors if any continued failures happened
+				continuedErrors: errors.length ? errors : undefined
+			});
 		} catch (err: any) {
 			pending[idx] = 'error';
 			dispatch('action-result', {
@@ -232,6 +397,77 @@
 			}, 800);
 		}
 	}
+
+	let hasUnsavedWork = false;
+	// Toggle this from your form editor when users change fields, or infer from context
+	// For MVP we conservatively warn whenever icm.isIntegrated is true
+	hasUnsavedWork = icm.isIntegrated;
+
+	// Build + send an "unlock" while the page is closing
+	function unlockWithBeacon(ctx?: any): void {
+		try {
+			// Use provided ctx or reuse the app's baseContext()
+			const payloadObj = ctx ?? baseContext();
+			const payload = JSON.stringify(payloadObj);
+
+			// Works with absolute or relative URLs
+			const url = new URL(icm.unlock.url, location.origin).toString();
+			const method = icm.unlock.method ?? 'POST';
+
+			// Prefer sendBeacon for page-teardown reliability
+			if (typeof navigator.sendBeacon === 'function') {
+				const blob = new Blob([payload], { type: 'application/json' });
+				navigator.sendBeacon(url, blob);
+				return;
+			}
+
+			// Fallback: fetch with keepalive so the browser tries to finish it while unloading
+			// (Some browsers still may cancel, but this maximizes chances.)
+			fetch(url, {
+				method,
+				body: payload,
+				headers: { 'Content-Type': 'application/json' },
+				keepalive: true
+			}).catch(() => {
+				/* ignore */
+			});
+		} catch {
+			// swallow — we’re in teardown paths
+		}
+	}
+
+	onMount(() => {
+		const before = (e: BeforeUnloadEvent) => {
+			// Show native warning only when it matters
+			if (!icm.isIntegrated || !hasUnsavedWork) return;
+			e.preventDefault();
+			e.returnValue = ''; // triggers the browser’s built-in prompt
+		};
+
+		const pagehide = (e: PageTransitionEvent) => {
+			// If going into bfcache, do not unlock (tab may come back without reload)
+			if (!icm.isIntegrated) return;
+			if (e && typeof e === 'object' && (e as any).persisted) return;
+			unlockWithBeacon(baseContext());
+		};
+
+		const vis = () => {
+			if (document.visibilityState === 'hidden' && icm.isIntegrated) {
+				unlockWithBeacon(baseContext());
+			}
+		};
+
+		window.addEventListener('beforeunload', before);
+		// pagehide is better than unload for mobile Safari; still keep beforeunload for warning
+		window.addEventListener('pagehide', pagehide as any);
+		document.addEventListener('visibilitychange', vis);
+
+		return () => {
+			window.removeEventListener('beforeunload', before);
+			window.removeEventListener('pagehide', pagehide as any);
+			document.removeEventListener('visibilitychange', vis);
+		};
+	});
 </script>
 
 <div class="interfaces no-print" role="group" aria-label={ariaLabel}>

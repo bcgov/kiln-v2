@@ -20,6 +20,20 @@
 	// Add Interfaces component
 	import Interfaces from './components/Interfaces.svelte';
 
+	// NEW: ICM config (flagged on when unlock URL is present)
+	const envFlag =
+		String(import.meta.env.VITE_IS_ICM_INTEGRATED || '')
+			.trim()
+			.toLowerCase() === 'true';
+
+	const hasUnlock = !!import.meta.env.VITE_COMM_API_UNLOCK_ICM_FORM_URL;
+	const hasSave = !!import.meta.env.VITE_COMM_API_SAVEDATA_ICM_ENDPOINT_URL;
+	const icm = {
+		isIntegrated: envFlag && hasUnlock && hasSave,
+		save: { method: 'POST', url: import.meta.env.VITE_COMM_API_SAVEDATA_ICM_ENDPOINT_URL },
+		unlock: { method: 'POST', url: import.meta.env.VITE_COMM_API_UNLOCK_ICM_FORM_URL }
+	};
+
 	let {
 		saveData = undefined,
 		formData,
@@ -273,6 +287,42 @@
 		}
 	}
 
+	async function adapt(fn: () => any) {
+		try {
+			const data = await fn();
+			return { ok: true, data };
+		} catch (err: any) {
+			return { ok: false, error: { message: err?.message ?? String(err) } };
+		}
+	}
+
+	// Expose a tiny API for Interfaces to call
+	// const interfaceApi = {
+	// 	save: () => adapt(handleSave),
+	// 	saveAndClose: () => adapt(handleSaveAndClose),
+	// 	// If you have a separate unlock routine, expose it; otherwise no-op “success”
+	// 	unlock: () => Promise.resolve({ ok: true })
+	// };
+	const interfaceApi = {
+		save: async () => {
+			try {
+				const data = await handleSave();
+				return { ok: true, data };
+			} catch (e: any) {
+				return { ok: false, error: { message: e?.message ?? String(e) } };
+			}
+		},
+		saveAndClose: async () => {
+			try {
+				const data = await handleSaveAndClose();
+				return { ok: true, data };
+			} catch (e: any) {
+				return { ok: false, error: { message: e?.message ?? String(e) } };
+			}
+		},
+		unlock: async () => ({ ok: true }) // or your real unlock if you have it
+	};
+
 	const handleCancel = async () => {
 		window.parent.postMessage(JSON.stringify({ event: 'cancel' }), '*');
 	};
@@ -368,7 +418,9 @@
 				<div class="header-buttons-only no-print">
 					<Interfaces
 						items={mergedFormData?.interface || formData?.interface || []}
-						disabled={typeof goBack === 'function'}
+						{icm}
+						api={interfaceApi}
+						disabled={false}
 						on:action-result={handleInterfaceResult}
 					/>
 					<!-- Temp removal while reviewing interface implementation -->
