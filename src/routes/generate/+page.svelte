@@ -6,7 +6,12 @@
 	import { FORM_MODE, FORM_DELIVERY_MODE } from '$lib/constants/formMode';
 
 	const { isLoading, error, formData, saveData } = useFormLoader({
-		apiEndpoint: API.loadICMData
+		apiEndpoint: API.loadBoundForm,
+		expectSaveData: false,
+		transformParams: (params) => ({
+			...params,
+			isPortalIntegrated: false
+		})
 	});
 </script>
 

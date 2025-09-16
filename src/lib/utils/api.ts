@@ -31,7 +31,9 @@ export const API = {
   saveICMData: getApiUrl("/saveICMData", import.meta.env.VITE_COMM_API_SAVEDATA_ICM_ENDPOINT_URL),
   pdfTemplate:  getApiUrl("/pdfRender", import.meta.env.VITE_COMM_API_PDFTEMPLATE_ENDPOINT_URL),
   unlockICMData: getApiUrl("/clearICMLockedFlag", import.meta.env.VITE_COMM_API_UNLOCK_ICM_FORM_URL),
-  submitForButtonAction: getApiUrl("/submitForPortalAction", import.meta.env.VITE_COMM_API_SUBMIT_TO_ACTION_ENDPOINT_URL),
+  submitForButtonAction: getApiUrl("/submitForPortalAction", import.meta.env.VITE_COMM_API_SUBMIT_TO_ACTION_ENDPOINT_URL),  
+  loadBoundForm: getApiUrl("/loadBoundForm", import.meta.env.VITE_COMM_API_LOAD_BOUND_FORM_ENDPOINT_URL),
+  bindPreviewForm: getApiUrl("/bindPreviewForm", import.meta.env.VITE_COMM_API_BIND_PREVIEW_FORM_ENDPOINT_URL),
   getFormById: `${getKlammApiBaseUrl()}/api/form-versions/`,
   getFormKlammURL: `${getKlammApiBaseUrl()}/forms/form-versions/`,
 } ;

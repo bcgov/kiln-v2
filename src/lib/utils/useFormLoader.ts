@@ -19,7 +19,8 @@ export function useFormLoader({
 	apiEndpoint,
 	expectSaveData = false,
 	parseErrorBody = true,
-	includeOriginalServer = true
+	includeOriginalServer = true,
+	transformParams
 }: UseFormLoaderOptions): UseFormLoaderReturn {
 	const isLoading = writable(true);
 	const error = writable<string | null>(null);
@@ -55,7 +56,9 @@ export function useFormLoader({
 				const payload = expectSaveData ? (result?.save_data ?? result) : result;
 				formData.set(payload?.form_definition ?? payload ?? {});
 				saveData.set(result?.data ? { data: result.data } : {});
-			} else {
+			} else {				
+				const finalParams = transformParams ? transformParams(params) : params;
+
 				// Delegate fetch and error handling to loadFormData
 				let raw: any = undefined;
 				await loadFormData(
@@ -70,7 +73,7 @@ export function useFormLoader({
 					},
 					{
 						endpoint: apiEndpoint,
-						params,
+						params: finalParams,
 						setLoading: (v) => isLoading.set(v),
 						includeAuth: true,
 						includeOriginalServer,
