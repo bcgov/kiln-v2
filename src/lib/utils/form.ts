@@ -249,56 +249,6 @@ export async function saveFormData(action: 'save' | 'save_and_close'): Promise<s
   }
 }
 
-// --- ICM Save API Placeholder (Legacy - will be removed) ---
-export async function saveDataToICMApi(savedData: SavedData) {
-  try {
-    // dynamically import to avoid SSR issues and missing symbol
-    // @ts-ignore
-    const { API } = await import('$lib/utils/api');
-    const saveDataICMEndpoint = API.saveICMData;
-
-    const state = sessionStorage.getItem("formParams");
-    const params = state ? (JSON.parse(state) as Record<string, string>) : {};
-    const token = (window as any)?.keycloak?.token ?? null;
-
-    const payload = savedData ?? createSavedData();
-
-    const savedJson: Record<string, any> = {
-      attachmentId: params["attachmentId"],
-      OfficeName: params["OfficeName"],
-      savedForm: JSON.stringify(payload)
-    };
-
-    if (token) {
-      savedJson.token = token;
-    } else {
-      const usernameMatch = document.cookie.match(/(?:^|;\s*)username=([^;]+)/);
-      const username = usernameMatch ? decodeURIComponent(usernameMatch[1]).trim() : null;
-      if (username && username.length > 0) {
-        savedJson.username = username;
-      }
-    }
-
-    const response = await fetch(saveDataICMEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(savedJson)
-    });
-
-    if (response.ok) {
-      const result = await response.json();
-      console.log("Result ", result);
-      return "success";
-    } else {
-      const errorData = await response.json();
-      console.error("Error:", errorData.error);
-      return errorData?.error || "Error saving form. Please try again.";
-    }
-  } catch (error) {
-    console.error("Error:", error);
-    return "failed";
-  }
-};
 
 // --- ICM Unlock API Placeholder ---
 export async function unlockICMFinalFlags(): Promise<string> {

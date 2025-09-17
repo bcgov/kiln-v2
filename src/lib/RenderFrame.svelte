@@ -7,7 +7,6 @@
 	import { FORM_MODE } from './constants/formMode';
 	import {
 		saveFormData,
-		saveDataToICMApi,
 		unlockICMFinalFlags,
 		createSavedData,
 		generatePDF,
@@ -222,8 +221,7 @@
 		modalOpen = false;
 
 		try {
-			const savedData = createSavedData();
-			const returnMessage = await saveDataToICMApi(savedData);
+			const returnMessage = await saveFormData('save');
 			if (returnMessage === 'success') {
 				showModal('success');
 			} else {
