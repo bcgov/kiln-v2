@@ -168,7 +168,88 @@ export function createSavedData(ctx?: {
   };
 }
 
-// --- ICM Save API Placeholder---
+export async function saveFormData(action: 'save' | 'save_and_close'): Promise<string> {
+  try {
+    // @ts-ignore
+    const { API } = await import('$lib/utils/api');
+    const saveFormDataEndpoint = API.saveFormData;
+
+    const win: any = typeof window !== 'undefined' ? window : undefined;
+
+    const formState: Record<string, FieldValue> =
+      (win?.__kilnFormState as Record<string, FieldValue>) ?? {};
+
+    const formDefinition: FormDefinition =
+      (win?.__kilnFormDefinition as FormDefinition) ??
+      (win?.formData as FormDefinition);
+
+    const items: Item[] = ((formDefinition?.elements as Item[]) || []);
+
+    const groupState: Record<string, FieldValue[]> =
+      (win?.__kilnGroupState as Record<string, FieldValue[]>) ?? {};
+
+    const state = sessionStorage.getItem("formParams");
+    const sessionParams = state ? (JSON.parse(state) as Record<string, string>) : {};
+    const token = (window as any)?.keycloak?.token ?? null;
+
+    const payload = {
+      action,
+      formState,
+      groupState,
+      formDefinition,
+      metadata: {
+        updated_date: new Date().toISOString()
+      },
+      items,
+      sessionParams
+    };
+
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    } else {
+      const usernameMatch = document.cookie.match(/(?:^|;\s*)username=([^;]+)/);
+      const username = usernameMatch ? decodeURIComponent(usernameMatch[1]).trim() : null;
+      if (username && username.length > 0) {
+        payload.sessionParams.username = username;
+      }
+    }
+
+    const response = await fetch(saveFormDataEndpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload)
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log("Save result:", result);
+
+      if (result.data?.action === 'save_and_close') {
+        const { saved, unlocked } = result.data;
+        if (saved && unlocked) {
+          return "success";
+        } else if (saved && !unlocked) {
+          return "Form saved successfully, but failed to unlock. You may need to close manually.";
+        } else {
+          return "Failed to save form.";
+        }
+      }
+
+      return "success";
+    } else {
+      const errorData = await response.json();
+      console.error("Save error:", errorData.error);
+      return errorData?.error || "Error saving form. Please try again.";
+    }
+  } catch (error) {
+    console.error("Save error:", error);
+    return "failed";
+  }
+}
+
+// --- ICM Save API Placeholder (Legacy - will be removed) ---
 export async function saveDataToICMApi(savedData: SavedData) {
   try {
     // dynamically import to avoid SSR issues and missing symbol
