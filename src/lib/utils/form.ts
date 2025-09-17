@@ -168,63 +168,94 @@ export function createSavedData(ctx?: {
   };
 }
 
-// --- ICM Save API Placeholder---
-export async function saveDataToICMApi(savedData: SavedData) {
+export async function saveFormData(action: 'save' | 'save_and_close'): Promise<string> {
   try {
-    // dynamically import to avoid SSR issues and missing symbol
     // @ts-ignore
     const { API } = await import('$lib/utils/api');
-    const saveDataICMEndpoint = API.saveICMData;
+    const saveFormDataEndpoint = API.saveFormData;
+
+    const win: any = typeof window !== 'undefined' ? window : undefined;
+
+    const formState: Record<string, FieldValue> =
+      (win?.__kilnFormState as Record<string, FieldValue>) ?? {};
+
+    const formDefinition: FormDefinition =
+      (win?.__kilnFormDefinition as FormDefinition) ??
+      (win?.formData as FormDefinition);
+
+    const items: Item[] = ((formDefinition?.elements as Item[]) || []);
+
+    const groupState: Record<string, FieldValue[]> =
+      (win?.__kilnGroupState as Record<string, FieldValue[]>) ?? {};
 
     const state = sessionStorage.getItem("formParams");
-    const params = state ? (JSON.parse(state) as Record<string, string>) : {};
+    const sessionParams = state ? (JSON.parse(state) as Record<string, string>) : {};
     const token = (window as any)?.keycloak?.token ?? null;
 
-    const payload = savedData ?? createSavedData();
-
-    const savedJson: Record<string, any> = {
-      attachmentId: params["attachmentId"],
-      OfficeName: params["OfficeName"],
-      savedForm: JSON.stringify(payload)
+    const payload = {
+      action,
+      formState,
+      groupState,
+      formDefinition,
+      metadata: {
+        updated_date: new Date().toISOString()
+      },
+      items,
+      sessionParams
     };
 
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+
     if (token) {
-      savedJson.token = token;
+      headers.Authorization = `Bearer ${token}`;
     } else {
       const usernameMatch = document.cookie.match(/(?:^|;\s*)username=([^;]+)/);
       const username = usernameMatch ? decodeURIComponent(usernameMatch[1]).trim() : null;
       if (username && username.length > 0) {
-        savedJson.username = username;
+        payload.sessionParams.username = username;
       }
     }
 
-    const response = await fetch(saveDataICMEndpoint, {
+    const response = await fetch(saveFormDataEndpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(savedJson)
+      headers,
+      body: JSON.stringify(payload)
     });
 
     if (response.ok) {
       const result = await response.json();
-      console.log("Result ", result);
+      console.log("Save result:", result);
+
+      if (result.data?.action === 'save_and_close') {
+        const { saved, unlocked } = result.data;
+        if (saved && unlocked) {
+          return "success";
+        } else if (saved && !unlocked) {
+          return "Form saved successfully, but failed to unlock. You may need to close manually.";
+        } else {
+          return "Failed to save form.";
+        }
+      }
+
       return "success";
     } else {
       const errorData = await response.json();
-      console.error("Error:", errorData.error);
+      console.error("Save error:", errorData.error);
       return errorData?.error || "Error saving form. Please try again.";
     }
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Save error:", error);
     return "failed";
   }
-};
+}
+
 
 // --- ICM Unlock API Placeholder ---
 export async function unlockICMFinalFlags(): Promise<string> {
   try {
     // @ts-ignore dynamic import to avoid circular refs during SSR
     const { API } = await import('$lib/utils/api');
-    const unlockICMFinalEdpoint = API.unlockICMData;
+    const unlockICMFinalEndpoint = API.unlockICMData;
 
     // Build request body from session storage formParams
     let body: Record<string, any> = {};
@@ -252,7 +283,7 @@ export async function unlockICMFinalFlags(): Promise<string> {
       }
     }
 
-    const response = await fetch(unlockICMFinalEdpoint, {
+    const response = await fetch(unlockICMFinalEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
