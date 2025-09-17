@@ -224,7 +224,7 @@ export async function unlockICMFinalFlags(): Promise<string> {
   try {
     // @ts-ignore dynamic import to avoid circular refs during SSR
     const { API } = await import('$lib/utils/api');
-    const unlockICMFinalEdpoint = API.unlockICMData;
+    const unlockICMFinalEndpoint = API.unlockICMData;
 
     // Build request body from session storage formParams
     let body: Record<string, any> = {};
@@ -252,7 +252,7 @@ export async function unlockICMFinalFlags(): Promise<string> {
       }
     }
 
-    const response = await fetch(unlockICMFinalEdpoint, {
+    const response = await fetch(unlockICMFinalEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
