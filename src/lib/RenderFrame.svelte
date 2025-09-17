@@ -6,6 +6,7 @@
 	import ScriptStyleInjection from './components/ScriptStyleInjection.svelte';
 	import { FORM_MODE } from './constants/formMode';
 	import {
+		saveFormData,
 		saveDataToICMApi,
 		unlockICMFinalFlags,
 		createSavedData,
@@ -172,10 +173,9 @@
 		try {
 			const { isValid, errorList } = validateAllFields();
 			if (isValid) {
-				const savedData = createSavedData();
-				const returnMessage = await saveDataToICMApi(savedData);
+				const returnMessage = await saveFormData('save');
 				if (returnMessage === 'success') {
-					showModal('success');
+					showModal('success', 'Form saved successfully');
 				} else {
 					showModal('error', returnMessage);
 				}
@@ -183,7 +183,7 @@
 				showModal('validation', undefined, errorList);
 			}
 		} catch (error) {
-			console.log(error, 'this is error');
+			console.error('Save error:', error);
 			showModal('error');
 		} finally {
 			isLoading = false;
@@ -197,19 +197,12 @@
 		try {
 			const { isValid, errorList } = validateAllFields();
 			if (isValid) {
-				const savedData = createSavedData();
-				console.log('Saved Data:', savedData, 'this is saved data');
-				const returnMessage = await saveDataToICMApi(savedData);
+				const returnMessage = await saveFormData('save_and_close');
 				if (returnMessage === 'success') {
-					const unlockMessage = await unlockICMFinalFlags();
-					if (unlockMessage === 'success') {
-						isFormCleared = true;
-						window.opener = null;
-						window.open('', '_self');
-						window.close();
-					} else {
-						showModal('error', 'Error clearing locked flags. Please try again.');
-					}
+					isFormCleared = true;
+					window.opener = null;
+					window.open('', '_self');
+					window.close();
 				} else {
 					showModal('error', returnMessage);
 				}
@@ -217,6 +210,7 @@
 				showModal('validation', undefined, errorList);
 			}
 		} catch (error) {
+			console.error('Save and close error:', error);
 			showModal('error');
 		} finally {
 			isLoading = false;
@@ -364,8 +358,7 @@
 						disabled={typeof goBack === 'function'}
 						on:action-result={handleInterfaceResult}
 					/>
-					<!-- Temp removal while reviewing interface implementation -->
-					<!-- {#if mode === FORM_MODE.edit}
+					{#if mode === FORM_MODE.edit}
 						<Button kind="tertiary" class="no-print" onclick={handleSave}>Save</Button>
 						<Button kind="tertiary" class="no-print" onclick={handleSaveAndClose}>
 							Save And Close
@@ -378,11 +371,11 @@
 
 					{#if (mode === FORM_MODE.edit || mode === FORM_MODE.preview) && formDelivery === 'portal'}
 						<div class="header-buttons-only no-print">
-							<!-- Replace inline mapping with reusable Interfaces component 
+							<!-- Replace inline mapping with reusable Interfaces component -->
 							<Button onclick={handleCancel} kind="tertiary" id="generate">Cancel</Button>
 							<Button onclick={handleSubmit} kind="tertiary" id="generate">Submit</Button>
 						</div>
-				{/if}  -->
+					{/if}
 
 					{#if goBack}
 						<Button kind="tertiary" class="no-print" onclick={goBack}>Back</Button>
