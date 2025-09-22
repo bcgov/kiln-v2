@@ -12,6 +12,7 @@
 	import TextArea from './formfields/TextArea.svelte';
 	import TextInfo from './formfields/TextInfo.svelte';
 	import TextInput from './formfields/TextInput.svelte';
+	import { onMount, onDestroy } from 'svelte';
 
 	let {
 		formData,
@@ -55,6 +56,42 @@
 	});
 
 	let printingState = $derived(printing);
+
+  const getLetter = () => document.querySelector<HTMLElement>('.letter-content');
+
+  function setLetterMode(on: boolean) {
+    const html = document.documentElement;
+    html.classList.toggle('letter-mode', on);
+    const letter = getLetter();
+    if (letter) letter.hidden = !on;
+  }
+
+  function installToggleDelegate() {
+    // start with form view
+    queueMicrotask(() => { const l = getLetter(); if (l) l.hidden = true; });
+
+    const onClick = (e: Event) => {
+      const btn = (e.target as HTMLElement)?.closest('button,[role="button"]') as HTMLElement | null;
+      if (!btn) return;
+      const label = (btn.textContent || btn.getAttribute('aria-label') || '').trim().toLowerCase();
+      if (label === 'show letter') { setLetterMode(true);  btn.textContent = 'Show Form'; }
+      if (label === 'show form')   { setLetterMode(false); btn.textContent = 'Show Letter'; }
+    };
+    document.addEventListener('click', onClick);
+    return () => document.removeEventListener('click', onClick);
+  }
+
+  function bindPrintHooks() {
+    window.onbeforeprint = () => setLetterMode(true);
+    window.onafterprint  = () => setLetterMode(false);
+  }
+
+  let cleanup: (() => void) | null = null;
+  onMount(() => {
+    cleanup = installToggleDelegate();
+    bindPrintHooks();
+  });
+  onDestroy(() => { cleanup?.(); window.onbeforeprint = null; window.onafterprint = null; });
 </script>
 
 {#snippet renderComponent(item: Item)}

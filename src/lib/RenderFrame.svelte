@@ -18,6 +18,7 @@
 	import { initExternalUpdateBridge } from '$lib/utils/valueSync';
 	// Add Interfaces component
 	import Interfaces from './components/Interfaces.svelte';
+	import { onMount, onDestroy, tick } from 'svelte';
 
 	let {
 		saveData = undefined,
@@ -67,7 +68,7 @@
 		if (mode === 'view') {
 			setReadOnlyFields(formData);
 		}
-		
+
 		return formData;
 	});
 
@@ -78,7 +79,54 @@
 		return path;
 	});
 
+	// htmlprint helpers
 	let printing = $state(false);
+	let _letterRenderScheduled = false;
+	let _letterRenderRunning = false;
+	let _toggleBtnRef: HTMLElement | null = null;
+
+	function scheduleLetterRender() {
+		if (_letterRenderScheduled || _letterRenderRunning) return;
+		_letterRenderScheduled = true;
+		// run after the current microtask so multiple mutations coalesce
+		queueMicrotask(() => {
+			_letterRenderScheduled = false;
+			renderAllLetterTemplates();
+		});
+	}
+
+	function getToggleBtn(): HTMLElement | null {
+		// keep using the same element if it still exists
+		if (_toggleBtnRef?.isConnected) return _toggleBtnRef;
+
+		// prefer an explicitly tagged button
+		_toggleBtnRef =
+			document.querySelector<HTMLElement>(
+				'button[data-letter-toggle], [role="button"][data-letter-toggle]'
+			) ||
+			// fallback: first button whose label includes "show"
+			Array.from(document.querySelectorAll<HTMLElement>('button,[role="button"]')).find((b) =>
+				(b.textContent || b.getAttribute('aria-label') || '').toLowerCase().includes('show')
+			) ||
+			null;
+
+		// tag it so future queries are unambiguous
+		if (_toggleBtnRef) _toggleBtnRef.setAttribute('data-letter-toggle', '1');
+		return _toggleBtnRef;
+	}
+
+	function setButtonLabel(btn: HTMLElement, text: 'Show Letter' | 'Show Form') {
+		btn.textContent = text;
+		btn.setAttribute('aria-label', text);
+	}
+
+	function normalizeToggleButtonLabel() {
+		const btn = getToggleBtn();
+		if (!btn) return;
+		const isLetterOnly = document.documentElement.classList.contains('letter-only');
+		const desired = isLetterOnly ? 'Show Form' : 'Show Letter';
+		setButtonLabel(btn, desired);
+	}
 
 	function handlePrint() {
 		if (!formData) return;
@@ -92,77 +140,193 @@
 		handleHTMLPrint();
 	}
 
-	function handleHTMLPrint() {
+	function renderAllLetterTemplates() {
+		// prevent self-trigger loops
+		if (_letterRenderRunning) return;
+		_letterRenderRunning = true;
+		try {
+			const letters = Array.from(document.querySelectorAll<HTMLElement>('.letter-content'));
+			if (letters.length === 0) return;
+
+			const map = collectFieldValues();
+			aliasValues(map);
+
+			for (const letter of letters) {
+				if (!letter.dataset.originalHtml) {
+					letter.dataset.originalHtml = letter.innerHTML;
+				}
+				const original = letter.dataset.originalHtml!;
+				const replaced = original.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_, rawKey) => {
+					const key = String(rawKey).trim();
+					return (
+						map[key] ??
+						map[key.replace(/\s+/g, '_')] ??
+						map[key.replace(/[^\w]+/g, '_').toLowerCase()] ??
+						''
+					);
+				});
+				if (replaced !== letter.innerHTML) {
+					letter.innerHTML = replaced;
+				}
+			}
+		} finally {
+			_letterRenderRunning = false;
+		}
+	}
+
+	// scroll all scrollables to the top for print, then restore afterward
+	function captureScrollAndJumpToTop() {
+		// document + any in-page scrollers you use
+		const scrollables: HTMLElement[] = [
+			(document.scrollingElement || document.documentElement) as HTMLElement,
+			...Array.from(document.querySelectorAll<HTMLElement>('.scrollable-content, .content-wrapper'))
+		];
+
+		const prevWindow = { x: window.scrollX, y: window.scrollY };
+		const prev = scrollables.map((el) => ({ el, top: el.scrollTop, left: el.scrollLeft }));
+
+		// jump everything to the top so the snapshot starts at page 1
+		window.scrollTo(0, 0);
+		scrollables.forEach((s) => {
+			s.scrollTop = 0;
+			s.scrollLeft = 0;
+		});
+
+		return () => {
+			window.scrollTo(prevWindow.x, prevWindow.y);
+			prev.forEach(({ el, top, left }) => {
+				el.scrollTop = top;
+				el.scrollLeft = left;
+			});
+		};
+	}
+
+	function hoistLetterForPrintIfNeeded() {
+		const html = document.documentElement;
+		if (!html.classList.contains('letter-only')) {
+			return () => {};
+		}
+
+		const letter = getLetterEl();
+		if (!letter) return () => {};
+
+		const section = getLetterSection();
+		if (!section || !section.parentElement) return () => {};
+
+		const scrollable =
+			document.querySelector('.scrollable-content .content-wrapper') ||
+			document.querySelector('.scrollable-content') ||
+			document.body;
+
+		// anchor so we can restore after printing
+		const placeholder = document.createComment('letter-restore-anchor');
+		section.parentElement.insertBefore(placeholder, section);
+
+		// hoist the letter section so it starts on page 1
+		if (scrollable.firstChild) {
+			scrollable.insertBefore(section, scrollable.firstChild);
+		} else {
+			scrollable.appendChild(section);
+		}
+		section.classList.add('print-hoisted');
+
+		return () => {
+			try {
+				if (placeholder.parentNode) {
+					placeholder.parentNode.insertBefore(section, placeholder);
+					placeholder.remove();
+				}
+			} finally {
+				section.classList.remove('print-hoisted');
+			}
+		};
+	}
+
+	async function handleHTMLPrint() {
+		// snapshot state to restore to
+		const wasLetterOnly = document.documentElement.classList.contains('letter-only');
+		const prevPrinting = printing;
+
 		printing = true;
 
-		setTimeout(() => {
-			const originalTitle = document.title;
-			// Match legacy behavior: set title to form id for print session
-			document.title = formData?.form_id || 'CustomFormName';
+		// commit the printable DOM
+		await tick();
 
-			// Prepare footer text: e.g., "CF0609 - Consent to Disclosure"
-			const footerText = `${formData?.form_id || ''}${
-				formData?.form_id ? ' - ' : ''
-			}${formData?.title || formData?.name || ''}`.trim();
-			// Expose footer text to @page margin boxes via attribute
-			document.documentElement.setAttribute('data-form-id', footerText);
-			// Also populate the fixed footer (for browsers without margin boxes)
-			const fixedFooterLeft = document.getElementById('print-footer-left');
-			if (fixedFooterLeft) fixedFooterLeft.textContent = footerText;
+		// map {{…}} into value in the print DOM
+		renderAllLetterTemplates();
+		// one more pass after styles/layout settle
+		requestAnimationFrame(() => renderAllLetterTemplates());
 
-			// Create metadata elements
-			const metaDescription = document.createElement('meta');
-			metaDescription.name = 'description';
-			metaDescription.content = 'Form PDF.';
+		// on letter only, hoist the letter section to the top so it starts on page 1
+		let restoreLetterPosition = () => {};
+		if (wasLetterOnly) {
+			restoreLetterPosition = hoistLetterForPrintIfNeeded();
+		}
 
-			const metaAuthor = document.createElement('meta');
-			metaAuthor.name = 'author';
-			metaAuthor.content = 'KILN';
+		let restoreScroll = () => {};
+		restoreScroll = captureScrollAndJumpToTop();
 
-			const metaLanguage = document.createElement('meta');
-			metaLanguage.httpEquiv = 'Content-Language';
-			metaLanguage.content = 'en';
+		//temporary document metadata
+		const originalTitle = document.title;
+		const head = document.head;
+		const metaDescription = document.createElement('meta');
+		const metaAuthor = document.createElement('meta');
+		const metaLanguage = document.createElement('meta');
 
-			// Append metadata to the <head>
-			const head = document.head;
-			head.appendChild(metaDescription);
-			head.appendChild(metaAuthor);
-			head.appendChild(metaLanguage);
+		metaDescription.name = 'description';
+		metaDescription.content = 'Form PDF.';
+		metaAuthor.name = 'author';
+		metaAuthor.content = 'KILN';
+		metaLanguage.httpEquiv = 'Content-Language';
+		metaLanguage.content = 'en';
 
-			// Force reflow
-			document.body.offsetHeight;
+		head.appendChild(metaDescription);
+		head.appendChild(metaAuthor);
+		head.appendChild(metaLanguage);
 
-			const cleanup = () => {
-				printing = false;
-				document.title = originalTitle;
+		const footerText =
+			`${formData?.form_id || ''}${formData?.form_id ? ' - ' : ''}${formData?.title || formData?.name || ''}`.trim();
+		document.title = formData?.form_id || originalTitle;
+		document.documentElement.setAttribute('data-form-id', footerText);
 
-				// Remove all metadata elements
-				head.removeChild(metaDescription);
-				head.removeChild(metaAuthor);
-				head.removeChild(metaLanguage);
+		// cleanup that fully restores the web view
+		const cleanup = () => {
+			try {
+				restoreLetterPosition();
+			} catch {}
+			printing = prevPrinting;
+			metaDescription.remove();
+			metaAuthor.remove();
+			metaLanguage.remove();
+			document.documentElement.removeAttribute('data-form-id');
+			document.title = originalTitle;
+			normalizeToggleButtonLabel();
+			queueMicrotask(normalizeToggleButtonLabel);
+			requestAnimationFrame(() => normalizeToggleButtonLabel());
+			// make sure no {{…}} remains
+			queueMicrotask(renderAllLetterTemplates);
+			restoreScroll();
+		};
 
-				// Remove footer attribute
-				document.documentElement.removeAttribute('data-form-id');
+		// fallbacks
+		const onAfter = () => {
+			window.removeEventListener('afterprint', onAfter);
+			document.removeEventListener('visibilitychange', onVis);
+			cleanup();
+		};
+		const onVis = () => {
+			// Some browsers don’t fire afterprint reliably; when the tab re-activates, restore.
+			if (document.visibilityState === 'visible') onAfter();
+		};
+		window.addEventListener('afterprint', onAfter, { once: true });
+		document.addEventListener('visibilitychange', onVis, { once: true });
 
-				window.removeEventListener('afterprint', cleanup);
-				window.removeEventListener('focus', cleanup);
-			};
-
-			window.addEventListener('afterprint', cleanup);
-			window.addEventListener('focus', cleanup);
-
-			// Print after slight delay to ensure styles are applied
-			setTimeout(() => {
+		// open the dialog after two frames so layout is definitely settled
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
 				window.print();
-			}, 150);
-
-			// Reset printing state after print dialog
-			setTimeout(() => {
-				if (printing) {
-					printing = false;
-				}
-			}, 150);
-		}, 150);
+			});
+		});
 	}
 
 	async function handleSave() {
@@ -320,6 +484,175 @@
 			showModal('error', msg);
 		}
 	}
+
+	// helpers
+	function getLetterEl(): HTMLElement | null {
+		return document.querySelector('.letter-content');
+	}
+	function getLetterSection(): HTMLElement | null {
+		const letter = getLetterEl();
+		console.log('letter---', letter);
+		if (!letter) return null;
+		// climb to a reasonable section/container boundary
+		return (letter.closest('[data-uuid]') ||
+			letter.closest('section') ||
+			letter.closest('[role="region"]') ||
+			letter.parentElement) as HTMLElement | null;
+	}
+
+	function installLetterToggleDelegation() {
+		// ensure we tag & normalize once on mount
+		queueMicrotask(() => {
+			const btn = getToggleBtn();
+			if (btn) normalizeToggleButtonLabel();
+		});
+
+		document.addEventListener('click', (ev) => {
+			const btn = (ev.target as HTMLElement)?.closest(
+				'button, [role="button"]'
+			) as HTMLElement | null;
+			if (!btn) return;
+
+			const label = (btn.textContent || btn.getAttribute('aria-label') || '').trim().toLowerCase();
+			const isToggle = label.includes('show letter') || label.includes('show form');
+			if (!isToggle) return;
+
+			// lock onto this button from now on
+			_toggleBtnRef = btn;
+			btn.setAttribute('data-letter-toggle', '1');
+
+			const html = document.documentElement;
+			const isLetterOnly = html.classList.contains('letter-only');
+
+			if (isLetterOnly) {
+				html.classList.remove('letter-only');
+				setButtonLabel(btn, 'Show Letter');
+			} else {
+				html.classList.add('letter-only');
+				setButtonLabel(btn, 'Show Form');
+				window.scrollTo({ top: 0, behavior: 'smooth' });
+			}
+		});
+	}
+
+	function bindPrintHooks() {
+		const prevBefore = window.onbeforeprint as ((this: Window, ev: Event) => any) | null;
+		const prevAfter = window.onafterprint as ((this: Window, ev: Event) => any) | null;
+
+		const makeEvt = (type: 'beforeprint' | 'afterprint') =>
+			typeof Event === 'function'
+				? new Event(type)
+				: (() => {
+						const e = document.createEvent('Event');
+						e.initEvent(type, false, false);
+						return e;
+					})();
+
+		// rehydrate letter before print
+		window.onbeforeprint = (ev?: Event) => {
+			if (prevBefore) prevBefore.call(window, ev ?? makeEvt('beforeprint'));
+			scheduleLetterRender();
+			// re-run once the browser applies print CSS
+			setTimeout(renderAllLetterTemplates, 0);
+		};
+
+		window.onafterprint = (ev?: Event) => {
+			if (prevAfter) prevAfter.call(window, ev ?? makeEvt('afterprint'));
+		};
+	}
+
+	onMount(() => {
+		document.documentElement.classList.remove('letter-only');
+		installLetterToggleDelegation();
+		bindPrintHooks();
+		queueMicrotask(renderAllLetterTemplates);
+	});
+
+	function collectFieldValues(): Record<string, string> {
+		const values: Record<string, string> = {};
+		const fields = document.querySelectorAll<
+			HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+		>('input[id],[name], textarea[id],[name], select[id],[name]');
+		fields.forEach((el) => {
+			const key = (el.getAttribute('name') || el.id || '').trim();
+			if (!key) return;
+			// read value or checked state for checkboxes
+			let v = (el as any).value ?? '';
+			if ((el as HTMLInputElement).type === 'checkbox') {
+				v = (el as HTMLInputElement).checked ? '☑' : '☐';
+			}
+			values[key] = v;
+		});
+		return values;
+	}
+
+	function aliasValues(map: Record<string, string>) {
+		// return the first non-empty value among the given keys
+		const pick = (...keys: string[]) => {
+			for (const k of keys) {
+				const v = map[k];
+				if (v !== undefined && v !== null && v !== '') return v;
+			}
+			return undefined;
+		};
+
+		map['sr_number'] ??=
+			pick('service_request', 'service_request_no', 'service_request_number', 'sr') ?? '';
+		map['case_number'] ??= pick('case', 'case_no', 'case_number') ?? '';
+		map['mis_number'] ??= pick('mis', 'mis_no', 'mis_number') ?? '';
+
+		map['client_fullname'] ??=
+			pick('full_name', 'fullname', 'client_name', 'client_full_name') ?? '';
+		map['client_street_address'] ??= pick('street_address', 'address', 'client_street') ?? '';
+		map['client_city'] ??= pick('city', 'client_city_town', 'city_town') ?? '';
+		map['client_province'] ??= pick('province', 'client_province') ?? '';
+		map['client_postal_code'] ??= pick('postal_code', 'client_postal_code', 'zip') ?? '';
+	}
+
+	function installBindingRuntime() {
+		// track whether we already normalized once after letter appears
+		let letterWasSeen = false;
+
+		const mo = new MutationObserver(() => {
+			const letter = document.querySelector('.letter-content') as HTMLElement | null;
+			if (letter) {
+				if (!letterWasSeen) {
+					letterWasSeen = true;
+					ensureInitialToggleState();
+				}
+				scheduleLetterRender();
+			}
+		});
+		mo.observe(document.body, { childList: true, subtree: true });
+
+		const onAnyInput = () => scheduleLetterRender();
+		document.addEventListener('input', onAnyInput, true);
+		document.addEventListener('change', onAnyInput, true);
+
+		return () => {
+			mo.disconnect();
+			document.removeEventListener('input', onAnyInput, true);
+			document.removeEventListener('change', onAnyInput, true);
+		};
+	}
+
+	function ensureInitialToggleState() {
+		const letter = getLetterEl();
+		if (letter) letter.hidden = true;
+		document.documentElement.classList.remove('letter-mode');
+
+		// normalize the toggle button text to “Show Letter”
+		const btn = Array.from(document.querySelectorAll<HTMLElement>('button,[role="button"]')).find(
+			(b) => (b.textContent || b.getAttribute('aria-label') || '').toLowerCase().includes('show')
+		);
+		if (btn) btn.textContent = 'Show Letter';
+	}
+
+	let cleanupBindings: (() => void) | null = null;
+	onMount(() => {
+		cleanupBindings = installBindingRuntime();
+	});
+	onDestroy(() => cleanupBindings?.());
 </script>
 
 <!-- Inject dynamic styles and scripts -->
@@ -439,3 +772,65 @@
 	</div>
 	<div class="paged-page" data-footer-text=""></div>
 </div>
+
+<style>
+	/* show letter on screen by default */
+	:global(#letter-content),
+	:global(.letter-content) {
+		display: block !important;
+	}
+
+	/* letter-only web view: hide form sections that don't contain the letter */
+	:global(html.letter-only .form .form-renderer:not(:has(.letter-content))) {
+		display: none !important;
+	}
+	:global(.letter-content[hidden]) {
+		display: block !important;
+	}
+
+	@media print {
+		:global(html:not(.letter-only) .form),
+		:global(html:not(.letter-only) .form .form-renderer) {
+			display: block !important;
+			visibility: visible !important;
+		}
+
+		:global(html.letter-only .scrollable-content > :not(:has(.letter-content))) {
+			display: none !important;
+		}
+
+		:global(html.letter-only .scrollable-content),
+		:global(html.letter-only .content-wrapper),
+		:global(html.letter-only .form) {
+			margin: 0 !important;
+			padding: 0 !important;
+		}
+
+		:global(html.letter-only .form .form-renderer:has(.letter-content)) {
+			break-before: auto !important; 
+			page-break-before: auto !important; 
+			margin-top: 0 !important;
+		}
+
+		:global(.print-hoisted) {
+			margin-top: 0 !important;
+			break-before: avoid !important; 
+			page-break-before: avoid !important; 
+		}
+
+		/* ensure the whole doc flows from the top; no sticky/fixed in print */
+		:global(.fixed),
+		:global(header),
+		:global(footer) {
+			position: static !important;
+			inset: auto !important;
+			transform: none !important;
+		}
+
+		/* let the scroller expand so the UA can paginate the full content */
+		:global(.scrollable-content) {
+			overflow: visible !important;
+			height: auto !important;
+		}
+	}
+</style>
