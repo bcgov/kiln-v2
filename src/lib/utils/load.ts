@@ -50,6 +50,14 @@ try {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
+
+    if (includeAuth) {
+      const token = keycloak?.token ?? (getCookie("token") as string | null) ?? null;
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+    }
+
     if (includeOriginalServer) {
       const originalServer = getCookie("originalServer");
       if (originalServer) headers["X-Original-Server"] = originalServer as string;

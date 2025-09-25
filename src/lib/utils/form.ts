@@ -283,9 +283,12 @@ export async function unlockICMFinalFlags(): Promise<string> {
       }
     }
 
+    const { getAuthHeaders } = await import('./auth-headers');
+    const headers = await getAuthHeaders();
+
     const response = await fetch(unlockICMFinalEndpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(body)
     });
 
@@ -310,10 +313,13 @@ export async function unlockICMFinalFlags(): Promise<string> {
 export async function generatePDF(formData: FormDefinition, pdfId: string){
   const payload: Record<string, any> = {}
   		try {
+			const { getAuthHeaders } = await import('./auth-headers');
+			const headers = await getAuthHeaders();
+
 			const payload = {}
 			const response = await fetch(`/api/pdf-template/${pdfId}`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers,
 				body: JSON.stringify(payload)
 			});
 
