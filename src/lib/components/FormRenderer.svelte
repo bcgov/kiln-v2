@@ -66,7 +66,7 @@
 
 <div class="form-renderer" class:printing={printingState}>
 	{#each elements as item (item.uuid)}
-		<div data-print-columns={1}>
+		<div class="ff-item" data-ff-type={item.type} data-print-columns={1}>
 			{@render renderComponent(item)}
 		</div>
 	{/each}

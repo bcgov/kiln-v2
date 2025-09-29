@@ -30,18 +30,19 @@
 	});
 </script>
 
-{#if !printing && item.visible_web !== false && readonly !== true}
-	<div class="field-container button-field no-print">
-		<Button
-			{...filterAttributes(item?.attributes)}
-			{...extAttrs as any}
-			id={item.uuid}
-			class={item.class}
-			aria-label={ariaLabel}
-			role="button"
-			{...a11y.ariaProps}
-		>
-			{labelText}
-		</Button>
-	</div>
-{/if}
+<div
+	class="field-container button-field no-print"
+	class:visible={!printing && item.visible_web !== false && !readonly}
+>
+	<Button
+		{...filterAttributes(item?.attributes)}
+		{...extAttrs as any}
+		id={item.uuid}
+		class={item.class}
+		aria-label={ariaLabel}
+		role="button"
+		{...a11y.ariaProps}
+	>
+		{labelText}
+	</Button>
+</div>

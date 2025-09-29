@@ -262,6 +262,7 @@
 	</fieldset>
 {:else}
 	<fieldset
+		id={item.uuid}
 		class="container-regular container-group {containerClass} {item.class}"
 		class:printing
 		style={containerStyle}
