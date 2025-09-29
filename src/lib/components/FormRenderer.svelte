@@ -66,9 +66,7 @@
 
 <div class="form-renderer" class:printing={printingState}>
 	{#each elements as item (item.uuid)}
-		<!-- Note: The JSON scripts require exact element IDs (e.g., FORM_CONTAINER, toggle button, etc.). -->
-		<!-- Try wrapping each component with a div carrying id=item.uuid so selectors like getElementById(...) work. -->
-		<div id={item.type === 'container' ? item.uuid : undefined} class="ff-item" data-ff-type={item.type} data-print-columns={1} data-uuid={item.uuid}>
+		<div class="ff-item" data-ff-type={item.type} data-print-columns={1}>
 			{@render renderComponent(item)}
 		</div>
 	{/each}
