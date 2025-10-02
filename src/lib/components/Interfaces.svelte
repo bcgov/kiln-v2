@@ -1,7 +1,8 @@
 <script lang="ts">
+	import { API } from '$lib/utils/api';
 	import { Button } from 'carbon-components-svelte';
 	import { validateAllFields } from '$lib/utils/validation';
-	import { createEventDispatcher } from 'svelte';
+	import type { ActionResultPayload } from '$lib/types/interfaces';
 
 	type InterfaceAction = {
 		label?: string;
@@ -28,7 +29,16 @@
 		[key: string]: any;
 	};
 
-	const props = $props();
+	const props = $props<{
+		items?: InterfaceButton[];
+		disabled?: boolean;
+		size?: 'small' | 'default' | 'lg';
+		validate?: boolean;
+		ariaLabel?: string;
+		context?: Record<string, any>;
+		mode?: string;
+		onActionResult?: (payload: ActionResultPayload) => void;
+	}>();
 
 	// Make items reactive so updates from the parent re-render buttons
 	let items: InterfaceButton[] = $derived.by(() => props.items ?? []);
@@ -39,8 +49,16 @@
 	let ariaLabel: string = props.ariaLabel ?? 'Form actions';
 	let context: Record<string, any> = props.context ?? undefined;
 
-	// Remove callback-prop approach; use Svelte dispatcher
-	const dispatch = createEventDispatcher();
+	// Current page mode for filtering ("portalNew" | "portalEdit" | "portalView" | "edit" | "preview" | etc.)
+	let mode: string = props.mode ?? 'edit';
+
+	let visibleItems = $derived.by(() => {
+		if (!Array.isArray(items)) return [];
+		return items.filter((btn: any) => {
+			const m = btn?.mode;
+			return !Array.isArray(m) || m.includes(mode);
+		});
+	});
 
 	let pending = $state<Record<number, 'idle' | 'loading' | 'success' | 'error'>>({});
 
@@ -125,6 +143,23 @@
 		}
 	}
 
+	function runUserScript(code: string, ctx: Record<string, any>) {
+		// Async, scoped execution with the provided context
+		// eslint-disable-next-line no-new-func
+		const fn = new Function('ctx', `with (ctx) { return (async () => { ${code} })(); }`);
+		return fn(ctx);
+	}
+
+	function resolveApiPath(apiPath?: string): string | null {
+		if (!apiPath || typeof apiPath !== 'string') return null;
+		// Expect "API.xyz"
+		const m = apiPath.match(/^API\.(\w+)$/);
+		if (!m) return null;
+		const key = m[1];
+		const url = (API as any)?.[key];
+		return typeof url === 'string' ? url : null;
+	}
+
 	async function executeAction(action: InterfaceAction, ctx: Record<string, any>) {
 		const method = (action.type || 'GET').toUpperCase();
 		const url = buildUrl(interpolate(action.host, ctx), interpolate(action.path, ctx));
@@ -177,7 +212,7 @@
 		if (validate) {
 			const { isValid, errorList } = validateAllFields();
 			if (!isValid) {
-				dispatch('action-result', {
+				props.onActionResult?.({
 					index: idx,
 					label: btn?.label,
 					ok: false,
@@ -192,34 +227,74 @@
 
 		try {
 			const actions = [...(btn.actions || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
-
-			let lastResult: any = null;
 			for (const action of actions) {
-				if ((action.action_type || '').toLowerCase() !== 'endpoint') continue;
-				// Execute sequentially; break on first failure
-				const result = await executeAction(action, ctx);
-				lastResult = result;
-				if (!result.ok) {
-					pending[idx] = 'error';
-					dispatch('action-result', {
-						index: idx,
-						label: btn?.label,
-						ok: false,
-						error: {
-							status: result.status,
-							statusText: result.statusText,
-							data: result.data
+				const kind = (action.action_type || '').toLowerCase();
+
+				if (kind === 'javascript') {
+					const out = await runUserScript(String(action.script || ''), ctx);
+					if (out === false) break;
+					continue;
+				}
+
+				if (kind === 'endpoint') {
+					const urlFromApi = resolveApiPath((action as any).api_path);
+					const url = urlFromApi
+						? new URL(urlFromApi, window.location.origin)
+						: buildUrl(interpolate(action.host, ctx), interpolate(action.path, ctx));
+
+					const params = interpolate(action.params || {}, ctx);
+					if (params && typeof params === 'object') {
+						for (const [k, v] of Object.entries(params)) {
+							if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
 						}
+					}
+
+					let bodyObj: any = undefined;
+					if (typeof (action as any).body === 'string') {
+						const bodyExpr = String((action as any).body);
+						bodyObj = await runUserScript(`return ({ ${bodyExpr} });`, ctx);
+					} else if (typeof (action as any).body === 'object') {
+						bodyObj = interpolate((action as any).body || {}, ctx);
+					}
+
+					const method = (action.type || 'GET').toUpperCase();
+					const headers = Object.assign(
+						{ 'Content-Type': 'application/json' },
+						interpolate(action.headers || {}, ctx)
+					);
+
+					const resp = await fetch(url.toString(), {
+						method,
+						headers,
+						body: method === 'GET' ? undefined : JSON.stringify(bodyObj ?? {}),
+						credentials: 'same-origin'
 					});
-					return;
+
+					if (!resp.ok) {
+						const statusText = resp.statusText;
+						let data: any = null;
+						try {
+							data = await resp.json();
+						} catch {
+							/* ignore */
+						}
+						pending[idx] = 'error';
+						props.onActionResult?.({
+							index: idx,
+							label: btn?.label,
+							ok: false,
+							error: { status: resp.status, statusText, data }
+						});
+						return;
+					}
 				}
 			}
 
 			pending[idx] = 'success';
-			dispatch('action-result', { index: idx, label: btn?.label, ok: true });
+			props.onActionResult?.({ index: idx, label: btn?.label, ok: true });
 		} catch (err: any) {
 			pending[idx] = 'error';
-			dispatch('action-result', {
+			props.onActionResult?.({
 				index: idx,
 				label: btn?.label,
 				ok: false,
@@ -235,7 +310,7 @@
 </script>
 
 <div class="interfaces no-print" role="group" aria-label={ariaLabel}>
-	{#each items as btn, i (i)}
+	{#each visibleItems as btn, i (i)}
 		<Button
 			kind={mapKind(btn?.style)}
 			{size}

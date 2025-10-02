@@ -18,6 +18,8 @@
 	import { initExternalUpdateBridge } from '$lib/utils/valueSync';
 	// Add Interfaces component
 	import Interfaces from './components/Interfaces.svelte';
+	import { getSessionInterface } from '$lib/utils/interface';
+	import type { ActionResultPayload } from '$lib/types/interfaces';
 
 	let {
 		saveData = undefined,
@@ -34,6 +36,56 @@
 	let modalMessage = $state('');
 	let isFormCleared = $state(false);
 	let modalErrors = $state<string[]>([]);
+
+	let interfaceItems = $derived.by(() => {
+		// Prefer interface embedded in the payload (array or { interface: [] })
+		const fd =
+			(mergedFormData as any)?.interface?.interface ??
+			(mergedFormData as any)?.interface ??
+			(formData as any)?.interface?.interface ??
+			(formData as any)?.interface;
+
+		if (Array.isArray(fd)) return fd;
+
+		// Fallback: sessionStorage (set earlier by the loader/wrapper)
+		const ss = getSessionInterface();
+		return Array.isArray(ss) ? ss : [];
+	});
+
+	let interfaceContext = $derived.by(() => {
+		const search =
+			typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+		const params = search ? Object.fromEntries(search.entries()) : {};
+
+		return {
+			// modal control
+			setModalTitle,
+			setModalMessage,
+			setModalOpen,
+
+			// renderer abilities
+			validateAllFields,
+			handlePrint,
+			// these exist in this file:
+			handleCancel,
+			// utils imported above:
+			createSavedData,
+			submitForButtonAction, // in case scripts choose to call it
+
+			// route/query params
+			params
+		};
+	});
+
+	function setModalTitle(t: string) {
+		modalTitle = t;
+	}
+	function setModalMessage(m: string) {
+		modalMessage = m;
+	}
+	function setModalOpen(open: boolean) {
+		modalOpen = !!open;
+	}
 
 	// Consolidated modal handler
 	function showModal(
@@ -67,7 +119,7 @@
 		if (mode === 'view') {
 			setReadOnlyFields(formData);
 		}
-		
+
 		return formData;
 	});
 
@@ -295,22 +347,26 @@
 		};
 	});
 
-	function handleInterfaceResult(e: CustomEvent) {
-		const detail = (e as any)?.detail || {};
-		if (detail?.validationErrors?.length) {
-			showModal('validation', undefined, detail.validationErrors);
+	function handleInterfaceResult(payload: ActionResultPayload) {
+		const { ok, error, label, validationErrors } = payload;
+
+		if (!ok) {
+			if (validationErrors?.length) {
+				setModalTitle('Please fix the highlighted fields');
+				setModalMessage(`${validationErrors.length} issues were found.`);
+				setModalOpen(true);
+				return;
+			}
+			setModalTitle(label || 'Action failed');
+			setModalMessage(typeof error === 'string' ? error : JSON.stringify(error ?? {}, null, 2));
+			setModalOpen(true);
 			return;
 		}
-		if (detail?.ok) {
-			showModal('success');
-		} else {
-			const msg =
-				detail?.error?.message ||
-				detail?.error?.statusText ||
-				(detail?.error?.data ? JSON.stringify(detail.error.data) : null) ||
-				'Action failed';
-			showModal('error', msg);
-		}
+
+		// Success path
+		setModalTitle(label || 'Success');
+		setModalMessage('Done.');
+		setModalOpen(true);
 	}
 </script>
 
@@ -352,9 +408,11 @@
 
 				<div class="header-buttons-only no-print">
 					<Interfaces
-						items={mergedFormData?.interface || formData?.interface || []}
+						{mode}
+						items={interfaceItems}
+						context={interfaceContext}
 						disabled={typeof goBack === 'function'}
-						on:action-result={handleInterfaceResult}
+						onActionResult={handleInterfaceResult}
 					/>
 					{#if mode === FORM_MODE.edit}
 						<Button kind="tertiary" class="no-print" onclick={handleSave}>Save</Button>
@@ -367,7 +425,7 @@
 						<Button kind="tertiary" class="no-print" onclick={handleGenerate}>Generate</Button>
 					{/if}
 
-					{#if (mode === FORM_MODE.edit || mode === FORM_MODE.preview) && formDelivery === 'portal'}
+					{#if (mode === FORM_MODE.edit || mode === FORM_MODE.preview) && formDelivery === 'portal' && (!interfaceItems || interfaceItems.length === 0)}
 						<div class="header-buttons-only no-print">
 							<!-- Replace inline mapping with reusable Interfaces component -->
 							<Button onclick={handleCancel} kind="tertiary" id="generate">Cancel</Button>
