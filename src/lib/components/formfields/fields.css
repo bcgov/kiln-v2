@@ -38,7 +38,8 @@
 	align-items: flex-start;
 	flex-direction: column;
 	white-space: pre-wrap;
-	word-break: break-all;
+	min-width: 0;
+ 	overflow-wrap: anywhere;
 	padding: 6px;
 	border-left: 1px solid #ccc;
 }
@@ -58,7 +59,8 @@
 /* Only TextArea needs this extra style */
 .text-area-field .print-value {
 	white-space: pre-wrap;
-	word-break: break-all;
+	min-width: 0;
+ 	overflow-wrap: anywhere;
 }
 
 
