@@ -6,7 +6,7 @@
 
 	type InterfaceAction = {
 		label?: string;
-		action_type?: 'endpoint' | string;
+		action_type?: 'javascript' | 'endpoint' | string;
 		type?: string; // HTTP method
 		host?: string;
 		path?: string;
@@ -16,6 +16,7 @@
 		params?: Record<string, any>;
 		order?: number;
 		[key: string]: any;
+		continueOnFail?: boolean;
 	};
 
 	type InterfaceButton = {
@@ -27,6 +28,7 @@
 		actions?: InterfaceAction[];
 		order?: number;
 		[key: string]: any;
+		mode?: string[]; // e.g. ["portalEdit"]
 	};
 
 	const props = $props<{
@@ -143,6 +145,31 @@
 		}
 	}
 
+	function buildActionContext() {
+		// session params (legacy v1 behavior)
+		let sessionParams: Record<string, any> = {};
+		try {
+			const raw = sessionStorage.getItem('formParams');
+			if (raw) sessionParams = JSON.parse(raw);
+		} catch {
+			/* ignore */
+		}
+
+		// baseContext has token + form meta + any props.context passed from RenderFrame
+		const ctx = {
+			...baseContext(),
+			...(context || {})
+		};
+
+		// Merge params: prefer explicit context.params from RenderFrame, then session
+		const ctxParams = {
+			...(context?.params || {}),
+			...sessionParams
+		};
+
+		return { ...ctx, params: ctxParams };
+	}
+
 	function runUserScript(code: string, ctx: Record<string, any>) {
 		// Async, scoped execution with the provided context
 		// eslint-disable-next-line no-new-func
@@ -158,6 +185,125 @@
 		const key = m[1];
 		const url = (API as any)?.[key];
 		return typeof url === 'string' ? url : null;
+	}
+
+	function getOriginalServerHeader(): Record<string, string> {
+		try {
+			// 1) URL ?originalServer=...
+			if (typeof window !== 'undefined') {
+				const params = new URLSearchParams(window.location.search);
+				const fromQs = params.get('originalServer');
+				if (fromQs && fromQs.trim()) return { 'X-Original-Server': fromQs.trim() };
+
+				// 2) local/session storage
+				const fromStore =
+					localStorage.getItem('originalServer') || sessionStorage.getItem('originalServer');
+				if (fromStore && fromStore.trim()) return { 'X-Original-Server': fromStore.trim() };
+
+				// 3) global set by host page (optional)
+				const g = (window as any).__kilnOriginalServer;
+				if (g && typeof g === 'string' && g.trim()) return { 'X-Original-Server': g.trim() };
+			}
+		} catch {
+			// ignore
+		}
+		return {};
+	}
+
+	async function executeEndpointAction(action: any) {
+		try {
+			const ctx = buildActionContext();
+
+			// Resolve endpoint
+			const apiResolved = resolveApiPath(action.api_path);
+			let endpoint = apiResolved;
+			if (!endpoint) {
+				const url = buildUrl(interpolate(action.host, ctx), interpolate(action.path, ctx));
+				endpoint = url.toString();
+			}
+
+			// Compute body
+			const bodyFromAction =
+				typeof action.body === 'string'
+					? await runUserScript(`return ({ ${String(action.body)} });`, ctx)
+					: interpolate(action.body || {}, ctx) || {};
+
+			// Headers
+			const headers: Record<string, string> = {
+				'Content-Type': 'application/json',
+				...getOriginalServerHeader()
+			};
+
+			// Let Comm Layer read overrides from payload body
+			const payload = {
+				...bodyFromAction,
+				...(action.path ? { path: action.path } : {}),
+				...(action.headers ? { headers: action.headers } : {}),
+				...(action.type ? { type: action.type } : {})
+			};
+
+			const method = (action.type || 'POST').toUpperCase();
+			const fetchInit: RequestInit = { method, headers };
+
+			if (method === 'GET') {
+				const qs = new URLSearchParams(payload as any).toString();
+				const resp = await fetch(`${endpoint}?${qs}`, fetchInit);
+				if (!resp.ok) return await handleApiError(resp);
+				return true;
+			} else {
+				fetchInit.body = JSON.stringify(payload);
+				const resp = await fetch(endpoint, fetchInit);
+				if (!resp.ok) return await handleApiError(resp);
+				return true;
+			}
+		} catch (err) {
+			console.error('API action failed:', err);
+			return false;
+		}
+	}
+
+	async function handleApiError(resp: Response) {
+		let message = 'An API action failed.';
+		try {
+			const ct = (resp.headers.get('content-type') || '').toLowerCase();
+			if (ct.includes('json')) {
+				const j = await resp.json();
+				if (typeof j?.error === 'string' && j.error.trim()) message = j.error;
+			} else {
+				const t = await resp.text();
+				if (t.trim()) message = t;
+			}
+		} catch {
+			/* ignore */
+		}
+		return false;
+	}
+
+	async function executeJavascriptAction(script?: string, ctx?: Record<string, any>) {
+		if (!script) return true;
+		try {
+			// runUserScript already scopes `with(ctx)` and supports async
+			const result = await runUserScript(script, ctx || {});
+			return result !== false;
+		} catch (err) {
+			console.error('JavaScript action failed:', err);
+			return false;
+		}
+	}
+
+	// Master sequencer: stops on first failure unless continueOnFail = true
+	async function runActionsInSequence(actions: InterfaceAction[]) {
+		const ctx = buildActionContext();
+		for (const action of actions) {
+			const kind = (action.action_type || '').toLowerCase();
+			const ok =
+				kind === 'javascript'
+					? await executeJavascriptAction(action.script, ctx)
+					: await executeEndpointAction(action);
+
+			if (!ok && !action.continueOnFail) return false; // stop the chain
+		}
+		return true;
 	}
 
 	async function executeAction(action: InterfaceAction, ctx: Record<string, any>) {
@@ -223,75 +369,13 @@
 		}
 
 		pending[idx] = 'loading';
-		const ctx = baseContext();
 
 		try {
 			const actions = [...(btn.actions || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
-			for (const action of actions) {
-				const kind = (action.action_type || '').toLowerCase();
+			const ok = await runActionsInSequence(actions);
 
-				if (kind === 'javascript') {
-					const out = await runUserScript(String(action.script || ''), ctx);
-					if (out === false) break;
-					continue;
-				}
-
-				if (kind === 'endpoint') {
-					const urlFromApi = resolveApiPath((action as any).api_path);
-					const url = urlFromApi
-						? new URL(urlFromApi, window.location.origin)
-						: buildUrl(interpolate(action.host, ctx), interpolate(action.path, ctx));
-
-					const params = interpolate(action.params || {}, ctx);
-					if (params && typeof params === 'object') {
-						for (const [k, v] of Object.entries(params)) {
-							if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
-						}
-					}
-
-					let bodyObj: any = undefined;
-					if (typeof (action as any).body === 'string') {
-						const bodyExpr = String((action as any).body);
-						bodyObj = await runUserScript(`return ({ ${bodyExpr} });`, ctx);
-					} else if (typeof (action as any).body === 'object') {
-						bodyObj = interpolate((action as any).body || {}, ctx);
-					}
-
-					const method = (action.type || 'GET').toUpperCase();
-					const headers = Object.assign(
-						{ 'Content-Type': 'application/json' },
-						interpolate(action.headers || {}, ctx)
-					);
-
-					const resp = await fetch(url.toString(), {
-						method,
-						headers,
-						body: method === 'GET' ? undefined : JSON.stringify(bodyObj ?? {}),
-						credentials: 'same-origin'
-					});
-
-					if (!resp.ok) {
-						const statusText = resp.statusText;
-						let data: any = null;
-						try {
-							data = await resp.json();
-						} catch {
-							/* ignore */
-						}
-						pending[idx] = 'error';
-						props.onActionResult?.({
-							index: idx,
-							label: btn?.label,
-							ok: false,
-							error: { status: resp.status, statusText, data }
-						});
-						return;
-					}
-				}
-			}
-
-			pending[idx] = 'success';
-			props.onActionResult?.({ index: idx, label: btn?.label, ok: true });
+			pending[idx] = ok ? 'success' : 'error';
+			props.onActionResult?.({ index: idx, label: btn?.label, ok });
 		} catch (err: any) {
 			pending[idx] = 'error';
 			props.onActionResult?.({
@@ -301,7 +385,7 @@
 				error: { message: err?.message || 'Unknown error' }
 			});
 		} finally {
-			// brief success state, then reset
+			// brief success/error state, then reset
 			setTimeout(() => {
 				pending[idx] = 'idle';
 			}, 800);

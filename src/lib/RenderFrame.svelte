@@ -66,8 +66,8 @@
 			// renderer abilities
 			validateAllFields,
 			handlePrint,
-			// these exist in this file:
 			handleCancel,
+			handleSubmit, 
 			// utils imported above:
 			createSavedData,
 			submitForButtonAction, // in case scripts choose to call it
