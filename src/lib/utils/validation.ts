@@ -16,14 +16,44 @@ export type ValidationRules = {
   isEmail?: boolean;
   isUrl?: boolean;
   custom?:
-    | ((value: any) => string | null | undefined)
-    | Array<(value: any) => string | null | undefined>;
+  | ((value: any) => string | null | undefined)
+  | Array<(value: any) => string | null | undefined>;
 };
 
 export type ValidateOptions = {
   type?: ValueType;
   fieldLabel?: string;
 };
+
+// helper
+function escapeRe(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// normalize unicode dashes (en/em) to ASCII hyphen so literals behave consistently
+function normalizeMask(mask: string) {
+  return mask.replace(/\u2013|\u2014/g, "-");
+}
+
+/**
+ * Turn a mask into a full-match regex:
+ *  - 9 => digit
+ *  - a => letter
+ *  - * => alphanumeric
+ *  - others => literal characters
+ */
+export function compileMaskToRegex(mask: string): RegExp {
+  const m = normalizeMask(mask);
+  const pattern = Array.from(m)
+    .map((ch) =>
+      ch === "9" ? "\\d"
+        : ch === "a" ? "[A-Za-z]"
+          : ch === "*" ? "[A-Za-z0-9]"
+            : escapeRe(ch)
+    )
+    .join("");
+  return new RegExp(`^${pattern}$`);
+}
 
 function toRegExp(p: RegExp | string | undefined): RegExp | undefined {
   if (!p) return undefined;
@@ -142,34 +172,34 @@ export function validateValue(
   }
 
 
-    const s = String(value);
-    if (typeof rules.length === 'number' && s.length !== rules.length) {
-      errors.push(buildErrorMessage('length_exact', { length: rules.length }, label));
+  const s = String(value);
+  if (typeof rules.length === 'number' && s.length !== rules.length) {
+    errors.push(buildErrorMessage('length_exact', { length: rules.length }, label));
+  }
+  if (typeof rules.minLength === 'number' && s.length < rules.minLength) {
+    errors.push(buildErrorMessage('minLength', { minLength: rules.minLength }, label));
+  }
+  if (typeof rules.maxLength === 'number' && s.length > rules.maxLength) {
+    errors.push(buildErrorMessage('maxLength', { maxLength: rules.maxLength }, label));
+  }
+  const rx = toRegExp(rules.pattern);
+  if (rx && !rx.test(s)) {
+    errors.push(buildErrorMessage('pattern', {}, label));
+  }
+  if (rules.isEmail) {
+    const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRx.test(s)) {
+      errors.push(buildErrorMessage('email', {}, label));
     }
-    if (typeof rules.minLength === 'number' && s.length < rules.minLength) {
-      errors.push(buildErrorMessage('minLength', { minLength: rules.minLength }, label));
+  }
+  if (rules.isUrl) {
+    try {
+      new URL(s);
+    } catch {
+      errors.push(buildErrorMessage('url', {}, label));
     }
-    if (typeof rules.maxLength === 'number' && s.length > rules.maxLength) {
-      errors.push(buildErrorMessage('maxLength', { maxLength: rules.maxLength }, label));
-    }
-    const rx = toRegExp(rules.pattern);
-    if (rx && !rx.test(s)) {
-      errors.push(buildErrorMessage('pattern', {}, label));
-    }
-    if (rules.isEmail) {
-      const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRx.test(s)) {
-        errors.push(buildErrorMessage('email', {}, label));
-      }
-    }
-    if (rules.isUrl) {
-      try {
-        new URL(s);
-      } catch {
-        errors.push(buildErrorMessage('url', {}, label));
-      }
-    }
-  
+  }
+
 
   // Custom validators
   if (rules.custom) {
@@ -196,6 +226,11 @@ export function rulesFromAttributes(
   if (attrs.minLength != null) rules.minLength = Number(attrs.minLength);
   if (attrs.length != null) rules.length = Number(attrs.length);
   if (attrs.pattern != null) rules.pattern = attrs.pattern;
+
+  // input-mask
+  if (!rules.pattern && typeof attrs.mask === "string" && attrs.mask.trim()) {
+    rules.pattern = compileMaskToRegex(attrs.mask);
+  }
 
   // Number-like
   if (attrs.min != null && item?.type !== 'date') rules.min = Number(attrs.min);
