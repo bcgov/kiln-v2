@@ -51,7 +51,7 @@
 			}
 		}
 
-		// Inject all scripts
+		// Inject all scripts with robust guard mechanism
 		if (mode !== 'view') {
 			const combinedJsRaw = (scripts ?? [])
 				.filter((s: { type: string; content: string }) => s?.type !== 'pdf')
@@ -68,38 +68,62 @@
 
 			if (combinedJsRaw) {
 				const jsHash = hashString(combinedJsRaw);
-
-				// Use a SAFE string key + bracket access to avoid identifier syntax errors e.g. "__FORM_EXEC_-k3j2"
 				const guardKey = `__FORM_EXEC_${jsHash}`;
-				const guardKeyLiteral = JSON.stringify(guardKey);
 
-				const guarded =
-					`;(function(){try{` +
-					`if(window[${guardKeyLiteral}]){console.debug('[SSI] Skip duplicate script', ${guardKeyLiteral});return;}` +
-					`window[${guardKeyLiteral}] = true;` +
-					`${combinedJsRaw}\n` +
-					`}catch(e){console.error('[SSI] Script error (', ${guardKeyLiteral}, ')', e);}})();`;
+				// Check if script has already been executed (globally, across all effect runs)
+				// This prevents re-execution even if the component re-renders or effect re-runs
+				if ((window as any)[guardKey] === true) {
+					console.debug('[SSI] Script already executed, skipping:', guardKey);
+					// Don't remove or re-add the script element
+					return;
+				}
+
+				// Mark as executed BEFORE creating the script element
+				// This prevents race conditions where the script runs before we set the flag
+				(window as any)[guardKey] = true;
 
 				const existingScript = document.querySelector<HTMLScriptElement>(
 					`script[data-ssi="true"][data-hash="${jsHash}"]`
 				);
 
 				if (!existingScript) {
-					// Drop older SSI scripts with different hash
-					document.querySelectorAll('script[data-ssi="true"]').forEach((el) => el.remove());
+					// Remove old scripts with different hashes only
+					document.querySelectorAll('script[data-ssi="true"]').forEach((el) => {
+						const oldHash = el.getAttribute('data-hash');
+						if (oldHash !== jsHash) {
+							el.remove();
+							// Clear the guard for the old hash
+							const oldGuardKey = `__FORM_EXEC_${oldHash}`;
+							delete (window as any)[oldGuardKey];
+						}
+					});
+
+					// Simple IIFE wrapper without internal guard (we handle it above)
+					const wrapped = `;(function(){try{${combinedJsRaw}\n}catch(e){console.error('[SSI] Script error:', e);}})();`;
+
 					const scriptEl = document.createElement('script');
 					scriptEl.setAttribute('data-ssi', 'true');
 					scriptEl.setAttribute('data-hash', jsHash);
 					scriptEl.id = 'ssi-script';
-					scriptEl.textContent = guarded;
+					scriptEl.textContent = wrapped;
 					document.body.appendChild(scriptEl);
 				}
 			}
 		}
 
-		// Cleanup function
+		// Cleanup function: remove elements and clear guards
 		return () => {
-			document.querySelectorAll('style[data-ssi], script[data-ssi]').forEach((el) => el.remove());
+			// Clear all guard keys for SSI scripts
+			document.querySelectorAll('script[data-ssi="true"]').forEach((el) => {
+				const hash = el.getAttribute('data-hash');
+				if (hash) {
+					const guardKey = `__FORM_EXEC_${hash}`;
+					delete (window as any)[guardKey];
+				}
+				el.remove();
+			});
+			// Remove SSI styles
+			document.querySelectorAll('style[data-ssi="true"]').forEach((el) => el.remove());
 		};
 	});
 </script>
