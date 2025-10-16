@@ -51,7 +51,7 @@
 			}
 		}
 
-		// Inject all scripts with robust guard mechanism
+		// Inject all scripts
 		if (mode !== 'view') {
 			const combinedJsRaw = (scripts ?? [])
 				.filter((s: { type: string; content: string }) => s?.type !== 'pdf')
@@ -74,7 +74,6 @@
 				// This prevents re-execution even if the component re-renders or effect re-runs
 				if ((window as any)[guardKey] === true) {
 					console.debug('[SSI] Script already executed, skipping:', guardKey);
-					// Don't remove or re-add the script element
 					return;
 				}
 
@@ -111,9 +110,8 @@
 			}
 		}
 
-		// Cleanup function: remove elements and clear guards
+		// Cleanup function
 		return () => {
-			// Clear all guard keys for SSI scripts
 			document.querySelectorAll('script[data-ssi="true"]').forEach((el) => {
 				const hash = el.getAttribute('data-hash');
 				if (hash) {
