@@ -86,18 +86,15 @@
 				);
 
 				if (!existingScript) {
-					// Remove old scripts with different hashes only
 					document.querySelectorAll('script[data-ssi="true"]').forEach((el) => {
 						const oldHash = el.getAttribute('data-hash');
 						if (oldHash !== jsHash) {
 							el.remove();
-							// Clear the guard for the old hash
 							const oldGuardKey = `__FORM_EXEC_${oldHash}`;
 							delete (window as any)[oldGuardKey];
 						}
 					});
 
-					// Simple IIFE wrapper without internal guard (we handle it above)
 					const wrapped = `;(function(){try{${combinedJsRaw}\n}catch(e){console.error('[SSI] Script error:', e);}})();`;
 
 					const scriptEl = document.createElement('script');
