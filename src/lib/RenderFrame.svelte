@@ -68,7 +68,7 @@
 			setReadOnlyFields(formData);
 		}
 		
-		return formData;
+		return formData?.formversion ? formData.formversion : formData;
 	});
 
 	let ministryLogoPath = $derived.by(() => {
