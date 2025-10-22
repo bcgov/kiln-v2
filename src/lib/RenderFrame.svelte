@@ -315,7 +315,11 @@
 </script>
 
 <!-- Inject dynamic styles and scripts -->
-<ScriptStyleInjection styles={formData?.styles} scripts={formData?.scripts} {mode} />
+<ScriptStyleInjection
+	styles={formData?.styles || formData?.data?.styles}
+	scripts={formData?.scripts || formData?.data?.scripts}
+	{mode}
+/>
 
 {#if isLoading}
 	<Loading />
