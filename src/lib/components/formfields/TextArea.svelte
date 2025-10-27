@@ -44,6 +44,8 @@
 		);
 	});
 
+	const rows = Number.isFinite(Number(item?.attributes?.rows)) ? Number(item.attributes.rows) : 4;
+
 	function oninput() {
 		touched = true;
 	}
@@ -90,7 +92,7 @@
 </script>
 
 <div class="field-container text-area-field">
-	<PrintRow {item} {printing} {labelText} value={value || ''} />
+	<PrintRow {item} {printing} {labelText} value={value || ''} rows={rows} />
 
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<TextArea
@@ -107,6 +109,7 @@
 			{oninput}
 			{onblur}
 			{...extAttrs as any}
+			rows={rows}
 		>
 			<span slot="labelText" id={a11y.labelId} class:required={item.is_required}
 				>{@html labelText}</span
