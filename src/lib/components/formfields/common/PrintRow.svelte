@@ -62,5 +62,8 @@
     overflow-wrap: anywhere;
     min-height: calc(var(--textarea-rows, 4) * 1.5 * 1em);
     box-sizing: border-box;
+	white-space: pre-wrap;
+    overflow: visible;
+	break-inside: auto;
   }
 </style>
