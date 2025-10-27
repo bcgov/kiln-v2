@@ -8,6 +8,7 @@
 			page.url?.pathname?.split('/').filter(Boolean).pop() ??
 			''
 	);
+	console.log("Debug Test Preview ID!");
 </script>
 
 <ExternalPreviewPage {id} />

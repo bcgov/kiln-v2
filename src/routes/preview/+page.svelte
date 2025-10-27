@@ -5,6 +5,7 @@
 	import { API } from '$lib/utils/api';
 
 	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
+	console.log("Debug Test Preview!");
 
 	let present = $state(false);
 	let jsonContent = $state<object>({});
@@ -14,6 +15,7 @@
 	let isLoading = $state(false);
 
 	async function handleSubmit(event: Event) {
+		console.log("Debug Test Submitted!");
 		event.preventDefault();
 		error = '';
 		isLoading = true;
