@@ -50,7 +50,7 @@
 	});
 
 	let elements = $derived.by(() => {
-		const result = formData?.elements ?? [];
+		const result = formData?.elements ?? formData?.data ?? [];
 		return result;
 	});
 
