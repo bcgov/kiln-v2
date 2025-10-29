@@ -14,36 +14,58 @@
 	let saveData = $state<{ data: any } | undefined>(undefined);
 	let isLoading = $state(false);
 
-	async function handleSubmit(event: Event) {
-		console.log("Debug Test Submitted!");
-		event.preventDefault();
+	$effect(() => {
+		const handleMessage = (event: MessageEvent) => {
+			const trustedOrigins = [
+				import.meta.env.VITE_TEMPLATE_REPO_URL,
+				import.meta.env.VITE_KLAMM_URL,
+			];
+
+			if (!trustedOrigins.includes(event.origin)) {
+				console.warn('Received message from untrusted origin:', event.origin);
+				return;
+			}
+
+			if (event.data && event.data.type === 'LOAD_JSON') {
+				content = event.data.data;
+				processJSON(event.data.data);
+			}
+		};
+
+		window.addEventListener('message', handleMessage);
+
+		return () => {
+			window.removeEventListener('message', handleMessage);
+		};
+	});
+
+	async function processJSON(jsonString: string) {
 		error = '';
 		isLoading = true;
 
-		if (!content.trim()) {
+		if (!jsonString.trim()) {
 			error = 'Content cannot be empty. Please enter valid JSON.';
 			isLoading = false;
 			return;
 		}
 
 		try {
-			const parsedJSON = JSON.parse(content);
+			const parsedJSON = JSON.parse(jsonString);
 			let formData;
 
 			if (parsedJSON.data && parsedJSON.form_definition) {
-				
 				formData = {
 					data: parsedJSON.data,
 					form_definition: parsedJSON.form_definition,
 					metadata: parsedJSON.metadata || null
 				};
-			} else if (parsedJSON.formversion) {				
+			} else if (parsedJSON.formversion) {
 				formData = {
 					data: null,
 					form_definition: parsedJSON.formversion,
 					metadata: null
 				};
-			} else {				
+			} else {
 				formData = {
 					data: null,
 					form_definition: parsedJSON,
@@ -66,7 +88,7 @@
 			}
 
 			const boundData = await response.json();
-			
+
 			// Set the bound form definition and save data
 			jsonContent = boundData.form_definition || {};
 			saveData = boundData.data ? { data: boundData.data } : undefined;
@@ -76,6 +98,12 @@
 		} finally {
 			isLoading = false;
 		}
+	}
+
+	async function handleSubmit(event: Event) {
+		console.log("Debug Test Submitted!");
+		event.preventDefault();
+		await processJSON(content);
 	}
 
 	function handleGoBack() {
