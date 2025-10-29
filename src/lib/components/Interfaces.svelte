@@ -172,7 +172,6 @@
 
 	function runUserScript(code: string, ctx: Record<string, any>) {
 		// Async, scoped execution with the provided context
-		// eslint-disable-next-line no-new-func
 		const fn = new Function('ctx', `with (ctx) { return (async () => { ${code} })(); }`);
 		return fn(ctx);
 	}
