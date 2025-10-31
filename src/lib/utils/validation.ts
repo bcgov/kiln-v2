@@ -30,9 +30,43 @@ function escapeRe(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// normalize unicode dashes (en/em) to ASCII hyphen so literals behave consistently
+// normalize many unicode dashes (‐-‒–—―−﹘﹣－) to ASCII '-'
+const DASH_RX = /[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g;
 function normalizeMask(mask: string) {
-  return mask.replace(/\u2013|\u2014/g, "-");
+  return mask?.normalize('NFKC').replace(DASH_RX, "-");
+}
+
+// Is this a simple "allowed characters" spec (not a formatting mask)?
+function isClassSpecMask(m: unknown): m is string {
+  if (typeof m !== 'string') return false;
+  const s = normalizeMask(m).trim();
+  return (
+    /^(?:a-z|A-Z|a-zA-Z|0-9|a-z0-9|A-Z0-9|a-zA-Z0-9)$/i.test(s) ||
+    /^\[[^\]]+\]$/.test(s)
+  );
+}
+
+// Convert allowed-class spec to a permissive regex that allows partial typing
+function classSpecToRegex(spec: string): RegExp | null {
+  const s = normalizeMask(spec).trim();
+
+  if (s === 'a-z' || s === 'A-Z' || s === 'a-zA-Z') return /^[A-Za-z]*$/;
+  if (s === '0-9') return /^\d*$/;
+  if (/^(?:a-z0-9|A-Z0-9|a-zA-Z0-9)$/i.test(s)) return /^[A-Za-z0-9]*$/;
+
+  const m = s.match(/^\[([^\]]+)\]$/);
+  if (m) {
+    const inner = m[1]; // e.g. A-Za-z' -
+    // We assume JSON provides a safe class; if needed you can further sanitize here.
+    return new RegExp(`^[${inner}]*$`);
+  }
+  return null;
+}
+
+// Heuristic: does the mask contain known mask tokens (formatting masks)?
+// Support both Maska-style (#/@/*) and legacy (9/a/*) tokens.
+function containsMaskTokens(s: string) {
+  return /[#@*9aA]/.test(s);
 }
 
 /**
@@ -225,11 +259,32 @@ export function rulesFromAttributes(
   if (attrs.maxCount != null) rules.maxLength = Number(attrs.maxCount);
   if (attrs.minLength != null) rules.minLength = Number(attrs.minLength);
   if (attrs.length != null) rules.length = Number(attrs.length);
-  if (attrs.pattern != null) rules.pattern = attrs.pattern;
+  if (attrs.pattern != null) {
+    const pRaw = normalizeMask(String(attrs.pattern).trim());
+    if (isClassSpecMask(pRaw)) {
+      const re = classSpecToRegex(pRaw); // -> ^[...]*$
+      if (re) rules.pattern = re;
+    } else {
+      // keep as-is; if you prefer to force full-match, you can wrap with ^(?:... )$ here
+      rules.pattern = pRaw;
+    }
+  }
 
-  // input-mask
+  // input-mask -> pattern
   if (!rules.pattern && typeof attrs.mask === "string" && attrs.mask.trim()) {
-    rules.pattern = compileMaskToRegex(attrs.mask);
+    const raw = normalizeMask(attrs.mask.trim());
+
+    if (isClassSpecMask(raw)) {
+      // Allowed-character spec => permissive regex (allows partial typing)
+      const re = classSpecToRegex(raw);
+      if (re) rules.pattern = re;
+    } else if (containsMaskTokens(raw)) {
+      // Real formatting mask => compile a strict full-match regex
+      rules.pattern = compileMaskToRegex(raw);
+    } else {
+      // Not a known mask; ignore to avoid false "format" errors
+      // (If you ever want to accept literal regex strings, add parsing here.)
+    }
   }
 
   // Number-like
