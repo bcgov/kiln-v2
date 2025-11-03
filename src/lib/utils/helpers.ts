@@ -90,17 +90,3 @@ import type { Item } from '$lib/types/form';
 export function getFieldLabel(item: Item): string {
 	return item.attributes?.labelText ?? item.attributes?.text ?? item.name ?? '';
 }
-
-export function validateFormItem(item: Item): string[] {
-	const errors: string[] = [];
-	if (!item.uuid) {
-		errors.push(`Item missing required uuid property`);
-	}
-	if (!item.name && !item.attributes?.labelText && !item.attributes?.text) {
-		errors.push(`Item ${item.uuid || 'unknown'} has no name, labelText, or text - label will be empty`);
-	}
-	if (!item.type) {
-		errors.push(`Item ${item.uuid || 'unknown'} missing required type property`);
-	}
-	return errors;
-}
