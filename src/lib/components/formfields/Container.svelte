@@ -73,12 +73,14 @@
 		w.__kilnGroupState[item.uuid] = [];
 	}
 
-	// Keep registry fresh and clear stale state on mount and whenever group list changes
-	$effect(() => {
+	// Use $effect.pre() to prevent race condition where child fields initialize before seeing preloaded data
+	$effect.pre(() => {
 		syncActiveGroupsRegistry();
-		cleanupStaleFormState();
-		// NEW: sync initial data so validator sees preloaded values
 		syncInitialGroupDataToFormState();
+	});
+
+	$effect(() => {
+		cleanupStaleFormState();
 	});
 
 	// NEW: write initial group data into global form state under stable keys
