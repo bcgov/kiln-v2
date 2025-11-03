@@ -20,7 +20,7 @@
 	);
 	let error = $state(item.attributes?.error ?? '');
 	let readonly = $state(item.is_read_only ?? false);
-	let labelText = $state(item.attributes?.labelText ?? '');
+	let labelText = $state(item.attributes?.labelText ?? item.name ?? '');
 	let helperText = item.help_text ?? '';
 	let touched = $state(false);
 

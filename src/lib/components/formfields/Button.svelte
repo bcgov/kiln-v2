@@ -6,7 +6,7 @@
 	import { buildFieldAria } from '$lib/utils/helpers';
 
 	let { item, printing = false } = $props<{ item: Item; printing?: boolean; [key: string]: any }>();
-	let labelText = $derived(item.attributes?.text ?? '');
+	let labelText = $derived(item.attributes?.text ?? item.name ?? '');
 	let readonly = $state(item.is_read_only ?? false);
 
 	let extAttrs = $state<Record<string, any>>({});

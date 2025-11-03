@@ -19,7 +19,7 @@
 	}>();
 
 	let checked = $state(item?.value ?? item.attributes?.defaultChecked ?? false);
-	let labelText = $state(item.attributes?.labelText ?? '');
+	let labelText = $state(item.attributes?.labelText ?? item.name ?? '');
 	let readonly = $state(item.is_read_only ?? false);
 	let helperText = item.help_text ?? '';
 	let touched = $state(false);

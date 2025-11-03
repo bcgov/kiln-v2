@@ -22,7 +22,7 @@
 	let value = $state(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? '');
 	let error = $state(item.attributes?.error ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
-	let labelText = $state(item.attributes?.labelText ?? '');
+	let labelText = $state(item.attributes?.labelText ?? item.name ?? '');
 	let placeholder = item.attributes?.placeholder ?? '';
 	let helperText = item.help_text ?? item.description ?? '';
 

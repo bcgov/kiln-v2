@@ -23,7 +23,7 @@
 	);
 	let error = $state(item.attributes?.error ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
-	let labelText = $state(item.attributes?.labelText ?? '');
+	let labelText = $state(item.attributes?.labelText ?? item.name ?? '');
 	let helperText = item.help_text ?? '';
 	let options = item.options ?? [];
 	let touched = $state(false);
