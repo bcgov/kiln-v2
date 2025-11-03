@@ -1,19 +1,21 @@
 <script lang="ts">
 	import type { Item } from '$lib/types/form';
+	import { getFieldLabel } from '$lib/utils/helpers';
 	import './fields.css';
 
 	const { item } = $props<{ item: Item }>();
 	const labelId = `${item.uuid}-info-label`;
+	const labelText = getFieldLabel(item);
 </script>
 
 <div
 	class="field-container text-info-field {item.class}"
 	id={item.uuid}
 	role="note"
-	aria-labelledby={item.attributes?.labelText || item.name ? labelId : undefined}
+	aria-labelledby={labelText ? labelId : undefined}
 >
-	{#if item.attributes?.labelText || item.name}
-		<div class="text-info-label" id={labelId}>{item.attributes?.labelText || item.name}</div>
+	{#if labelText}
+		<div class="text-info-label" id={labelId}>{labelText}</div>
 	{/if}
 	{#if item.attributes?.helperText}
 		<div class="text-info-helper">{item.attributes.helperText}</div>

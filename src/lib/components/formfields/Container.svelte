@@ -3,6 +3,7 @@
 	import { Add, TrashCan } from 'carbon-icons-svelte';
 	import FormRenderer from '../FormRenderer.svelte';
 	import type { Item } from '$lib/types/form';
+	import { getFieldLabel } from '$lib/utils/helpers';
 
 	let {
 		item,
@@ -30,7 +31,7 @@
 	}
 
 	let isRepeatable = $derived(item.attributes?.isRepeatable === true);
-	let legend = $derived(item.attributes?.legend ?? item.name ?? '');
+	let legend = $derived(item.attributes?.legend ?? getFieldLabel(item));
 	let level = $derived(item.attributes?.level ?? 2);
 	let repeaterItemLabel = $derived(item.attributes?.repeaterItemLabel ?? null);
 	let children = $derived(item.children ?? []);
