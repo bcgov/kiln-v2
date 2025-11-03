@@ -10,10 +10,10 @@
 	class="field-container text-info-field {item.class}"
 	id={item.uuid}
 	role="note"
-	aria-labelledby={item.attributes?.labelText ? labelId : undefined}
+	aria-labelledby={item.attributes?.labelText || item.name ? labelId : undefined}
 >
-	{#if item.attributes?.labelText}
-		<div class="text-info-label" id={labelId}>{item.attributes.labelText}</div>
+	{#if item.attributes?.labelText || item.name}
+		<div class="text-info-label" id={labelId}>{item.attributes?.labelText || item.name}</div>
 	{/if}
 	{#if item.attributes?.helperText}
 		<div class="text-info-helper">{item.attributes.helperText}</div>

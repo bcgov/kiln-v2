@@ -30,7 +30,7 @@
 	}
 
 	let isRepeatable = $derived(item.attributes?.isRepeatable === true);
-	let legend = $derived(item.attributes?.legend ?? '');
+	let legend = $derived(item.attributes?.legend ?? item.name ?? '');
 	let level = $derived(item.attributes?.level ?? 2);
 	let repeaterItemLabel = $derived(item.attributes?.repeaterItemLabel ?? null);
 	let children = $derived(item.children ?? []);
