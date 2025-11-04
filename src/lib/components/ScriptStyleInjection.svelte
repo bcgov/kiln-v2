@@ -11,6 +11,8 @@
 		mode?: string;
 	}>();
 
+	const EXTERNAL_FORM_INIT_TIMEOUT = Number(import.meta.env.VITE_EXTERNAL_FORM_INIT_TIMEOUT) || 500;
+
 	// Hash Util to uniquely identify style/script content
 	function hashString(str: string): string {
 		let h = 0,
@@ -101,6 +103,25 @@
 						scriptEl.id = `ssi-script-${jsHash}`;
 						scriptEl.textContent = wrapped;
 						document.body.appendChild(scriptEl);
+
+						if (typeof (window as any).externalFormInit === 'function') {
+							setTimeout(() => {
+								const fieldRefs: Record<string, HTMLElement> = {};
+								const allInputs = document.querySelectorAll<HTMLElement>(
+									'input, select, textarea, button[id]'
+								);
+								allInputs.forEach((el) => {
+									if (el.id) {
+										fieldRefs[el.id] = el;
+									}
+								});
+								try {
+									(window as any).externalFormInit(fieldRefs);
+								} catch (e) {
+                                    console.error('externalFormInit error:', e)
+                                }
+							}, EXTERNAL_FORM_INIT_TIMEOUT);
+						}
 					}
 				}
 			}
