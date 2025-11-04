@@ -1,11 +1,10 @@
 <script lang="ts">
 	import type { Item } from '$lib/types/form';
-	import { getFieldLabel } from '$lib/utils/helpers';
 	import './fields.css';
 
 	const { item } = $props<{ item: Item }>();
 	const labelId = `${item.uuid}-info-label`;
-	const labelText = getFieldLabel(item);
+	const labelText = item.attributes?.labelText ?? item.attributes?.text ?? '';
 </script>
 
 <div
