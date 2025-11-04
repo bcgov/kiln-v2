@@ -9,7 +9,7 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { filterAttributes, buildFieldAria } from '$lib/utils/helpers';
+	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
 
@@ -21,7 +21,7 @@
 	let value = $state(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? '');
 	let error = $state(item.attributes?.error ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
-	let labelText = $state(item.attributes?.labelText ?? '');
+	let labelText = $state(getFieldLabel(item));
 	let placeholder = item.attributes?.placeholder ?? '';
 	let helperText = item.help_text ?? '';
 	let maxlength = item.attributes?.maxCount ?? undefined;

@@ -84,3 +84,9 @@ export function buildFieldAria(cfg: BuildFieldAriaConfig) {
 		ariaProps
 	};
 }
+
+import type { Item } from '$lib/types/form';
+
+export function getFieldLabel(item: Item): string {
+	return item.attributes?.labelText ?? item.attributes?.text ?? item.name ?? '';
+}

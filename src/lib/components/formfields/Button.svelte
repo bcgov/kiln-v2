@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { Button } from 'carbon-components-svelte';
 	import type { Item } from '$lib/types/form';
-	import { filterAttributes } from '$lib/utils/helpers';
+	import { filterAttributes, getFieldLabel } from '$lib/utils/helpers';
 	import { syncExternalAttributes } from '$lib/utils/valueSync';
 	import { buildFieldAria } from '$lib/utils/helpers';
 
 	let { item, printing = false } = $props<{ item: Item; printing?: boolean; [key: string]: any }>();
-	let labelText = $derived(item.attributes?.text ?? '');
+	let labelText = $derived(getFieldLabel(item));
 	let readonly = $state(item.is_read_only ?? false);
 
 	let extAttrs = $state<Record<string, any>>({});
