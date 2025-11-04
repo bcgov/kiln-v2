@@ -11,6 +11,8 @@
 		mode?: string;
 	}>();
 
+	const EXTERNAL_FORM_INIT_TIMEOUT = Number(import.meta.env.VITE_EXTERNAL_FORM_INIT_TIMEOUT) || 500;
+
 	// Hash Util to uniquely identify style/script content
 	function hashString(str: string): string {
 		let h = 0,
@@ -118,7 +120,7 @@
 								} catch (e) {
                                     console.error('externalFormInit error:', e)
                                 }
-							}, 500);
+							}, EXTERNAL_FORM_INIT_TIMEOUT);
 						}
 					}
 				}
