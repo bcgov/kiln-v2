@@ -103,7 +103,6 @@
 						document.body.appendChild(scriptEl);
 
 						if (typeof (window as any).externalFormInit === 'function') {
-							console.debug('[SSI] externalFormInit detected, waiting for fields to render...');
 							setTimeout(() => {
 								const fieldRefs: Record<string, HTMLElement> = {};
 								const allInputs = document.querySelectorAll<HTMLElement>(
@@ -114,12 +113,11 @@
 										fieldRefs[el.id] = el;
 									}
 								});
-								console.debug('[SSI] Calling externalFormInit with', Object.keys(fieldRefs).length, 'field references');
 								try {
 									(window as any).externalFormInit(fieldRefs);
 								} catch (e) {
-									console.error('[SSI] externalFormInit error:', e);
-								}
+                                    console.error('externalFormInit error:', e)
+                                }
 							}, 500);
 						}
 					}
