@@ -253,6 +253,12 @@ export function rulesFromAttributes(
   item?: { is_required?: boolean; type?: ValueType }
 ): ValidationRules {
   const rules: ValidationRules = {};
+
+  // This prevents accessing array.length property which would be 0
+  if (Array.isArray(attrs)) {
+    attrs = {};
+  }
+
   if (item?.is_required || attrs.required) rules.required = true;
 
   // Text-like
