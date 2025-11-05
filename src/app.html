@@ -3,6 +3,16 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+		<script>
+			window.__kilnMessageBuffer = [];
+			window.addEventListener('message', function(event) {
+				if (event.data?.type === 'LOAD_JSON') {
+					window.__kilnMessageBuffer.push(event);
+				}
+			});
+		</script>
+
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
