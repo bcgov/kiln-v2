@@ -5,7 +5,6 @@
 	import { API } from '$lib/utils/api';
 
 	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
-	console.log("Debug Test Preview!");
 
 	let present = $state(false);
 	let jsonContent = $state<object>({});
@@ -14,29 +13,41 @@
 	let saveData = $state<{ data: any } | undefined>(undefined);
 	let isLoading = $state(false);
 
+	const trustedOrigins = [
+		import.meta.env.VITE_TEMPLATE_REPO_URL,
+		import.meta.env.VITE_KLAMM_URL,
+	];
+
 	$effect(() => {
 		const handleMessage = (event: MessageEvent) => {
-			const trustedOrigins = [
-				import.meta.env.VITE_TEMPLATE_REPO_URL,
-				import.meta.env.VITE_KLAMM_URL,
-			];
-
 			if (!trustedOrigins.includes(event.origin)) {
 				console.warn('Received message from untrusted origin:', event.origin);
 				return;
 			}
-
-			if (event.data && event.data.type === 'LOAD_JSON') {
+			if (event.data?.type === 'LOAD_JSON') {
 				content = event.data.data;
 				processJSON(event.data.data);
 			}
 		};
 
+		if (window.__kilnMessageBuffer?.length) {
+			window.__kilnMessageBuffer.forEach(handleMessage);
+			window.__kilnMessageBuffer.length = 0;
+		}
+
 		window.addEventListener('message', handleMessage);
 
-		return () => {
-			window.removeEventListener('message', handleMessage);
+		const sendReady = () => {
+			if (window.opener && !window.opener.closed) {
+				window.opener.postMessage({ type: 'KILN_READY' }, import.meta.env.VITE_TEMPLATE_REPO_URL);
+			}
 		};
+
+		sendReady();
+		const interval = setInterval(sendReady, 100);
+		setTimeout(() => clearInterval(interval), 3000);
+
+		return () => window.removeEventListener('message', handleMessage);
 	});
 
 	async function processJSON(jsonString: string) {
@@ -92,7 +103,6 @@
 
 			const boundData = await response.json();
 
-			// Set the bound form definition and save data
 			jsonContent = boundData.form_definition || {};
 			saveData = boundData.data ? { data: boundData.data } : undefined;
 			present = true;
@@ -104,7 +114,6 @@
 	}
 
 	async function handleSubmit(event: Event) {
-		console.log("Debug Test Submitted!");
 		event.preventDefault();
 		await processJSON(content);
 	}
