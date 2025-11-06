@@ -20,6 +20,7 @@
 	import Interfaces from './components/Interfaces.svelte';
 	import { getSessionInterface } from '$lib/utils/interface';
 	import type { ActionResultPayload } from '$lib/types/interfaces';
+	import { bindDataToForm } from './utils/databinder';
 
 	let {
 		saveData = undefined,
@@ -119,8 +120,8 @@
 		if (mode === 'view') {
 			setReadOnlyFields(formData);
 		}
-		
-		return formData?.formversion ? formData.formversion : formData;
+
+		return bindDataToForm({ data: saveData, form_definition: formData?.formversion ? formData.formversion : formData }).mappedFormDef;
 	});
 
 	let ministryLogoPath = $derived.by(() => {
