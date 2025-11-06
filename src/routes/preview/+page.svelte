@@ -68,19 +68,19 @@
 				formData = {
 					data: parsedJSON.data,
 					form_definition: parsedJSON.form_definition,
-					metadata: parsedJSON.metadata || null
+					metadata: parsedJSON.metadata || {}
 				};
 			} else if (parsedJSON.formversion) {
 				formData = {
-					data: null,
+					data: {},
 					form_definition: parsedJSON.formversion,
-					metadata: null
+					metadata: {}
 				};
 			} else {
 				formData = {
-					data: null,
+					data: {},
 					form_definition: parsedJSON,
-					metadata: null
+					metadata: {}
 				};
 			}
 
