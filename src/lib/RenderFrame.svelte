@@ -126,7 +126,7 @@
 
 	let ministryLogoPath = $derived.by(() => {
 		const path = mergedFormData?.ministry_id
-			? `/ministries/${mergedFormData.ministry_id}.png`
+			? `./ministries/${mergedFormData.ministry_id}.png`
 			: null;
 		return path;
 	});
