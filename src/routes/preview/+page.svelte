@@ -85,8 +85,6 @@
 			}
 
 			// Call the API to bind the data
-			console.log("Preview API URL:", API.bindPreviewForm);
-			console.log("Preview Payload:", { formData });
 
 			const response = await fetch(API.bindPreviewForm, {
 				method: 'POST',

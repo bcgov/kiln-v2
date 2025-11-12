@@ -2,7 +2,7 @@
  * Resolve an API URL considering dev overrides and hosted path prefixes.
  */
 export function getApiUrl(path: string, envVar?: string): string {
-	console.log("ENV VAR: ",envVar);
+
     if (envVar) {
       return envVar;
     }
