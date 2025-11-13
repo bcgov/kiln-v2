@@ -8,10 +8,43 @@ import type {
 let kc: KeycloakInstance | null = null;
 let initPromise: Promise<KeycloakInstance> | null = null;
 
-const isStandaloneMode = import.meta.env.VITE_STANDALONE_MODE === 'true';
+const environment = import.meta.env.VITE_ENVIRONMENT as string;
+const isLocal = ['local', 'localhost', 'development', 'dev'].includes(environment);
+const standaloneConfigValue = import.meta.env.VITE_STANDALONE_MODE === 'true';
+const isStandaloneMode = isLocal && standaloneConfigValue;
 const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
+function validateConfig(): string[] {
+	const errors: string[] = [];
+
+	if (!isStandaloneMode && !isPortalIntegrated) {
+		if (!import.meta.env.VITE_SSO_AUTH_SERVER_URL) {
+			errors.push('VITE_SSO_AUTH_SERVER_URL is required');
+		}
+		if (!import.meta.env.VITE_SSO_REALM) {
+			errors.push('VITE_SSO_REALM is required');
+		}
+		if (!import.meta.env.VITE_SSO_CLIENT_ID) {
+			errors.push('VITE_SSO_CLIENT_ID is required');
+		}
+	}
+
+	if (!isLocal && standaloneConfigValue) {
+		errors.push(`VITE_STANDALONE_MODE=true is only allowed in local environments (current: ${environment})`);
+	}
+
+	return errors;
+}
+
 function buildKeycloak(): KeycloakInstance {
+	if (!isStandaloneMode && !isPortalIntegrated) {
+		const errors = validateConfig();
+		if (errors.length > 0) {
+			console.error('Keycloak configuration errors:', errors);
+			throw new Error('Invalid Keycloak configuration: ' + errors.join(', '));
+		}
+	}
+
 	return new Keycloak({
 		url: import.meta.env.VITE_SSO_AUTH_SERVER_URL as string,
 		realm: import.meta.env.VITE_SSO_REALM as string,
@@ -26,7 +59,6 @@ export async function initializeKeycloak(): Promise<KeycloakInstance> {
 	initPromise = (async () => {
 		const instance = buildKeycloak();
 
-		// Refresh token shortly before expiry
 		instance.onTokenExpired = () => {
 			instance.updateToken(5).catch((err) => console.error('Failed to update token:', err));
 		};
@@ -59,7 +91,6 @@ export function getKeycloak(): KeycloakInstance | null {
 export async function guardRoute(
 	type: 'public' | 'private'
 ): Promise<{ keycloak: KeycloakInstance | null; authenticated: boolean }> {
-	// Standalone mode and portal integration bypass auth
 	if (isStandaloneMode || isPortalIntegrated || type === 'public') {
 		return { keycloak: null, authenticated: true };
 	}
