@@ -25,7 +25,7 @@ function getKlammApiBaseUrl(): string {
 export const API = {
   loadICMData: getApiUrl("/loadICMData", import.meta.env.VITE_COMM_API_LOADDATA_ICM_ENDPOINT_URL),
   loadSavedJson: getApiUrl("/loadSavedJson", import.meta.env.VITE_COMM_API_LOADSAVEDJSON_ENDPOINT_URL),
-  generate: getApiUrl("/generate", import.meta.env.VITE_COMM_API_GENERATE_ENDPOINT_URL),
+  generate: getApiUrl("/generateForm", import.meta.env.VITE_COMM_API_GENERATE_ENDPOINT_URL),
   generatePortalForm: getApiUrl("/generatePortalForm", import.meta.env.VITE_COMM_API_GENERATE_PORTAL_FORM_ENDPOINT_URL),
   loadPortalForm: getApiUrl("/loadPortalForm", import.meta.env.VITE_COMM_API_LOAD_PORTAL_FORM_ENDPOINT_URL),
   pdfTemplate: getApiUrl("/pdfRender", import.meta.env.VITE_COMM_API_PDFTEMPLATE_ENDPOINT_URL),
