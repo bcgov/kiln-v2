@@ -10,8 +10,7 @@ let initPromise: Promise<KeycloakInstance> | null = null;
 
 const environment = import.meta.env.VITE_ENVIRONMENT as string;
 const isLocal = ['local', 'localhost', 'development', 'dev'].includes(environment);
-const standaloneConfigValue = import.meta.env.VITE_STANDALONE_MODE === 'true';
-const isStandaloneMode = isLocal && standaloneConfigValue;
+const isStandaloneMode = import.meta.env.VITE_STANDALONE_MODE === 'true';
 const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
 function validateConfig(): string[] {
@@ -27,10 +26,6 @@ function validateConfig(): string[] {
 		if (!import.meta.env.VITE_SSO_CLIENT_ID) {
 			errors.push('VITE_SSO_CLIENT_ID is required');
 		}
-	}
-
-	if (!isLocal && standaloneConfigValue) {
-		errors.push(`VITE_STANDALONE_MODE=true is only allowed in local environments (current: ${environment})`);
 	}
 
 	return errors;
