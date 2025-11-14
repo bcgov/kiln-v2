@@ -3,6 +3,7 @@
 	import RenderFrame from '$lib/RenderFrame.svelte';
 	import { FORM_DELIVERY_MODE, FORM_MODE } from '$lib/constants/formMode';
 	import { API } from '$lib/utils/api';
+	import { getAuthBody } from '$lib/utils/auth-headers';
 
 	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
@@ -88,12 +89,15 @@
 			console.log("Preview API URL:", API.bindPreviewForm);
 			console.log("Preview Payload:", { formData });
 
+			const authBody = getAuthBody();
+			const payload = { formData, ...authBody };
+
 			const response = await fetch(API.bindPreviewForm, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({ formData })
+				body: JSON.stringify(payload)
 			});
 
 			if (!response.ok) {
