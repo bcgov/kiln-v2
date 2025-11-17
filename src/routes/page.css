@@ -149,6 +149,17 @@ html, body {
   padding: 12px 24px;
 }
 
+/* Ensure fieldset legend headings (section titles) are bold and match legacy size */
+fieldset legend h2,
+fieldset legend h3,
+.container-group legend h2,
+.container-group legend h3 {
+  font-weight: 700 !important;
+  font-size: 28px !important;
+  line-height: normal !important;
+  margin-bottom: 15px !important;
+}
+
 .group-item-header {
   display: flex;
   height: 58px;
