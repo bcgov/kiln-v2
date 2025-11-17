@@ -1,14 +1,84 @@
+/* Noto Sans - Primary Font */
 @font-face {
-	font-family: 'BC Sans';
-	src: url('/fonts/BCSans-Regular.ttf') format('truetype');
-	font-weight: 400; 
-	 font-style: normal; 
+	font-family: 'Noto Sans';
+	src: url('/fonts/NotoSans-VariableFont_wdth,wght.ttf') format('truetype-variations');
+	font-weight: 100 900;
+	font-style: normal;
 	font-display: swap;
 }
 @font-face {
-	font-family: 'BC Sans';
-	src: url('/fonts/BCSans-Bold.ttf') format('truetype');
-	font-weight: 700;
+	font-family: 'Noto Sans';
+	src: url('/fonts/NotoSans-Italic-VariableFont_wdth,wght.ttf') format('truetype-variations');
+	font-weight: 100 900;
+	font-style: italic;
+	font-display: swap;
+}
+
+/* IBM Plex Mono - Monospace */
+@font-face {
+	font-family: 'IBM Plex Mono';
+	src: url('/fonts/IBMPlexMono-Light.woff2') format('woff2');
+	font-weight: 300;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'IBM Plex Mono';
+	src: url('/fonts/IBMPlexMono-Regular.woff2') format('woff2');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'IBM Plex Mono';
+	src: url('/fonts/IBMPlexMono-SemiBold.woff2') format('woff2');
+	font-weight: 600;
+	font-style: normal;
+	font-display: swap;
+}
+
+/* IBM Plex Sans - Sans Serif */
+@font-face {
+	font-family: 'IBM Plex Sans';
+	src: url('/fonts/IBMPlexSans-Light.woff2') format('woff2');
+	font-weight: 300;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'IBM Plex Sans';
+	src: url('/fonts/IBMPlexSans-Regular.woff2') format('woff2');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'IBM Plex Sans';
+	src: url('/fonts/IBMPlexSans-SemiBold.woff2') format('woff2');
+	font-weight: 600;
+	font-style: normal;
+	font-display: swap;
+}
+
+/* IBM Plex Serif - Serif */
+@font-face {
+	font-family: 'IBM Plex Serif';
+	src: url('/fonts/IBMPlexSerif-Light.woff2') format('woff2');
+	font-weight: 300;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'IBM Plex Serif';
+	src: url('/fonts/IBMPlexSerif-Regular.woff2') format('woff2');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'IBM Plex Serif';
+	src: url('/fonts/IBMPlexSerif-SemiBold.woff2') format('woff2');
+	font-weight: 600;
 	font-style: normal;
 	font-display: swap;
 }
@@ -20,7 +90,7 @@
   --box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   --z-index-top: 1000;
   --dark-red: #b30000;
-  --default-font-family: "BC Sans", sans-serif;
+  --default-font-family: "Noto Sans", sans-serif;
   --default-font-size: 16px;
   --default-font-color: #000;
   --outer-padding: 0px 60px;
@@ -31,6 +101,7 @@
 
 html, body {
   font-family: var(--default-font-family), sans-serif !important;
+  line-height: 150%; /* 24px at 16px base */
 }
 
 .group-container {
@@ -59,23 +130,22 @@ html, body {
   border: var(--border-width) var(--border-color);
   margin-bottom: 20px;
   border-radius: 5px;
-  font-family: "BC Sans";
+  font-family: "Noto Sans";
   font-size: 30px;
   font-style: normal;
   font-weight: 700;
   line-height: 125%;
 }
 
-
-
 .group-header {
-  color: #000;
+  color: #2D2D2D;
   font-family: var(--default-font-family);
   font-size: 28px;
   font-style: normal;
   font-weight: 700;
   line-height: normal;
   margin-bottom: 15px;
+  padding: 12px 24px;
 }
 
 .group-item-header {
@@ -99,9 +169,14 @@ html, body {
 .text-block h1 {
   font-size: 32px;
   font-weight: 700;
+  color: #2D2D2D;
 }
 .text-block h2 {
   font-size: 28px;
+  color: #2D2D2D;
+}
+h1, h2, h3 {
+  color: #2D2D2D;
 }
 h1 {
   font-size: 36px;
@@ -120,10 +195,13 @@ h1 {
   font-size: 1rem;
 }
 
-.cds--label {
-  font-weight: var(--label-font-weight);
-  font-size: var(--label-font-size);
-  font-style: var(--label-font-style);
+.cds--label,
+.bx--label,
+label {
+  font-weight: var(--label-font-weight) !important;
+  font-size: var(--label-font-size) !important;
+  font-style: var(--label-font-style) !important;
+  font-family: var(--default-font-family) !important;
 }
 /* 
 .print-only {
@@ -206,83 +284,70 @@ h1 {
   display: flex;
   flex-wrap: wrap;
 }
-.print-only {
-  display: hidden;
+
+/* Custom Button Styles - Matching Legacy Kiln */
+.button-base {
+  display: flex;
+  height: 40px;
+  padding: 6px 12px;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
-.hidden-on-screen {
-  display: none;
-}
-.cds--toggle__label-text {
-  padding: 10px 0px;
-  font: initial;
-  font-weight: normal;
-  font-family: var(--default-font-family);
-  font-size: var(--default-font-size);
-  color: #000;
+.header-buttons-only .cds--btn,
+.header-buttons-only button {
+  background: #fff;
+  border: 1px solid #2D2D2D;
+  color: #2D2D2D;
 }
 
-.cds--text-input,
-.cds--dropdown,
-.cds--date-picker__input,
-.cds--text-area {
-  border: 1px solid #8D8D8D;
-  background: none;
-}
-
-.cds--text-input-wrapper--readonly .cds--text-input,
-.cds--date-picker__input[readonly],
-.cds--dropdown--readonly .cds--list-box__field,
-.cds--text-area__wrapper--readonly .cds--text-area {
+.header-buttons-only .cds--btn:hover,
+.header-buttons-only button:hover {
   background: #f4f4f4;
+}
+
+.custom-buttons-only .cds--btn,
+.custom-buttons-only button {
+  background: transparent;
+  border: 1px solid #2D2D2D;
+  color: #2D2D2D;
+}
+
+.custom-buttons-only .cds--btn:hover,
+.custom-buttons-only button:hover {
+  background: rgba(45, 45, 45, 0.1);
+}
+
+.custom-buttons-no-bg .cds--btn,
+.custom-buttons-no-bg button {
+  background: transparent;
   border: none;
-}
-
-.cds--checkbox-label-text {
-  font-size: 16px;
-}
-.custom-modal-footer {
-  display: flex;
+  color: #2D2D2D;
   justify-content: flex-end;
-  gap: 10px;
-  padding-top: 16px;
 }
 
-.loading-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(255, 255, 255, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  backdrop-filter: blur(8px);
+.custom-buttons-no-bg .cds--btn:hover,
+.custom-buttons-no-bg button:hover {
+  text-decoration: underline;
 }
 
-.loading-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
+/* Mobile Responsive Breakpoint - 768px */
+@media (max-width: 768px) {
+  .fixed {
+    flex-direction: column;
+    align-items: center;
+  }
 
-.loading-message {
-  font-size: 18px;
-  font-weight: bold;
-  text-align: center;
+  .header-buttons-only,
+  .custom-buttons-only,
+  .custom-buttons-no-bg {
+    width: 100%;
+    justify-content: center;
+  }
 }
-
-.custom-buttons-only {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.custom-buttons-no-bg {
-  display: flex;
-  flex-wrap: wrap;
-} */
