@@ -306,6 +306,8 @@ button {
   gap: 0 !important;
   padding-right: 12px !important;
   padding-left: 12px !important;
+  font-size: 16px !important;
+  font-family: var(--default-font-family) !important;
 }
 
 .cds--btn__icon {
