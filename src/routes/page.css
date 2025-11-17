@@ -222,6 +222,17 @@ label {
   font-size: 16px;
 }
 
+/* Radio button label text should not be bold and match legacy size */
+.bx--radio-button__label-text,
+.cds--radio-button__label-text,
+.bx--radio-button-wrapper .bx--radio-button__label .bx--radio-button__label-text,
+.cds--radio-button-wrapper .cds--radio-button__label .cds--radio-button__label-text,
+.bx--radio-button__label span,
+.cds--radio-button__label span {
+  font-weight: normal !important;
+  font-size: 14px !important;
+}
+
 /* Readonly field styles */
 .bx--text-input-wrapper--readonly .bx--text-input,
 .bx--date-picker__input[readonly],
