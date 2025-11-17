@@ -292,7 +292,6 @@ label {
   padding: 6px 12px;
   justify-content: center;
   align-items: center;
-  gap: 8px;
   border-radius: 4px;
   font-size: 14px;
   font-weight: 400;
@@ -300,11 +299,34 @@ label {
   transition: background-color 0.2s ease;
 }
 
+/* Add rounded corners to all buttons and remove extra padding */
+.cds--btn,
+button {
+  border-radius: 4px !important;
+  gap: 0 !important;
+  padding-right: 12px !important;
+  padding-left: 12px !important;
+}
+
+.cds--btn__icon {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Remove Carbon's default button padding that adds extra space */
+.cds--btn--ghost.cds--btn--icon-only .cds--btn__icon,
+.cds--btn--primary.cds--btn--icon-only .cds--btn__icon,
+.cds--btn--secondary.cds--btn--icon-only .cds--btn__icon,
+.cds--btn--tertiary.cds--btn--icon-only .cds--btn__icon {
+  margin: 0 !important;
+}
+
 .header-buttons-only .cds--btn,
 .header-buttons-only button {
   background: #fff;
   border: 1px solid #2D2D2D;
   color: #2D2D2D;
+  border-radius: 4px;
 }
 
 .header-buttons-only .cds--btn:hover,
@@ -317,6 +339,7 @@ label {
   background: transparent;
   border: 1px solid #2D2D2D;
   color: #2D2D2D;
+  border-radius: 4px;
 }
 
 .custom-buttons-only .cds--btn:hover,
@@ -330,6 +353,7 @@ label {
   border: none;
   color: #2D2D2D;
   justify-content: flex-end;
+  border-radius: 4px;
 }
 
 .custom-buttons-no-bg .cds--btn:hover,
