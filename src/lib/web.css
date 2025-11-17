@@ -155,3 +155,8 @@
   }
 }
 
+/* Ensure RadioButtonGroup fieldsets have proper top margin to match legacy kiln */
+.bx--radio-button-group,
+.cds--radio-button-group {
+  margin-top: 1.25rem !important;
+}
