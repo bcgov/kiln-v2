@@ -292,7 +292,7 @@
 	.container-group {
 		display: grid;
 		grid-template-columns: repeat(1, 1fr);
-		gap: 1rem;
+		/* gap removed to match legacy kiln behavior - spacing controlled by individual element margins */
 	}
 
 	/* Container type classes */

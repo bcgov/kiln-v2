@@ -131,7 +131,7 @@
 .form-renderer {
   display: grid;
   grid-template-columns: repeat(1, 1fr);
-  gap: 1rem;
+  /* gap removed to match legacy kiln - spacing controlled by individual element margins */
 }
 
 /* When in "printing" state during HTML print prep */
