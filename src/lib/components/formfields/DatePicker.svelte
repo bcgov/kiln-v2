@@ -20,6 +20,7 @@
 
 	let readOnly = $state(item.is_read_only ?? false);
 	let labelText = $state(getFieldLabel(item));
+	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let helperText = item.help_text ?? '';
 	let touched = $state(false);
 
@@ -110,7 +111,7 @@
 <div class="field-container date-picker-field">
 	<PrintRow {item} {printing} {labelText} value={value ?? ''} />
 
-	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
+	<div class="web-input" class:visible={!printing && item.visible_web !== false} class:moustache={enableVarSub}>
 		<DatePicker
 			{...filterAttributes(item.attributes)}
 			{...extAttrs as any}

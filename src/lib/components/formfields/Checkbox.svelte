@@ -22,6 +22,7 @@
 	let labelText = $state(getFieldLabel(item));
 	let readonly = $state(item.is_read_only ?? false);
 	let helperText = item.help_text ?? '';
+	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let touched = $state(false);
 
 	let extAttrs = $state<Record<string, any>>({});
@@ -101,6 +102,7 @@
 		class="web-input"
 		class:visible={!printing && item.visible_web !== false}
 		class:read-only={readonly}
+		class:moustache={enableVarSub}
 	>
 		<Checkbox
 			{...filterAttributes(filteredAttributes)}

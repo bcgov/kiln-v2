@@ -23,6 +23,7 @@
 	let error = $state(item.attributes?.error ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
 	let labelText = $state(getFieldLabel(item));
+	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let placeholder = item.attributes?.placeholder ?? '';
 	let helperText = item.help_text ?? item.description ?? '';
 
@@ -129,7 +130,7 @@
 <div class="field-container text-input-field">
 	<PrintRow {item} {printing} {labelText} value={value || ''} />
 
-	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
+	<div class="web-input" class:visible={!printing && item.visible_web !== false} class:moustache={enableVarSub}>
 		<TextInput
 			{...filterAttributes(item?.attributes)}
 			id={item.uuid}
