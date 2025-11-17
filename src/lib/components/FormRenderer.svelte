@@ -13,6 +13,8 @@
 	import TextInfo from './formfields/TextInfo.svelte';
 	import TextInput from './formfields/TextInput.svelte';
 
+	import { isFieldVisible } from '$lib/utils/form';
+
 	let {
 		formData,
 		mode,
@@ -50,11 +52,12 @@
 	});
 
 	let elements = $derived.by(() => {
-		const result = formData?.elements ?? [];
+		const result = formData?.elements ?? formData?.data ?? [];
 		return result;
 	});
 
 	let printingState = $derived(printing);
+	const viewMode: 'web' | 'pdf' = $derived(printingState ? 'pdf' : 'web');
 </script>
 
 {#snippet renderComponent(item: Item)}
@@ -66,8 +69,10 @@
 
 <div class="form-renderer" class:printing={printingState}>
 	{#each elements as item (item.uuid)}
-		<div data-print-columns={1}>
-			{@render renderComponent(item)}
-		</div>
+		{#if isFieldVisible(item, viewMode)}
+			<div class="ff-item" data-ff-type={item.type} data-print-columns={1}>
+				{@render renderComponent(item)}
+			</div>
+		{/if}
 	{/each}
 </div>

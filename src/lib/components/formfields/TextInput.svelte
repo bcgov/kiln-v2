@@ -9,7 +9,7 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { filterAttributes, buildFieldAria } from '$lib/utils/helpers';
+	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
 	import { maska } from 'maska/svelte';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
@@ -22,7 +22,7 @@
 	let value = $state(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? '');
 	let error = $state(item.attributes?.error ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
-	let labelText = $state(item.attributes?.labelText ?? '');
+	let labelText = $state(getFieldLabel(item));
 	let placeholder = item.attributes?.placeholder ?? '';
 	let helperText = item.help_text ?? item.description ?? '';
 
@@ -97,13 +97,30 @@
 		readOnly: readOnly
 	});
 
+	const DASH_RX = /[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g;
+	const normalizeDash = (s?: string) => s?.normalize('NFKC').replace(DASH_RX, '-') ?? '';
+
+	// class-spec = "a-z", "A-Z", "0-9", "a-z0-9", or "[A-Za-z' -]"
+	const isClassSpecMask = (m: unknown) => {
+		if (typeof m !== 'string') return false;
+		const s = normalizeDash(m).trim();
+		return /^(?:a-z|A-Z|a-zA-Z|0-9|a-z0-9|A-Z0-9|a-zA-Z0-9)$/i.test(s) || /^\[[^\]]+\]$/.test(s);
+	};
+
+	// only apply maska for real formatting masks (#, @, *, 9, etc.)
+	const hasMaskTokens = (s: string) => /[#@*9ANX]/.test(s);
+
 	// Apply mask to the real input element once it exists
 	let maskApplied = false;
 	$effect(() => {
-		if (!mask || maskApplied || typeof document === 'undefined') return;
+		if (maskApplied || typeof document === 'undefined') return;
+		const raw = normalizeDash(item.attributes?.mask).trim();
+		if (!raw || isClassSpecMask(raw) || !hasMaskTokens(raw)) return; // ⟵ skip literal/class-spec masks
+
 		const el = document.getElementById(item.uuid) as HTMLInputElement | null;
 		if (el) {
-			maska(el, mask);
+			// apply only to real token masks like "###-###" or "@@@"
+			maska(el, raw);
 			maskApplied = true;
 		}
 	});

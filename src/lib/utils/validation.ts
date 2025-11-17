@@ -16,14 +16,78 @@ export type ValidationRules = {
   isEmail?: boolean;
   isUrl?: boolean;
   custom?:
-    | ((value: any) => string | null | undefined)
-    | Array<(value: any) => string | null | undefined>;
+  | ((value: any) => string | null | undefined)
+  | Array<(value: any) => string | null | undefined>;
 };
 
 export type ValidateOptions = {
   type?: ValueType;
   fieldLabel?: string;
 };
+
+// helper
+function escapeRe(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// normalize many unicode dashes (‐-‒–—―−﹘﹣－) to ASCII '-'
+const DASH_RX = /[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g;
+function normalizeMask(mask: string) {
+  return mask?.normalize('NFKC').replace(DASH_RX, "-");
+}
+
+// Is this a simple "allowed characters" spec (not a formatting mask)?
+function isClassSpecMask(m: unknown): m is string {
+  if (typeof m !== 'string') return false;
+  const s = normalizeMask(m).trim();
+  return (
+    /^(?:a-z|A-Z|a-zA-Z|0-9|a-z0-9|A-Z0-9|a-zA-Z0-9)$/i.test(s) ||
+    /^\[[^\]]+\]$/.test(s)
+  );
+}
+
+// Convert allowed-class spec to a permissive regex that allows partial typing
+function classSpecToRegex(spec: string): RegExp | null {
+  const s = normalizeMask(spec).trim();
+
+  if (s === 'a-z' || s === 'A-Z' || s === 'a-zA-Z') return /^[A-Za-z]*$/;
+  if (s === '0-9') return /^\d*$/;
+  if (/^(?:a-z0-9|A-Z0-9|a-zA-Z0-9)$/i.test(s)) return /^[A-Za-z0-9]*$/;
+
+  const m = s.match(/^\[([^\]]+)\]$/);
+  if (m) {
+    const inner = m[1]; // e.g. A-Za-z' -
+    // We assume JSON provides a safe class; if needed you can further sanitize here.
+    return new RegExp(`^[${inner}]*$`);
+  }
+  return null;
+}
+
+// Heuristic: does the mask contain known mask tokens (formatting masks)?
+// Support both Maska-style (#/@/*) and legacy (9/a/*) tokens.
+function containsMaskTokens(s: string) {
+  return /[#@*9aA]/.test(s);
+}
+
+/**
+ * Turn a mask into a full-match regex:
+ *  - 9 => digit
+ *  - a => letter
+ *  - * => alphanumeric
+ *  - others => literal characters
+ */
+export function compileMaskToRegex(mask: string): RegExp {
+  const m = normalizeMask(mask);
+  const pattern = Array.from(m)
+    .map((ch) =>
+      ch === "9" ? "\\d"
+        : ch === "a" ? "[A-Za-z]"
+          : ch === "*" ? "[A-Za-z0-9]"
+            : escapeRe(ch)
+    )
+    .join("");
+  return new RegExp(`^${pattern}$`);
+}
 
 function toRegExp(p: RegExp | string | undefined): RegExp | undefined {
   if (!p) return undefined;
@@ -142,34 +206,34 @@ export function validateValue(
   }
 
 
-    const s = String(value);
-    if (typeof rules.length === 'number' && s.length !== rules.length) {
-      errors.push(buildErrorMessage('length_exact', { length: rules.length }, label));
+  const s = String(value);
+  if (typeof rules.length === 'number' && s.length !== rules.length) {
+    errors.push(buildErrorMessage('length_exact', { length: rules.length }, label));
+  }
+  if (typeof rules.minLength === 'number' && s.length < rules.minLength) {
+    errors.push(buildErrorMessage('minLength', { minLength: rules.minLength }, label));
+  }
+  if (typeof rules.maxLength === 'number' && s.length > rules.maxLength) {
+    errors.push(buildErrorMessage('maxLength', { maxLength: rules.maxLength }, label));
+  }
+  const rx = toRegExp(rules.pattern);
+  if (rx && !rx.test(s)) {
+    errors.push(buildErrorMessage('pattern', {}, label));
+  }
+  if (rules.isEmail) {
+    const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRx.test(s)) {
+      errors.push(buildErrorMessage('email', {}, label));
     }
-    if (typeof rules.minLength === 'number' && s.length < rules.minLength) {
-      errors.push(buildErrorMessage('minLength', { minLength: rules.minLength }, label));
+  }
+  if (rules.isUrl) {
+    try {
+      new URL(s);
+    } catch {
+      errors.push(buildErrorMessage('url', {}, label));
     }
-    if (typeof rules.maxLength === 'number' && s.length > rules.maxLength) {
-      errors.push(buildErrorMessage('maxLength', { maxLength: rules.maxLength }, label));
-    }
-    const rx = toRegExp(rules.pattern);
-    if (rx && !rx.test(s)) {
-      errors.push(buildErrorMessage('pattern', {}, label));
-    }
-    if (rules.isEmail) {
-      const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRx.test(s)) {
-        errors.push(buildErrorMessage('email', {}, label));
-      }
-    }
-    if (rules.isUrl) {
-      try {
-        new URL(s);
-      } catch {
-        errors.push(buildErrorMessage('url', {}, label));
-      }
-    }
-  
+  }
+
 
   // Custom validators
   if (rules.custom) {
@@ -189,13 +253,45 @@ export function rulesFromAttributes(
   item?: { is_required?: boolean; type?: ValueType }
 ): ValidationRules {
   const rules: ValidationRules = {};
+
+  // This prevents accessing array.length property which would be 0
+  if (Array.isArray(attrs)) {
+    attrs = {};
+  }
+
   if (item?.is_required || attrs.required) rules.required = true;
 
   // Text-like
   if (attrs.maxCount != null) rules.maxLength = Number(attrs.maxCount);
   if (attrs.minLength != null) rules.minLength = Number(attrs.minLength);
   if (attrs.length != null) rules.length = Number(attrs.length);
-  if (attrs.pattern != null) rules.pattern = attrs.pattern;
+  if (attrs.pattern != null) {
+    const pRaw = normalizeMask(String(attrs.pattern).trim());
+    if (isClassSpecMask(pRaw)) {
+      const re = classSpecToRegex(pRaw); // -> ^[...]*$
+      if (re) rules.pattern = re;
+    } else {
+      // keep as-is; if you prefer to force full-match, you can wrap with ^(?:... )$ here
+      rules.pattern = pRaw;
+    }
+  }
+
+  // input-mask -> pattern
+  if (!rules.pattern && typeof attrs.mask === "string" && attrs.mask.trim()) {
+    const raw = normalizeMask(attrs.mask.trim());
+
+    if (isClassSpecMask(raw)) {
+      // Allowed-character spec => permissive regex (allows partial typing)
+      const re = classSpecToRegex(raw);
+      if (re) rules.pattern = re;
+    } else if (containsMaskTokens(raw)) {
+      // Real formatting mask => compile a strict full-match regex
+      rules.pattern = compileMaskToRegex(raw);
+    } else {
+      // Not a known mask; ignore to avoid false "format" errors
+      // (If you ever want to accept literal regex strings, add parsing here.)
+    }
+  }
 
   // Number-like
   if (attrs.min != null && item?.type !== 'date') rules.min = Number(attrs.min);

@@ -4,10 +4,9 @@
 	import { Button, Form, Modal, Loading } from 'carbon-components-svelte';
 	import FormRenderer from './components/FormRenderer.svelte';
 	import ScriptStyleInjection from './components/ScriptStyleInjection.svelte';
-	import { bindDataToForm } from './utils/databinder';
 	import { FORM_MODE } from './constants/formMode';
 	import {
-		saveDataToICMApi,
+		saveFormData,
 		unlockICMFinalFlags,
 		createSavedData,
 		generatePDF,
@@ -19,6 +18,9 @@
 	import { initExternalUpdateBridge } from '$lib/utils/valueSync';
 	// Add Interfaces component
 	import Interfaces from './components/Interfaces.svelte';
+	import { getSessionInterface } from '$lib/utils/interface';
+	import type { ActionResultPayload } from '$lib/types/interfaces';
+	import { bindDataToForm } from './utils/databinder';
 
 	let {
 		saveData = undefined,
@@ -35,6 +37,56 @@
 	let modalMessage = $state('');
 	let isFormCleared = $state(false);
 	let modalErrors = $state<string[]>([]);
+
+	let interfaceItems = $derived.by(() => {
+		// Prefer interface embedded in the payload (array or { interface: [] })
+		const fd =
+			(mergedFormData as any)?.interface?.interface ??
+			(mergedFormData as any)?.interface ??
+			(formData as any)?.interface?.interface ??
+			(formData as any)?.interface;
+
+		if (Array.isArray(fd)) return fd;
+
+		// Fallback: sessionStorage (set earlier by the loader/wrapper)
+		const ss = getSessionInterface();
+		return Array.isArray(ss) ? ss : [];
+	});
+
+	let interfaceContext = $derived.by(() => {
+		const search =
+			typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+		const params = search ? Object.fromEntries(search.entries()) : {};
+
+		return {
+			// modal control
+			setModalTitle,
+			setModalMessage,
+			setModalOpen,
+
+			// renderer abilities
+			validateAllFields,
+			handlePrint,
+			handleCancel,
+			handleSubmit, 
+			// utils imported above:
+			createSavedData,
+			submitForButtonAction, // in case scripts choose to call it
+
+			// route/query params
+			params
+		};
+	});
+
+	function setModalTitle(t: string) {
+		modalTitle = t;
+	}
+	function setModalMessage(m: string) {
+		modalMessage = m;
+	}
+	function setModalOpen(open: boolean) {
+		modalOpen = !!open;
+	}
 
 	// Consolidated modal handler
 	function showModal(
@@ -64,23 +116,17 @@
 
 	let mergedFormData = $derived.by(() => {
 		if (!formData) return null;
+
 		if (mode === 'view') {
 			setReadOnlyFields(formData);
 		}
-		if (saveData && formData) {
-			const { mappedFormDef } = bindDataToForm({
-				data: saveData.data,
-				form_definition: formData
-			});
-			return mappedFormDef;
-		} else {
-			return formData;
-		}
+
+		return bindDataToForm({ data: saveData, form_definition: formData?.formversion ? formData.formversion : formData }).mappedFormDef;
 	});
 
 	let ministryLogoPath = $derived.by(() => {
 		const path = mergedFormData?.ministry_id
-			? `/ministries/${mergedFormData.ministry_id}.png`
+			? `./ministries/${mergedFormData.ministry_id}.png`
 			: null;
 		return path;
 	});
@@ -179,10 +225,9 @@
 		try {
 			const { isValid, errorList } = validateAllFields();
 			if (isValid) {
-				const savedData = createSavedData();
-				const returnMessage = await saveDataToICMApi(savedData);
+				const returnMessage = await saveFormData('save');
 				if (returnMessage === 'success') {
-					showModal('success');
+					showModal('success', 'Form saved successfully');
 				} else {
 					showModal('error', returnMessage);
 				}
@@ -190,7 +235,7 @@
 				showModal('validation', undefined, errorList);
 			}
 		} catch (error) {
-			console.log(error, 'this is error');
+			console.error('Save error:', error);
 			showModal('error');
 		} finally {
 			isLoading = false;
@@ -204,19 +249,12 @@
 		try {
 			const { isValid, errorList } = validateAllFields();
 			if (isValid) {
-				const savedData = createSavedData();
-				console.log('Saved Data:', savedData, 'this is saved data');
-				const returnMessage = await saveDataToICMApi(savedData);
+				const returnMessage = await saveFormData('save_and_close');
 				if (returnMessage === 'success') {
-					const unlockMessage = await unlockICMFinalFlags();
-					if (unlockMessage === 'success') {
-						isFormCleared = true;
-						window.opener = null;
-						window.open('', '_self');
-						window.close();
-					} else {
-						showModal('error', 'Error clearing locked flags. Please try again.');
-					}
+					isFormCleared = true;
+					window.opener = null;
+					window.open('', '_self');
+					window.close();
 				} else {
 					showModal('error', returnMessage);
 				}
@@ -224,6 +262,7 @@
 				showModal('validation', undefined, errorList);
 			}
 		} catch (error) {
+			console.error('Save and close error:', error);
 			showModal('error');
 		} finally {
 			isLoading = false;
@@ -235,8 +274,7 @@
 		modalOpen = false;
 
 		try {
-			const savedData = createSavedData();
-			const returnMessage = await saveDataToICMApi(savedData);
+			const returnMessage = await saveFormData('save');
 			if (returnMessage === 'success') {
 				showModal('success');
 			} else {
@@ -310,27 +348,35 @@
 		};
 	});
 
-	function handleInterfaceResult(e: CustomEvent) {
-		const detail = (e as any)?.detail || {};
-		if (detail?.validationErrors?.length) {
-			showModal('validation', undefined, detail.validationErrors);
+	function handleInterfaceResult(payload: ActionResultPayload) {
+		const { ok, error, label, validationErrors } = payload;
+
+		if (!ok) {
+			if (validationErrors?.length) {
+				setModalTitle('Please fix the highlighted fields');
+				setModalMessage(`${validationErrors.length} issues were found.`);
+				setModalOpen(true);
+				return;
+			}
+			setModalTitle(label || 'Action failed');
+			setModalMessage(typeof error === 'string' ? error : JSON.stringify(error ?? {}, null, 2));
+			setModalOpen(true);
 			return;
 		}
-		if (detail?.ok) {
-			showModal('success');
-		} else {
-			const msg =
-				detail?.error?.message ||
-				detail?.error?.statusText ||
-				(detail?.error?.data ? JSON.stringify(detail.error.data) : null) ||
-				'Action failed';
-			showModal('error', msg);
-		}
+
+		// Success path
+		setModalTitle(label || 'Success');
+		setModalMessage('Done.');
+		setModalOpen(true);
 	}
 </script>
 
 <!-- Inject dynamic styles and scripts -->
-<ScriptStyleInjection styles={formData?.styles} scripts={formData?.scripts} {mode} />
+<ScriptStyleInjection
+	styles={formData?.styles || formData?.data?.styles}
+	scripts={formData?.scripts || formData?.data?.scripts}
+	{mode}
+/>
 
 {#if isLoading}
 	<Loading />
@@ -367,12 +413,13 @@
 
 				<div class="header-buttons-only no-print">
 					<Interfaces
-						items={mergedFormData?.interface || formData?.interface || []}
+						{mode}
+						items={interfaceItems}
+						context={interfaceContext}
 						disabled={typeof goBack === 'function'}
-						on:action-result={handleInterfaceResult}
+						onActionResult={handleInterfaceResult}
 					/>
-					<!-- Temp removal while reviewing interface implementation -->
-					<!-- {#if mode === FORM_MODE.edit}
+					{#if mode === FORM_MODE.edit}
 						<Button kind="tertiary" class="no-print" onclick={handleSave}>Save</Button>
 						<Button kind="tertiary" class="no-print" onclick={handleSaveAndClose}>
 							Save And Close
@@ -383,13 +430,13 @@
 						<Button kind="tertiary" class="no-print" onclick={handleGenerate}>Generate</Button>
 					{/if}
 
-					{#if (mode === FORM_MODE.edit || mode === FORM_MODE.preview) && formDelivery === 'portal'}
+					{#if (mode === FORM_MODE.edit || mode === FORM_MODE.preview) && formDelivery === 'portal' && (!interfaceItems || interfaceItems.length === 0)}
 						<div class="header-buttons-only no-print">
-							<!-- Replace inline mapping with reusable Interfaces component 
+							<!-- Replace inline mapping with reusable Interfaces component -->
 							<Button onclick={handleCancel} kind="tertiary" id="generate">Cancel</Button>
 							<Button onclick={handleSubmit} kind="tertiary" id="generate">Submit</Button>
 						</div>
-				{/if}  -->
+					{/if}
 
 					{#if goBack}
 						<Button kind="tertiary" class="no-print" onclick={goBack}>Back</Button>

@@ -9,7 +9,7 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { filterAttributes, buildFieldAria } from '$lib/utils/helpers';
+	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
 
@@ -21,7 +21,7 @@
 	let value = $state(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? '');
 	let error = $state(item.attributes?.error ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
-	let labelText = $state(item.attributes?.labelText ?? '');
+	let labelText = $state(getFieldLabel(item));
 	let placeholder = item.attributes?.placeholder ?? '';
 	let helperText = item.help_text ?? '';
 	let maxlength = item.attributes?.maxCount ?? undefined;
@@ -43,6 +43,8 @@
 			}).firstError ?? ''
 		);
 	});
+
+	const rows = Number.isFinite(Number(item?.attributes?.rows)) ? Number(item.attributes.rows) : 4;
 
 	function oninput() {
 		touched = true;
@@ -90,7 +92,7 @@
 </script>
 
 <div class="field-container text-area-field">
-	<PrintRow {item} {printing} {labelText} value={value || ''} />
+	<PrintRow {item} {printing} {labelText} value={value || ''} rows={rows} />
 
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<TextArea
@@ -107,6 +109,7 @@
 			{oninput}
 			{onblur}
 			{...extAttrs as any}
+			rows={rows}
 		>
 			<span slot="labelText" id={a11y.labelId} class:required={item.is_required}
 				>{@html labelText}</span

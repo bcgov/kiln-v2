@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { API } from '../../lib/utils/api';
+	import { getAuthHeaders } from '$lib/utils/auth-headers';
 	import Echo from 'laravel-echo';
 	import Pusher from 'pusher-js';
 	import {
@@ -152,7 +153,10 @@
 				/&$/,
 				''
 			);
-			const response = await fetch(url);
+			const authHeaders = await getAuthHeaders();
+			const response = await fetch(url, {
+				headers: authHeaders
+			});
 			if (!response.ok)
 				throw new Error(`Failed to fetch form data: ${response.status} ${response.statusText}`);
 			const apiData = await response.json();

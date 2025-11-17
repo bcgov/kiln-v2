@@ -152,6 +152,8 @@ export interface mappedFormDef {
 export function bindDataToForm(input: { data: any; form_definition: any }): mappedFormDef {
 	if (!input?.form_definition?.data?.items && !input?.form_definition?.elements) {
 		return { mappedFormDef: null, debugMap: {} };
+	} else if (!input?.data) {
+		return { mappedFormDef: input.form_definition, debugMap: {} };
 	}
 	const formDef = deepClone(input.form_definition);
 	const items = formDef.data?.items || formDef.elements;
