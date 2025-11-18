@@ -99,6 +99,8 @@ export async function guardRoute(
 		await keycloak.login(loginOptions);
 		return { keycloak, authenticated: false };
 	}
+	console.log("Keycloak:",keycloak);
+	console.log("keycloak token:",keycloak.token);
 
 	return { keycloak, authenticated: !!keycloak.authenticated };
 }
