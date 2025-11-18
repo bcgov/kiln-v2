@@ -3,8 +3,8 @@
 
 
   @page {
-    size: auto;
-    margin: 10mm 10mm 15mm 10mm; /* Top Right Bottom Left */
+    size: A4;
+    margin: 10mm 10mm 20mm 10mm; /* Top Right Bottom Left */
     @top-left { content: ""; }
     @top-center { content: ""; }
     @top-right { content: none; }
@@ -12,7 +12,12 @@
     @bottom-center { content: ""; }
     @bottom-right { content: counter(page) " / " counter(pages); }
   }
-  
+
+  * {
+    font-family: "Noto Sans", sans-serif !important;
+    line-height: 150%;
+  }
+
   /* Reveal elements that are only relevant for print */
   .hidden-on-screen {
     display: block !important;
