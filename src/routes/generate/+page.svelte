@@ -6,7 +6,7 @@
 	import { FORM_MODE, FORM_DELIVERY_MODE } from '$lib/constants/formMode';
 
 	const { isLoading, error, formData, saveData } = useFormLoader({
-		apiEndpoint: API.loadBoundForm,
+		apiEndpoint: API.loadSavedJson,
 		expectSaveData: false,
 		transformParams: (params) => ({
 			...params,
