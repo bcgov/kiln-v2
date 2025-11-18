@@ -122,25 +122,20 @@
   margin: auto;
 }
 
-/* Utility class to hide content on screen (used to reveal in print) */
 .hidden-on-screen {
   display: none;
 }
 
-/* Default grid for the form renderer on screen - single column stacks fields vertically */
 .form-renderer {
   display: grid;
   grid-template-columns: repeat(1, 1fr);
-  /* gap removed to match legacy kiln - spacing controlled by individual element margins */
 }
 
-/* When in "printing" state during HTML print prep */
 .form-renderer.printing {
   display: block;
   gap: 0;
 }
 
-/* Mobile Responsive Breakpoint - 768px */
 @media (max-width: 768px) {
   .fixed {
     flex-direction: column;
@@ -155,7 +150,6 @@
   }
 }
 
-/* Ensure RadioButtonGroup fieldsets have proper top margin to match legacy kiln */
 .bx--radio-button-group,
 .cds--radio-button-group {
   margin-top: 1.25rem !important;

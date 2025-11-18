@@ -149,7 +149,6 @@ html, body {
   padding: 12px 24px;
 }
 
-/* Ensure fieldset legend headings (section titles) are bold and match legacy size */
 fieldset legend h2,
 fieldset legend h3,
 .container-group legend h2,
@@ -302,7 +301,6 @@ label {
   flex-wrap: wrap;
 }
 
-/* Custom Button Styles - Matching Legacy Kiln */
 .button-base {
   display: flex;
   height: 40px;
@@ -316,7 +314,6 @@ label {
   transition: background-color 0.2s ease;
 }
 
-/* Add rounded corners to all buttons and remove extra padding */
 .bx--btn,
 .cds--btn,
 button {
@@ -407,8 +404,6 @@ button {
   }
 }
 
-/* CRITICAL OVERRIDES - Target both BX and CDS prefixes */
-/* Target text inputs with both old (bx--) and new (cds--) prefixes */
 [theme] .bx--text-input,
 [theme="white"] .bx--text-input,
 [theme="g10"] .bx--text-input,

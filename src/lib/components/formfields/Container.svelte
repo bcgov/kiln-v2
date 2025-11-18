@@ -292,39 +292,7 @@
 	.container-group {
 		display: grid;
 		grid-template-columns: repeat(1, 1fr);
-		/* gap removed to match legacy kiln behavior - spacing controlled by individual element margins */
 	}
-
-	/* Container type classes */
-	/* .container-section {
-		border: 2px solid #1976d2;
-		border-radius: 6px;
-		padding: 1.5rem;
-		background: #f5faff;
-	}
-	.container-fieldset {
-		border: 1px solid #ccc;
-		border-radius: 4px;
-		padding: 1rem;
-	}
-	.container-page {
-		border: none;
-		background: #f9f9f9;
-		padding: 2rem;
-	}
-
-	.container-header {
-		border-bottom: 2px solid #1976d2;
-		background: #e8f0fe;
-		font-weight: bold;
-		padding: 1rem 1rem 0.5rem 1rem;
-	}
-	.container-footer {
-		border-top: 1px solid #ccc;
-		background: #f1f1f1;
-		font-style: italic;
-		padding: 0.5rem 1rem 1rem 1rem;
-	} */
 
 	@media print {
 		/* Do not draw boxes around groups in print; just manage spacing */

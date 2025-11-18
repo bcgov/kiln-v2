@@ -13,7 +13,6 @@
     @bottom-right { content: counter(page) " / " counter(pages); }
   }
 
-  /* Print typography - Noto Sans with line-height */
   * {
     font-family: "Noto Sans", sans-serif !important;
     line-height: 150%;

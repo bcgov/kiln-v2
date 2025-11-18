@@ -1,4 +1,3 @@
-/* Toggle visibility between web inputs and print rows */
 .print-row,
 .web-input {
 	display: none !important;
@@ -8,8 +7,6 @@
 	display: block !important;
 }
 
-/* Print row layout: flexbox with 30/70 split matching legacy kiln */
-/* Only apply flex layout when visible */
 .print-row.visible {
 	display: flex !important;
 	flex-wrap: nowrap;
@@ -21,7 +18,6 @@
 	page-break-inside: avoid;
 }
 
-/* Label cell styling (background and right border) - 30% width, max 180px */
 .print-label {
 	background-color: #f4f4f4;
 	width: 30%;
@@ -31,7 +27,6 @@
 	border-right: 1px solid #919191;
 }
 
-/* Value cell styling - 70% width */
 .print-value {
 	display: flex;
 	align-items: flex-start;
@@ -46,7 +41,6 @@
 	font-weight: 300;
 }
 
-/* Static text info block reset to app defaults */
 .text-info-field {
 	padding: 10px 0px;
 	font: initial;
@@ -58,26 +52,21 @@
 	font-size: var(--default-font-size);
 }
 
-/* Only TextArea needs this extra style */
 .text-area-field .print-value {
 	white-space: pre-wrap;
 	min-width: 0;
  	overflow-wrap: anywhere;
 }
 
-
-/* Add red asterisk to required labels (print and web) */
 .print-label.required::after,
 .bx--label > .required::after {
   content: '*';
-  color: #b30000;  /* Match legacy kiln dark red */
+  color: #b30000;
   margin-left: 2px;
 }
 
-/* Ensure shaded label backgrounds are preserved in printed output */
 @media print {
 	.print-label {
-		/* Force browsers to render background colors when printing */
 		-webkit-print-color-adjust: exact;
 		print-color-adjust: exact;
 		background-color: #f4f4f4 !important;
