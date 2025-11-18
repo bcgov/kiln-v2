@@ -83,7 +83,7 @@
 		cleanupStaleFormState();
 	});
 
-	// NEW: write initial group data into global form state under stable keys
+	// write initial group data into global form state under stable keys
 	function syncInitialGroupDataToFormState() {
 		const w = win();
 		if (!w) return;
@@ -129,13 +129,13 @@
 			// Generate stable and index-specific UUIDs for the child
 			// This allows the child to be uniquely identified within the group
 			// while maintaining a consistent key across renders
-			const stableKey = `${item.uuid}-${group.id}-${originalUuid}`;
+			const stableId = `${item.uuid}-${group.id}-${originalUuid}`;
 			const indexUuid = `${item.uuid}-${group.index}-${originalUuid}`;
 
 			const groupSpecificChild = {
 				...child,
 				originalUuid,
-				_stableKey: stableKey,
+				_stableKey: stableId,
 				_indexUuid: indexUuid
 			};
 
@@ -242,8 +242,8 @@
 											uuid: child._stableKey,
 											attributes: {
 												...(child.attributes || {}),
-												id: child._indexUuid,
-												name: child._stableKey
+												id: child._stableKey // Try using stableKey only
+												// name: child._stableKey
 											}
 										}
 									]
