@@ -36,9 +36,11 @@ try {
     }
 
     const body: Record<string, any> = { ...params };
-
+    console.log("Include Auth state:",includeAuth);
     if (includeAuth) {
       const token = keycloak?.token ?? (getCookie("token") as string | null) ?? null;
+      console.log("Keycloak request:",keycloak);
+      console.log("Keycloak request token:",token);
       if (token) {
         body.token = token;
       } else {
@@ -46,6 +48,7 @@ try {
         if (username) body.username = username.trim();
       }
     }
+    
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -62,6 +65,8 @@ try {
       const originalServer = getCookie("originalServer");
       if (originalServer) headers["X-Original-Server"] = originalServer as string;
     }
+    console.log("Request headers:",headers);
+    console.log("Request body:",JSON.stringify(body));
 
     const response = await fetch(endpoint, {
       method: "POST",
