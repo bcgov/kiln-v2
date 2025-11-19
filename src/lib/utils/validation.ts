@@ -452,7 +452,7 @@ export function validateAllFields(
 
     // Use state first; if missing, fall back to item-provided value (e.g., preloaded/bound)
     let value = state[item.uuid];
-    if (value === undefined || value === null || value === '') {
+    if (value === undefined || value === null ) {
       const fallback = item.attributes?.value ?? (item as any).value;
       if (fallback !== undefined) value = fallback;
     }

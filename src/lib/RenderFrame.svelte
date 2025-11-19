@@ -38,6 +38,26 @@
 	let isFormCleared = $state(false);
 	let modalErrors = $state<string[]>([]);
 
+	let modalMode = $state<'info' | 'confirm'>('info');
+	let modalPrimaryText = $state('OK');
+	let modalSecondaryText = $state<string | null>(null);
+	let modalResolver = $state<((result: boolean) => void) | null>(null);
+
+	function resetModalRuntime() {
+		modalMode = 'info';
+		modalPrimaryText = 'OK';
+		modalSecondaryText = null;
+		modalResolver = null;
+	}
+
+	function resolveModal(result: boolean) {
+		if (modalMode === 'confirm' && modalResolver) {
+			modalResolver(result);
+		}
+		modalOpen = false;
+		resetModalRuntime();
+	}
+
 	let interfaceItems = $derived.by(() => {
 		// Prefer interface embedded in the payload (array or { interface: [] })
 		const fd =
@@ -46,7 +66,7 @@
 			(formData as any)?.interface?.interface ??
 			(formData as any)?.interface;
 
-		if (Array.isArray(fd)) return fd;
+		if (Array.isArray(fd) && fd.length > 0) return fd;
 
 		// Fallback: sessionStorage (set earlier by the loader/wrapper)
 		const ss = getSessionInterface();
@@ -72,6 +92,9 @@
 			// utils imported above:
 			createSavedData,
 			submitForButtonAction, // in case scripts choose to call it
+
+			// confirmation modal helper
+			confirmModal, 
 
 			// route/query params
 			params
@@ -112,6 +135,30 @@
 				break;
 		}
 		modalOpen = true;
+	}
+
+	async function confirmModal(message?: string): Promise<boolean> {
+		const defaultMessage = `
+		Do you want to submit this form?
+
+		If you answer "No", you will be able to return to this form later and enter more responses.
+		If you answer "Yes", the form will no longer be editable.
+		`.trim();
+
+		return await new Promise<boolean>((resolve) => {
+			modalMode = 'confirm';
+			modalTitle = 'Confirmation';
+			modalMessage = (message || defaultMessage).trim();
+			modalErrors = [];
+			modalPrimaryText = 'Yes';
+			modalSecondaryText = 'No';
+
+			modalResolver = (result: boolean) => {
+				resolve(result);
+			};
+
+			modalOpen = true;
+		});
 	}
 
 	let mergedFormData = $derived.by(() => {
@@ -358,6 +405,10 @@
 				setModalOpen(true);
 				return;
 			}
+			//Soft abort (ie. clicking No on Confirmation Modal)
+			if (!error) {
+			return;
+			}
 			setModalTitle(label || 'Action failed');
 			setModalMessage(typeof error === 'string' ? error : JSON.stringify(error ?? {}, null, 2));
 			setModalOpen(true);
@@ -365,9 +416,9 @@
 		}
 
 		// Success path
-		setModalTitle(label || 'Success');
-		setModalMessage('Done.');
-		setModalOpen(true);
+		// setModalTitle(label || 'Success');
+		// setModalMessage('Done.');
+		// setModalOpen(true);
 	}
 </script>
 
@@ -385,9 +436,11 @@
 <Modal
 	bind:open={modalOpen}
 	modalHeading={modalTitle}
-	primaryButtonText="OK"
-	on:click:button--primary={() => (modalOpen = false)}
-	on:close={() => (modalOpen = false)}
+	primaryButtonText={modalPrimaryText}
+	secondaryButtonText={modalSecondaryText || undefined}
+	on:click:button--primary={() => resolveModal(true)}
+	on:click:button--secondary={() => resolveModal(false)}
+	on:close={() => resolveModal(false)}
 >
 	{#if modalErrors.length > 0}
 		<p style="white-space: pre-line;">{modalMessage}</p>
@@ -441,8 +494,10 @@
 					{#if goBack}
 						<Button kind="tertiary" class="no-print" onclick={goBack}>Back</Button>
 					{/if}
-
+					
+					{#if interfaceItems.length === 0}
 					<Button kind="tertiary" class="no-print" onclick={handlePrint}>Print</Button>
+					{/if}
 				</div>
 
 				<div class="form-title hidden-on-screen">
