@@ -100,7 +100,7 @@ export interface TextInputField extends BaseFormField {
 }
 
 export interface TextAreaField extends BaseFormField {
-  type: "text-area";
+  type: "text-area" | "textarea-input";
   value?: string | null;
 }
 

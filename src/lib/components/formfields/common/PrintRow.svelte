@@ -29,8 +29,10 @@
 		'aria-describedby': valueId
 	};
 
-	const isTextArea = item.type === 'text-area';
+	const isTextArea = item.type === 'text-area' || item.type === 'textarea-input';
 	const printRows = isTextArea ? (rows ?? Number(item.attributes?.rows ?? 4)) : undefined;
+	
+	const aria = buildFieldAria(item);
 </script>
 
 <div
