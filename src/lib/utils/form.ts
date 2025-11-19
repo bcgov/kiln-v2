@@ -1,5 +1,6 @@
 import type { FormDefinition, Item, FieldValue, FormData, SavedData } from '../types/form';
 import { ensureFreshToken } from '$lib/utils/keycloak';
+import { ModalBody } from '../../../node_modules/carbon-components-svelte/types/index';
 
 function getCookie(name: string): string | null {
 	const match = document.cookie.match(
@@ -225,6 +226,7 @@ export async function saveFormData(action: 'save' | 'save_and_close'): Promise<s
         token = freshToken ?? null; 
       }
       if (token) {
+        payload.sessionParams.token = token;
         headers.Authorization = `Bearer ${token}`;
       }
     }
