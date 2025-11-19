@@ -345,6 +345,7 @@ export function validateAllFields(
       case 'radio-input':
       case 'text-input':
       case 'text-area':
+      case 'textarea-input':
       case 'text-info':
       default:
         return 'string';
