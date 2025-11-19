@@ -1,4 +1,13 @@
 import type { FormDefinition, Item, FieldValue, FormData, SavedData } from '../types/form';
+import { ensureFreshToken } from '$lib/utils/keycloak';
+import { ModalBody } from '../../../node_modules/carbon-components-svelte/types/index';
+
+function getCookie(name: string): string | null {
+	const match = document.cookie.match(
+		new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)')
+	);
+	return match ? decodeURIComponent(match[1]) : null;
+}
 
 // --- Visibility ---
 export function isFieldVisible(
@@ -307,13 +316,19 @@ export async function saveFormData(action: 'save' | 'save_and_close'): Promise<s
 
     const headers: Record<string, string> = { "Content-Type": "application/json" };
 
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    } else {
-      const usernameMatch = document.cookie.match(/(?:^|;\s*)username=([^;]+)/);
-      const username = usernameMatch ? decodeURIComponent(usernameMatch[1]).trim() : null;
-      if (username && username.length > 0) {
-        payload.sessionParams.username = username;
+    const username = getCookie("username");
+    if (username && username.trim() !== "") {
+      payload.sessionParams.username = username.trim();
+    } 
+    else {
+      let token = (window as any)?.keycloak?.token ?? (getCookie("token") as string | null) ?? null;
+      if (!token) {
+        const freshToken = await ensureFreshToken(5);
+        token = freshToken ?? null; 
+      }
+      if (token) {
+        payload.sessionParams.token = token;
+        headers.Authorization = `Bearer ${token}`;
       }
     }
 
