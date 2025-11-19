@@ -99,8 +99,6 @@ export async function guardRoute(
 		await keycloak.login(loginOptions);
 		return { keycloak, authenticated: false };
 	}
-	console.log("Keycloak:",keycloak);
-	console.log("keycloak token:",keycloak.token);
 
 	return { keycloak, authenticated: !!keycloak.authenticated };
 }
@@ -118,8 +116,7 @@ export async function ensureFreshToken(minValiditySeconds = 5): Promise<string |
 		console.error('Failed to refresh token:', err);
 		return undefined;
 	}
-	console.log("Keycloak:",keycloak);
-	console.log("keycloak token:",keycloak.token);
+
 	return keycloak.token ?? undefined;
 }
 
