@@ -49,7 +49,7 @@ try {
           const freshToken = await ensureFreshToken(5);
           token = freshToken ?? null; 
         }
-        else {
+        if(token) {
           body.token = token;
         }
       }
