@@ -5,7 +5,6 @@
 		createValueSyncEffect,
 		parsers,
 		comparators,
-		publishToGlobalFormState,
 		createAttributeSyncEffect
 	} from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
@@ -24,6 +23,10 @@
 	let touched = $state(false);
 
 	let extAttrs = $state<Record<string, any>>({});
+
+	function win(): any | undefined {
+		return typeof window === 'undefined' ? undefined : (window as any);
+	}
 
 	function toFlatpickrFormat(fmt: string | undefined): string {
 		if (!fmt) return 'Y/m/d';
@@ -65,6 +68,20 @@
 		touched = true;
 	}
 
+	// On pre, seed __kilnFormState with initial date (from bindings/repeaterData) once
+	$effect.pre(() => {
+		const w = win();
+		if (!w) return;
+
+		const state: Record<string, any> = (w.__kilnFormState = w.__kilnFormState || {});
+		const key = item.uuid;
+		const v = value ?? '';
+
+		if (v !== '' && state[key] === undefined) {
+			state[key] = v;
+		}
+	});
+
 	$effect(() => {
 		return createValueSyncEffect({
 			item,
@@ -94,8 +111,27 @@
 		});
 	});
 
+	// try using custom publisher
+	// $effect(() => {
+	// 	publishToGlobalFormState({ item, value: value ?? '' });
+	// });
+
+	// Custom publisher to __kilnFormState that does NOT clobber with empty unless user really cleared it
 	$effect(() => {
-		publishToGlobalFormState({ item, value: value ?? '' });
+		const w = win();
+		if (!w) return;
+
+		const state: Record<string, any> = (w.__kilnFormState = w.__kilnFormState || {});
+		const key = item.uuid;
+		const v = value ?? '';
+
+		// If we already have a non-empty value in formState and the component is currently blank and the user hasn't interacted, don't wipe it out.
+		if (!touched && v === '' && typeof state[key] === 'string' && state[key] !== '') {
+			return;
+		}
+
+		// Otherwise, reflect the current value into formState
+		state[key] = v;
 	});
 
 	const a11y = buildFieldAria({
@@ -129,6 +165,8 @@
 				{onblur}
 				{...a11y.ariaProps}
 				{...extAttrs as any}
+				data-kiln-date="true"
+				data-kiln-uuid={item.uuid}
 			>
 				<span slot="labelText" class:required={item.is_required}>{@html labelText}</span>
 			</DatePickerInput>

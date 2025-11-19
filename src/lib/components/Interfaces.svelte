@@ -381,7 +381,7 @@
 				index: idx,
 				label: btn?.label,
 				ok: false,
-				error: { message: err?.message || 'Unknown error' }
+				error: 'The action failed. Please try again.'
 			});
 		} finally {
 			// brief success/error state, then reset

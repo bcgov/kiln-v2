@@ -83,7 +83,7 @@
 		cleanupStaleFormState();
 	});
 
-	// NEW: write initial group data into global form state under stable keys
+	// write initial group data into global form state under stable keys
 	function syncInitialGroupDataToFormState() {
 		const w = win();
 		if (!w) return;
@@ -129,13 +129,13 @@
 			// Generate stable and index-specific UUIDs for the child
 			// This allows the child to be uniquely identified within the group
 			// while maintaining a consistent key across renders
-			const stableKey = `${item.uuid}-${group.id}-${originalUuid}`;
+			const stableId = `${item.uuid}-${group.id}-${originalUuid}`;
 			const indexUuid = `${item.uuid}-${group.index}-${originalUuid}`;
 
 			const groupSpecificChild = {
 				...child,
 				originalUuid,
-				_stableKey: stableKey,
+				_stableKey: stableId,
 				_indexUuid: indexUuid
 			};
 
@@ -242,8 +242,8 @@
 											uuid: child._stableKey,
 											attributes: {
 												...(child.attributes || {}),
-												id: child._indexUuid,
-												name: child._stableKey
+												id: child._stableKey // Try using stableKey only
+												// name: child._stableKey
 											}
 										}
 									]
@@ -292,39 +292,7 @@
 	.container-group {
 		display: grid;
 		grid-template-columns: repeat(1, 1fr);
-		gap: 1rem;
 	}
-
-	/* Container type classes */
-	/* .container-section {
-		border: 2px solid #1976d2;
-		border-radius: 6px;
-		padding: 1.5rem;
-		background: #f5faff;
-	}
-	.container-fieldset {
-		border: 1px solid #ccc;
-		border-radius: 4px;
-		padding: 1rem;
-	}
-	.container-page {
-		border: none;
-		background: #f9f9f9;
-		padding: 2rem;
-	}
-
-	.container-header {
-		border-bottom: 2px solid #1976d2;
-		background: #e8f0fe;
-		font-weight: bold;
-		padding: 1rem 1rem 0.5rem 1rem;
-	}
-	.container-footer {
-		border-top: 1px solid #ccc;
-		background: #f1f1f1;
-		font-style: italic;
-		padding: 0.5rem 1rem 1rem 1rem;
-	} */
 
 	@media print {
 		/* Do not draw boxes around groups in print; just manage spacing */

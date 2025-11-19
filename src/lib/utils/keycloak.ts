@@ -116,6 +116,7 @@ export async function ensureFreshToken(minValiditySeconds = 5): Promise<string |
 		console.error('Failed to refresh token:', err);
 		return undefined;
 	}
+
 	return keycloak.token ?? undefined;
 }
 
