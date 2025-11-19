@@ -1,6 +1,5 @@
 import type { FormDefinition, Item, FieldValue, FormData, SavedData } from '../types/form';
 import { ensureFreshToken } from '$lib/utils/keycloak';
-import { ModalBody } from '../../../node_modules/carbon-components-svelte/types/index';
 
 function getCookie(name: string): string | null {
 	const match = document.cookie.match(

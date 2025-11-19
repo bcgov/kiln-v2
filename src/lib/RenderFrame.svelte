@@ -27,7 +27,8 @@
 		formData,
 		goBack = undefined,
 		mode = 'preview',
-		formDelivery = undefined
+		formDelivery = undefined,
+		disablePrint = false
 	} = $props();
 
 	// Modal and loading state
@@ -496,7 +497,7 @@
 					{/if}
 					
 					{#if interfaceItems.length === 0}
-					<Button kind="tertiary" class="no-print" onclick={handlePrint}>Print</Button>
+					<Button disabled={disablePrint} kind="tertiary" class="no-print" onclick={handlePrint}>Print</Button>
 					{/if}
 				</div>
 
