@@ -13,7 +13,6 @@
 
 	const EXTERNAL_FORM_INIT_TIMEOUT = Number(import.meta.env.VITE_EXTERNAL_FORM_INIT_TIMEOUT) || 500;
 
-	// Hash Util to uniquely identify style/script content
 	function hashString(str: string): string {
 		let h = 0,
 			i = 0,
@@ -30,7 +29,6 @@
 	$effect(() => {
 		if (!browser) return;
 
-		// Map all non-PDF rendering paths to 'web'
 		const isPdf = mode === 'pdf';
 
 		const combinedCss = (styles ?? [])
@@ -45,7 +43,6 @@
 				`style[data-ssi="true"][data-hash="${cssHash}"]`
 			);
 			if (!existingStyle) {
-				// Remove older style injections (different hash) before adding
 				document.querySelectorAll('style[data-ssi="true"]').forEach((el) => el.remove());
 				const styleEl = document.createElement('style');
 				styleEl.setAttribute('data-ssi', 'true');
@@ -56,7 +53,6 @@
 			}
 		}
 
-		// ==== SCRIPTS (web only) ====
 		if (!isPdf) {
 			const combinedJsRaw = (scripts ?? [])
 				.filter(
@@ -93,9 +89,97 @@
 							}
 						});
 
-						const wrapped =
-							`;(function(){try{${combinedJsRaw}\n}` +
-							`catch(e){console.error('[SSI] Script error:', e);}})();`;
+						const formRendererProtection = `
+							(function() {
+								function isFormRendererElement(element) {
+									if (!element) return false;
+
+									const isRendererItself = element.classList?.contains('form-renderer');
+									const containsRenderer = element.querySelector?.('.form-renderer');
+
+									return isRendererItself || containsRenderer;
+								}
+
+								function blockAndLogAttempt(operation, elementInfo) {
+									console.error('[FormRenderer Protection] Blocked ' + operation, elementInfo);
+								}
+
+								function interceptSetAttribute() {
+									const original = Element.prototype.setAttribute;
+
+									Element.prototype.setAttribute = function(attributeName, attributeValue) {
+										const isStyleAttribute = attributeName === 'style';
+										const containsDisplay = typeof attributeValue === 'string' && attributeValue.includes('display');
+
+										if (isStyleAttribute && containsDisplay && isFormRendererElement(this)) {
+											blockAndLogAttempt('setAttribute', {
+												element: this,
+												tagName: this.tagName,
+												className: this.className
+											});
+											return;
+										}
+
+										return original.call(this, attributeName, attributeValue);
+									};
+								}
+
+								function interceptStyleDisplay() {
+									const styleDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'style');
+									if (!styleDescriptor?.get) return;
+
+									const originalGetter = styleDescriptor.get;
+
+									Object.defineProperty(HTMLElement.prototype, 'style', {
+										get: function() {
+											const styleObject = originalGetter.call(this);
+
+											if (styleObject.__formRendererProtected) {
+												return styleObject;
+											}
+
+											styleObject.__formRendererProtected = true;
+											const elementReference = this;
+
+											Object.defineProperty(styleObject, 'display', {
+												set: function(displayValue) {
+													const isHidingElement = displayValue === 'none' || displayValue === '';
+
+													if (isHidingElement && isFormRendererElement(elementReference)) {
+														blockAndLogAttempt('style.display', {
+															element: elementReference,
+															tagName: elementReference.tagName,
+															className: elementReference.className
+														});
+														return;
+													}
+
+													styleObject.setProperty('display', displayValue);
+												},
+												get: function() {
+													return styleObject.getPropertyValue('display');
+												}
+											});
+
+											return styleObject;
+										},
+										set: styleDescriptor.set
+									});
+								}
+
+								interceptSetAttribute();
+								interceptStyleDisplay();
+							})();
+						`;
+
+						const wrapped = formRendererProtection +
+							`;(function(){try{
+								${combinedJsRaw}
+							}` +
+							`catch(e){
+								console.error('Script execution error:', e);
+								console.error('Error stack:', e.stack);
+							}})();`;
 
 						const scriptEl = document.createElement('script');
 						scriptEl.setAttribute('data-ssi', 'true');
@@ -127,7 +211,6 @@
 			}
 		}
 
-		// Cleanup function
 		return () => {
 			document.querySelectorAll('script[data-ssi="true"]').forEach((el) => {
 				const hash = el.getAttribute('data-hash');
@@ -137,7 +220,6 @@
 				}
 				el.remove();
 			});
-			// Remove SSI styles
 			document.querySelectorAll('style[data-ssi="true"]').forEach((el) => el.remove());
 		};
 	});
