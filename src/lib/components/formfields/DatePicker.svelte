@@ -10,6 +10,7 @@
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
 	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
+	import { toFlatpickrFormat } from '$lib/utils/dateFormats';
 	import PrintRow from './common/PrintRow.svelte';
 
 	const { item, printing = false } = $props<{ item: Item; printing?: boolean }>();
@@ -28,16 +29,6 @@
 		return typeof window === 'undefined' ? undefined : (window as any);
 	}
 
-	function toFlatpickrFormat(fmt: string | undefined): string {
-		if (!fmt) return 'Y/m/d';
-		return fmt
-			.replace(/YYYY|yyyy/g, 'Y')
-			.replace(/YY|yy/g, 'y')
-			.replace(/MM/g, 'm')
-			.replace(/\bM\b/g, 'n')
-			.replace(/DD/g, 'd')
-			.replace(/\bD\b/g, 'j');
-	}
 	const dateFormat = $derived(
 		toFlatpickrFormat(
 			(item.attributes?.dateFormat || item.attributes?.displayFormat || item.attributes?.format) as

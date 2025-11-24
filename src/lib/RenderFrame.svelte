@@ -21,6 +21,7 @@
 	import { getSessionInterface } from '$lib/utils/interface';
 	import type { ActionResultPayload } from '$lib/types/interfaces';
 	import { bindDataToForm } from './utils/databinder';
+	import { formatWithAppTokens } from '$lib/utils/dateFormats';
 
 	let {
 		saveData = undefined,
@@ -201,11 +202,16 @@
 			// Match legacy behavior: set title to form id for print session
 			document.title = formData?.form_id || 'CustomFormName';
 
-			// Prepare footer text: e.g., "CF0609 - Consent to Disclosure"
-			const footerText = `${formData?.form_id || ''}${
-				formData?.form_id ? ' - ' : ''
-			}${formData?.title || formData?.name || ''}`.trim();
-			// Expose footer text to @page margin boxes via attribute
+			// Prepare footer text: e.g., "CF0609 - Consent to Disclosure (2025-11-24)"
+			const formattedVersionDate = formatWithAppTokens(formData?.version_date, formData?.version_date_format, 'YYYY-MM-DD');
+
+			const footerText = `
+				${formData?.form_id || ''}
+				${formData?.form_id ? ' - ' : ''}
+				${formData?.title || formData?.name || ''}
+				${formattedVersionDate ? ` (${formattedVersionDate})` : ''}
+			`.trim();
+
 			document.documentElement.setAttribute('data-form-id', footerText);
 			// Also populate the fixed footer (for browsers without margin boxes)
 			const fixedFooterLeft = document.getElementById('print-footer-left');
