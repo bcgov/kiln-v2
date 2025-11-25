@@ -6,9 +6,7 @@
 		parsers,
 		comparators,
 		createAttributeSyncEffect,
-
 		publishToGlobalFormState
-
 	} from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
