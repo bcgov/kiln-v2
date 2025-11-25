@@ -165,7 +165,7 @@
 	let mergedFormData = $derived.by(() => {
 		if (!formData) return null;
 
-		if (mode === 'view') {
+		if (mode === 'view'|| mode === 'portalView') {
 			setReadOnlyFields(formData);
 		}
 
