@@ -97,6 +97,17 @@ export function useFormLoader({
 					if (payload?.form_definition || payload?.save_data?.form_definition) {
 						disablePrint.set(false);
 					}
+
+					// Merge params from loaded JSON into sessionStorage (for generate flow)
+					// The Communication-Layer stores params like attachmentId in formJson.params
+					if (raw?.params && typeof raw.params === "object") {
+						const existingParams = sessionStorage.getItem("formParams");
+						const merged = {
+							...(existingParams ? JSON.parse(existingParams) : {}),
+							...raw.params
+						};
+						sessionStorage.setItem("formParams", JSON.stringify(merged));
+					}
 				}
 			}
 		} catch (e) {
