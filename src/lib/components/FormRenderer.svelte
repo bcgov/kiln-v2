@@ -70,9 +70,7 @@
 <div class="form-renderer" class:printing={printingState}>
 	{#each elements as item (item.uuid)}
 		{#if isFieldVisible(item, viewMode)}
-			<div class="ff-item" data-ff-type={item.type} data-print-columns={1}>
-				{@render renderComponent(item)}
-			</div>
+			{@render renderComponent(item)}
 		{/if}
 	{/each}
 </div>

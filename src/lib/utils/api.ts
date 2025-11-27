@@ -37,7 +37,7 @@ export const API = {
   getFormById: `${getKlammApiBaseUrl()}/api/form-versions/`,
   getFormKlammURL: `${getKlammApiBaseUrl()}/forms/form-versions/`,
   saveButtonAction: getApiUrl("/saveForPortalAction", import.meta.env.VITE_COMM_API_SUBMIT_TO_ACTION_ENDPOINT_URL),
-  interface: getApiUrl("/interface", import.meta.env.VITE_COMM_API_INTERFACE_URL),
+  interface: getApiUrl("/getInterface", import.meta.env.VITE_COMM_API_INTERFACE_URL),
   submitButtonAction: getApiUrl("/submitForPortalAction", import.meta.env.VITE_COMM_API_SUBMIT_NET_PORTAL_URL),
   cancelButtonAction: getApiUrl("/cancelForPortalAction", import.meta.env.VITE_COMM_API_CANCEL_NET_PORTAL_URL),
 };

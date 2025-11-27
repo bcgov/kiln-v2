@@ -1,4 +1,5 @@
 import type { LoadDeps as Deps, LoadOptions } from '$lib/types/load';
+import { ensureFreshToken } from '$lib/utils/keycloak';
 
 /**
  * POST params to an endpoint and surface the parsed result via setJsonContent.
@@ -38,14 +39,22 @@ try {
     const body: Record<string, any> = { ...params };
 
     if (includeAuth) {
-      const token = keycloak?.token ?? (getCookie("token") as string | null) ?? null;
-      if (token) {
-        body.token = token;
-      } else {
-        const username = getCookie("username");
-        if (username) body.username = username.trim();
+      const username = getCookie("username");
+      if (username && username.trim() !== "") {
+        body.username = username.trim();
+      } 
+      else {
+        let token = keycloak?.token ?? (getCookie("token") as string | null) ?? null;
+        if (!token) {
+          const freshToken = await ensureFreshToken(5);
+          token = freshToken ?? null; 
+        }
+        if(token) {
+          body.token = token;
+        }
       }
     }
+    
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",

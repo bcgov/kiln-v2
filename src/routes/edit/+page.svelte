@@ -26,7 +26,7 @@
 				transformParams: commonTransform
 			});
 
-	let { isLoading, error, formData, saveData } = loader;
+	let { isLoading, error, formData, saveData, disablePrint } = loader;
 
 	const activeMode = isPortalIntegrated ? FORM_MODE.portalEdit : FORM_MODE.edit;
 	const delivery = isPortalIntegrated ? FORM_DELIVERY_MODE.portal : undefined;
@@ -43,6 +43,7 @@
 			saveData={$saveData}
 			mode={activeMode}
 			formDelivery={delivery}
+			disablePrint={$disablePrint}
 		/>
 	{/if}
 </PrivateRoute>
