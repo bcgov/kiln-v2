@@ -3,7 +3,7 @@
 
 
   @page {
-    size: A4;
+    size: letter;
     margin: 10mm 10mm 20mm 10mm; /* Top Right Bottom Left */
     @top-left { content: ""; }
     @top-center { content: ""; }
