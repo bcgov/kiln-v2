@@ -5,7 +5,8 @@
 		createValueSyncEffect,
 		parsers,
 		comparators,
-		createAttributeSyncEffect
+		createAttributeSyncEffect,
+		publishToGlobalFormState
 	} from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
@@ -103,9 +104,9 @@
 	});
 
 	// try using custom publisher
-	// $effect(() => {
-	// 	publishToGlobalFormState({ item, value: value ?? '' });
-	// });
+	$effect(() => {
+		publishToGlobalFormState({ item, value: value ?? '' });
+	});
 
 	// Custom publisher to __kilnFormState that does NOT clobber with empty unless user really cleared it
 	$effect(() => {

@@ -1,8 +1,37 @@
 import { getKeycloak, getAuthHeader } from './keycloak';
 
+function getOriginalServerHeader(): Record<string, string> {
+  try {
+    // 1) URL ?originalServer=...
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const fromQs = params.get('originalServer');
+      if (fromQs && fromQs.trim()) return { 'X-Original-Server': fromQs.trim() };
+
+      // 2) local/session storage
+      const fromStore =
+        localStorage.getItem('originalServer') || sessionStorage.getItem('originalServer');
+      if (fromStore && fromStore.trim()) return { 'X-Original-Server': fromStore.trim() };
+
+      // 3) global set by host page (optional)
+      const g = (window as any).__kilnOriginalServer;
+      if (g && typeof g === 'string' && g.trim()) return { 'X-Original-Server': g.trim() };
+      
+      // 4) cookie fallback
+      const originalServerCookie = getCookie('originalServer');
+       if (originalServerCookie) { return { 'X-Original-Server': originalServerCookie };
+       }
+    }
+  } catch {
+    // ignore
+  }
+  return {};
+}
+
 export async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    ...getOriginalServerHeader(),
   };
 
   try {
@@ -16,14 +45,6 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
     if (typeof window !== 'undefined') {
       const username = getCookie('username');
       // Note: For cookie-based auth, username goes in body, not headers
-    }
-  }
-
-  // Add Original-Server header if available
-  if (typeof window !== 'undefined') {
-    const originalServer = getCookie('originalServer');
-    if (originalServer) {
-      headers['X-Original-Server'] = originalServer;
     }
   }
 

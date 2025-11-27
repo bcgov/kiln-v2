@@ -166,7 +166,7 @@
 	let mergedFormData = $derived.by(() => {
 		if (!formData) return null;
 
-		if (mode === 'view') {
+		if (mode === 'view'|| mode === 'portalView') {
 			setReadOnlyFields(formData);
 		}
 
@@ -487,7 +487,7 @@
 					{/if}
 
 					{#if formDelivery === 'generate'}
-						<Button kind="tertiary" class="no-print" onclick={handleGenerate}>Generate</Button>
+						<Button kind="tertiary" class="no-print" id="generate" onclick={handleGenerate}>Generate</Button>
 					{/if}
 
 					{#if (mode === FORM_MODE.edit || mode === FORM_MODE.preview) && formDelivery === 'portal' && (!interfaceItems || interfaceItems.length === 0)}
