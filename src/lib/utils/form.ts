@@ -398,14 +398,11 @@ export async function unlockICMFinalFlags(): Promise<string> {
 
     const { getAuthHeaders } = await import('./auth-headers');
     const headers = await getAuthHeaders();
-    console.log("Unlock headers:",headers);
-    console.log("unlock body:",JSON.stringify(body));
     const response = await fetch(unlockICMFinalEndpoint, {
       method: 'POST',
       headers,
       body: JSON.stringify(body)
     });
-    console.log("Unlock response:",response.status);
     if (response.ok) {
       try {
         const result = await response.json();
