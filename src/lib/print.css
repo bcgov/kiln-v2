@@ -25,9 +25,11 @@
   }
 
   /* Overall print page container */
+  /* height 792 ( 11in @ 72dpi (approx), adjust per template ) */
   .full-frame {
     display: flex;
-    height: 792px; /* 11in @ 72dpi (approx), adjust per template */
+    height: auto !important; 
+    min-height: 0 !important;
     flex-direction: column;
     align-items: flex-start;
     gap: 24px;
