@@ -40,4 +40,5 @@ export const API = {
   interface: getApiUrl("/getInterface", import.meta.env.VITE_COMM_API_INTERFACE_URL),
   submitButtonAction: getApiUrl("/submitForPortalAction", import.meta.env.VITE_COMM_API_SUBMIT_NET_PORTAL_URL),
   cancelButtonAction: getApiUrl("/cancelForPortalAction", import.meta.env.VITE_COMM_API_CANCEL_NET_PORTAL_URL),
+  loadPDFFromICMData: getApiUrl("/loadPDFFromICMData", import.meta.env.VITE_COMM_API_LOAD_PDF_FROM_ICM_ENDPOINT_URL),
 };
