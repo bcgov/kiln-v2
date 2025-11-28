@@ -22,6 +22,7 @@
 	let readonly = $state(item.is_read_only ?? false);
 	let labelText = $state(getFieldLabel(item));
 	let helperText = item.help_text ?? '';
+	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let touched = $state(false);
 
 	let extAttrs = $state<Record<string, any>>({});
@@ -95,7 +96,7 @@
 		{labelText}
 		value={value !== null && value !== undefined ? (value === 0 ? value.toString() : value) : ''}
 	/>
-	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
+	<div class="web-input" class:visible={!printing && item.visible_web !== false} class:moustache={enableVarSub}>
 		<NumberInput
 			{...filterAttributes(item?.attributes)}
 			id={item.uuid}

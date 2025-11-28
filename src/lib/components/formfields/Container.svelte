@@ -14,6 +14,18 @@
 		printing?: boolean;
 	} = $props();
 
+	// Fall back for crypto.randomUUID (not available in insecure contexts like host.docker.internal)
+	function generateUUID(): string {
+		if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+			return crypto.randomUUID();
+		}
+		return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+			const r = (Math.random() * 16) | 0;
+			const v = c === 'x' ? r : (r & 0x3) | 0x8;
+			return v.toString(16);
+		});
+	}
+
 	// Initialize groups based on existing data or create one empty group
 	let groups = $state(initializeGroups());
 
@@ -21,17 +33,18 @@
 		// Check for save data
 		if (item.repeaterData && Array.isArray(item.repeaterData) && item.repeaterData.length > 0) {
 			return item.repeaterData.map((data, index) => ({
-				id: crypto.randomUUID(),
+				id: generateUUID(),
 				data: data,
 				index: index
 			}));
 		}
-		return [{ id: crypto.randomUUID(), data: {}, index: 0 }];
+		return [{ id: generateUUID(), data: {}, index: 0 }];
 	}
 
 	let isRepeatable = $derived(item.attributes?.isRepeatable === true);
 	let legend = $derived(item.attributes?.legend ?? '');
 	let level = $derived(item.attributes?.level ?? 2);
+	let enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
 	let repeaterItemLabel = $derived(item.attributes?.repeaterItemLabel ?? null);
 	let children = $derived(item.children ?? []);
 	let groupCount = $derived(groups.length);
@@ -104,7 +117,7 @@
 
 	function addGroup() {
 		const newGroup = {
-			id: crypto.randomUUID(),
+			id: generateUUID(),
 			data: {},
 			index: groups.length
 		};
@@ -271,7 +284,7 @@
 		aria-labelledby={legend ? legendId : undefined}
 	>
 		{#if legend}
-			<legend id={legendId}>
+			<legend id={legendId} class:moustache={enableVarSub}>
 				{@html `<h${level}>${legend}</h${level}>`}
 			</legend>
 		{/if}

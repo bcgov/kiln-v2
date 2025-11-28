@@ -25,6 +25,7 @@
 	let readOnly = $state(item.is_read_only ?? false);
 	let labelText = $state(getFieldLabel(item));
 	let helperText = item.help_text ?? '';
+	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let options = item.options ?? [];
 	let touched = $state(false);
 
@@ -98,7 +99,7 @@
 <div class="field-container select-field">
 	<PrintRow {item} {printing} {labelText} value={selectedLabel || ''} />
 
-	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
+	<div class="web-input" class:visible={!printing && item.visible_web !== false} class:moustache={enableVarSub}>
 		<Select
 			{...filterAttributes(item?.attributes)}
 			id={item.uuid}

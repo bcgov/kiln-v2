@@ -24,6 +24,7 @@
 	let labelText = $state(getFieldLabel(item));
 	let placeholder = item.attributes?.placeholder ?? '';
 	let helperText = item.help_text ?? '';
+	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let maxlength = item.attributes?.maxCount ?? undefined;
 	let touched = $state(false);
 
@@ -94,7 +95,7 @@
 <div class="field-container text-area-field">
 	<PrintRow {item} {printing} {labelText} value={value || ''} rows={rows} />
 
-	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
+	<div class="web-input" class:visible={!printing && item.visible_web !== false} class:moustache={enableVarSub}>
 		<TextArea
 			{...filterAttributes(item?.attributes)}
 			id={item.uuid}

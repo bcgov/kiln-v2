@@ -7,6 +7,7 @@
 
 	let { item, printing = false } = $props<{ item: Item; printing?: boolean; [key: string]: any }>();
 	let labelText = $derived(getFieldLabel(item));
+	let enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
 	let readonly = $state(item.is_read_only ?? false);
 
 	let extAttrs = $state<Record<string, any>>({});
@@ -31,8 +32,9 @@
 </script>
 
 <div
-	class="field-container button-field no-print"
+	class="field-container button-field no-print" 
 	class:visible={!printing && item.visible_web !== false && !readonly}
+	class:moustache={enableVarSub}
 >
 	<Button
 		{...filterAttributes(item?.attributes)}
