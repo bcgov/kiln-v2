@@ -4,13 +4,32 @@
 
   @page {
     size: letter;
-    margin: 10mm 10mm 20mm 10mm; /* Top Right Bottom Left */
-    @top-left { content: ""; }
-    @top-center { content: ""; }
-    @top-right { content: none; }
-    @bottom-left { content: attr(data-form-id); }
-    @bottom-center { content: ""; }
-    @bottom-right { content: counter(page) " / " counter(pages); }
+    margin: 10mm 10mm 20mm 10mm;
+
+    /* Top Right Bottom Left */
+    @top-left {
+      content: "";
+    }
+
+    @top-center {
+      content: "";
+    }
+
+    @top-right {
+      content: none;
+    }
+
+    @bottom-left {
+      content: attr(data-form-id);
+    }
+
+    @bottom-center {
+      content: "";
+    }
+
+    @bottom-right {
+      content: counter(page) " / " counter(pages);
+    }
   }
 
   * {
@@ -28,7 +47,7 @@
   /* height 792 ( 11in @ 72dpi (approx), adjust per template ) */
   .full-frame {
     display: flex;
-    height: auto !important; 
+    height: auto !important;
     min-height: 0 !important;
     flex-direction: column;
     align-items: flex-start;
@@ -42,14 +61,17 @@
   .header-section {
     max-width: none !important;
     margin: 0 !important;
-    justify-content: flex-start; /* single child (.header-image) */
+    justify-content: flex-start;
+    /* single child (.header-image) */
   }
 
   .header-image {
     display: flex;
-    width: 100% !important; /* stretch across page */
+    width: 100% !important;
+    /* stretch across page */
     align-items: center;
-    justify-content: space-between; /* logo left, title right */
+    justify-content: space-between;
+    /* logo left, title right */
     gap: 10px;
     border-bottom: 1px solid #919191;
     background: #fff;
@@ -123,6 +145,7 @@
     padding: 0px !important;
     gap: 0px !important;
   }
+
   .content-wrapper {
     display: flex;
     width: 100%;
@@ -130,6 +153,7 @@
     flex-direction: column;
     gap: 0px !important;
   }
+
   .header-section {
     display: flex;
     width: 100%;
@@ -171,6 +195,7 @@
     color: #000;
     z-index: 9999;
   }
+
   .paged-page .footer-right::after {
     /* content: counter(page) " / " counter(pages); */
   }
@@ -179,4 +204,59 @@
   body {
     padding-bottom: 18mm !important;
   }
+
+  /* === Kiln-v2: generic print guards to eliminate blank page 1 === */
+  /* Don’t let stray margins/breaks create a phantom first page */
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide ALL forms & “Show Letter” toggles during print (UUID-agnostic) */
+  [id^="form-content-"],
+  [id^="show-letter-"] {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Ensure the letter is visible even if hidden on web */
+  [id^="letter-content-"],
+  .letter-content {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* Never break before the very first visible block in the letter.
+      (Covers all letters without relying on specific IDs.) */
+  * {
+    page-break-before: avoid !important;
+    break-before: avoid-page !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  /* Neutralize aggressive page-break rules inside the letter only
+      (safer than applying * to the whole document). */
+  [id^="letter-content-"] *,
+  .letter-content * {
+    page-break-before: auto !important;
+    page-break-after: auto !important;
+    page-break-inside: auto !important;
+    break-before: auto !important;
+    break-after: auto !important;
+    break-inside: auto !important;
+  }
+
+  /* Common “top spacer” classes used at the start of letters — keep modest */
+  .letter-header,
+  .date-case-line,
+  .text-break {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+
 }
