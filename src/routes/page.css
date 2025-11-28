@@ -150,11 +150,41 @@ html, body {
 }
 
 fieldset legend h2,
+.container-group legend h2{
+  font-weight: 700 !important;
+  font-size: 32px !important;
+  line-height: normal !important;
+  margin-bottom: 15px !important;
+}
+
 fieldset legend h3,
-.container-group legend h2,
 .container-group legend h3 {
   font-weight: 700 !important;
   font-size: 28px !important;
+  line-height: normal !important;
+  margin-bottom: 15px !important;
+}
+
+fieldset legend h4,
+.container-group legend h4 {
+  font-weight: 700 !important;
+  font-size: 24px !important;
+  line-height: normal !important;
+  margin-bottom: 15px !important;
+}
+
+fieldset legend h5,
+.container-group legend h5 {
+  font-weight: 700 !important;
+  font-size: 20px !important;
+  line-height: normal !important;
+  margin-bottom: 15px !important;
+}
+
+fieldset legend h5,
+.container-group legend h5 {
+  font-weight: 700 !important;
+  font-size: 18px !important;
   line-height: normal !important;
   margin-bottom: 15px !important;
 }
@@ -178,15 +208,31 @@ fieldset legend h3,
 }
 
 .text-block h1 {
-  font-size: 32px;
+  font-size: 36px;
   font-weight: 700;
   color: #2D2D2D;
 }
 .text-block h2 {
+  font-size: 32px;
+  color: #2D2D2D;
+}
+.text-block h3 {
   font-size: 28px;
   color: #2D2D2D;
 }
-h1, h2, h3 {
+.text-block h4 {
+  font-size: 24px;
+  color: #2D2D2D;
+}
+.text-block h5 {
+  font-size: 20px;
+  color: #2D2D2D;
+}
+.text-block h6 {
+  font-size: 18px;
+  color: #2D2D2D;
+}
+h1, h2, h3, h4, h5, h6 {
   color: #2D2D2D;
 }
 h1 {
@@ -197,9 +243,6 @@ h1 {
 .field-container {
   margin-bottom: 20px !important;
 }
-
-
-
 
 .bx--form__helper-text,
 .cds--form__helper-text {
