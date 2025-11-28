@@ -4,7 +4,7 @@
 
   @page {
     size: letter;
-    margin: 10mm 10mm 20mm 10mm;
+    margin: 5mm 15mm 20mm 15mm;
 
     /* Top Right Bottom Left */
     @top-left {
