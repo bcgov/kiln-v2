@@ -374,7 +374,7 @@
 	};
 
 	$effect(() => {
-		if (mode !== FORM_MODE.preview && mode !== FORM_MODE.view && typeof window !== 'undefined') {
+		if (mode !== FORM_MODE.preview && mode !== FORM_MODE.view &&  mode !== FORM_MODE.portalEdit &&  mode !== FORM_MODE.portalView && typeof window !== 'undefined') {
 			const handleClose = (event: BeforeUnloadEvent) => {
 				if (!isFormCleared) {
 					event.preventDefault();
