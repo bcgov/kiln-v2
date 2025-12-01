@@ -164,6 +164,11 @@
     min-height: 0px !important;
   }
 
+  /* No spacing between adjacent fields */
+  .field-container {
+    margin-bottom: 0px !important;
+  }
+
   /* FormRenderer: flatten grid and remove default spacing in print */
   .form-renderer {
     display: grid;
