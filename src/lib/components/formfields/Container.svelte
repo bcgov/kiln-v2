@@ -44,6 +44,7 @@
 	let isRepeatable = $derived(item.attributes?.isRepeatable === true);
 	let legend = $derived(item.attributes?.legend ?? '');
 	let level = $derived(item.attributes?.level ?? 2);
+	let enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
 	let repeaterItemLabel = $derived(item.attributes?.repeaterItemLabel ?? null);
 	let children = $derived(item.children ?? []);
 	let groupCount = $derived(groups.length);
@@ -283,7 +284,7 @@
 		aria-labelledby={legend ? legendId : undefined}
 	>
 		{#if legend}
-			<legend id={legendId}>
+			<legend id={legendId} class:moustache={enableVarSub}>
 				{@html `<h${level}>${legend}</h${level}>`}
 			</legend>
 		{/if}

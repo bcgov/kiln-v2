@@ -24,6 +24,7 @@
 	let error = $state(item.attributes?.error ?? '');
 	let readonly = $state(item.is_read_only ?? false);
 	let labelText = $state(getFieldLabel(item));
+	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let helperText = item.help_text ?? '';
 	let options = item.options ?? [];
 	let touched = $state(false);
@@ -101,6 +102,7 @@
 		class="web-input"
 		style={readonly ? 'pointer-events: none;' : ''}
 		class:visible={!printing && item.visible_web !== false}
+		class:moustache={enableVarSub}
 	>
 		<RadioButtonGroup
 			{...filterAttributes(item?.attributes)}
