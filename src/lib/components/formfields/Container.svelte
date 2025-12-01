@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { Button } from 'carbon-components-svelte';
 	import { Add, TrashCan } from 'carbon-icons-svelte';
-	import FormRenderer from '../FormRenderer.svelte';
+	import FieldRenderer from '../FieldRenderer.svelte';
 	import type { Item } from '$lib/types/form';
+	import { isFieldVisible } from '$lib/utils/form';
 
 	let {
 		item,
@@ -246,25 +247,19 @@
 					style="display: grid; grid-template-columns: repeat(1, 1fr);"
 				>
 					{#each getGroupSpecificChildren(group) as child (child._stableKey)}
-						<div style={applyWrapperStyles(child)} data-print-columns={child.visible_pdf || 1}>
-							<FormRenderer
-								formData={{
-									elements: [
-										{
-											...child,
-											uuid: child._stableKey,
-											attributes: {
-												...(child.attributes || {}),
-												id: child._stableKey // Try using stableKey only
-												// name: child._stableKey
-											}
-										}
-									]
-								}}
-								{mode}
-								{printing}
-							/>
-						</div>
+						{@const fieldItem = {
+							...child,
+							uuid: child._stableKey,
+							attributes: {
+								...(child.attributes || {}),
+								id: child._stableKey
+							}
+						}}
+						{#if isFieldVisible(fieldItem, printing ? 'pdf' : 'web')}
+							<div style={applyWrapperStyles(child)} data-print-columns={child.visible_pdf || 1}>
+								<FieldRenderer item={fieldItem} {mode} {printing} />
+							</div>
+						{/if}
 					{/each}
 				</div>
 			</div>
@@ -293,9 +288,11 @@
 			style="display: grid; grid-template-columns: repeat(1, 1fr);"
 		>
 			{#each children as child (child.uuid)}
-				<div style={applyWrapperStyles(child)} data-print-columns={child.visible_pdf || 1}>
-					<FormRenderer formData={{ elements: [child] }} {mode} {printing} />
-				</div>
+				{#if isFieldVisible(child, printing ? 'pdf' : 'web')}
+					<div style={applyWrapperStyles(child)} data-print-columns={child.visible_pdf || 1}>
+						<FieldRenderer item={child} {mode} {printing} />
+					</div>
+				{/if}
 			{/each}
 		</div>
 	</fieldset>
