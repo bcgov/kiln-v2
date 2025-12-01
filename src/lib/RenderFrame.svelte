@@ -90,13 +90,13 @@
 			validateAllFields,
 			handlePrint,
 			handleCancel,
-			handleSubmit, 
+			handleSubmit,
 			// utils imported above:
 			createSavedData,
 			submitForButtonAction, // in case scripts choose to call it
 
 			// confirmation modal helper
-			confirmModal, 
+			confirmModal,
 
 			// route/query params
 			params
@@ -166,11 +166,14 @@
 	let mergedFormData = $derived.by(() => {
 		if (!formData) return null;
 
-		if (mode === 'view'|| mode === 'portalView') {
+		if (mode === 'view' || mode === 'portalView') {
 			setReadOnlyFields(formData);
 		}
 
-		return bindDataToForm({ data: saveData, form_definition: formData?.formversion ? formData.formversion : formData }).mappedFormDef;
+		return bindDataToForm({
+			data: saveData,
+			form_definition: formData?.formversion ? formData.formversion : formData
+		}).mappedFormDef;
 	});
 
 	let ministryLogoPath = $derived.by(() => {
@@ -203,7 +206,11 @@
 			document.title = formData?.form_id || 'CustomFormName';
 
 			// Prepare footer text: e.g., "CF0609 - Consent to Disclosure (2025-11-24)"
-			const formattedVersionDate = formatWithAppTokens(formData?.version_date, formData?.version_date_format, 'YYYY-MM-DD');
+			const formattedVersionDate = formatWithAppTokens(
+				formData?.version_date,
+				formData?.version_date_format,
+				'YYYY-MM-DD'
+			);
 
 			const footerText = `
 				${formData?.form_id || ''}
@@ -277,7 +284,55 @@
 		modalOpen = false;
 
 		try {
-			const { isValid, errorList } = validateAllFields();
+			const { isValid, errorList, errors } = validateAllFields();
+
+			if (!isValid) {
+				try {
+					window.dispatchEvent(
+						new CustomEvent('kiln2:validate-all', {
+							detail: { errors }
+						})
+					);
+				} catch (e) {
+					console.log('validation-all event error:', e);
+				}
+
+				requestAnimationFrame(() => {
+					const selectors = (id: string) =>
+						[
+							`[data-attr-id="${id}"]`,
+							`[data-field-id="${id}"]`,
+							`#${CSS && CSS.escape ? CSS.escape(id) : id}`,
+							`[name="${CSS && CSS.escape ? CSS.escape(id) : id}"]`
+						].join(',');
+
+					Object.keys(errors || {}).forEach((id) => {
+						const root = document.querySelector<HTMLElement>(selectors(id));
+						if (!root) return;
+
+						const focusable =
+							(root.matches?.('input,select,textarea')
+								? root
+								: root.querySelector('input,select,textarea')) || root;
+
+						try {
+							focusable.dispatchEvent(new Event('focus', { bubbles: true }));
+						} catch (e) {
+							console.log('focus dispatch error:', e);
+						}
+
+						try {
+							focusable.dispatchEvent(new Event('blur', { bubbles: true }));
+						} catch (e) {
+							console.log('blur dispatch error:', e);
+						}
+					});
+				});
+
+				showModal('validation', undefined, errorList);
+				return;
+			}
+
 			if (isValid) {
 				const returnMessage = await saveFormData('save');
 				if (returnMessage === 'success') {
@@ -301,7 +356,55 @@
 		modalOpen = false;
 
 		try {
-			const { isValid, errorList } = validateAllFields();
+			const { isValid, errorList, errors } = validateAllFields();
+
+			if (!isValid) {
+				try {
+					window.dispatchEvent(
+						new CustomEvent('kiln2:validate-all', {
+							detail: { errors }
+						})
+					);
+				} catch (e) {
+					console.log('validation-all event error:', e);
+				}
+
+				requestAnimationFrame(() => {
+					const selectors = (id: string) =>
+						[
+							`[data-attr-id="${id}"]`,
+							`[data-field-id="${id}"]`,
+							`#${CSS && CSS.escape ? CSS.escape(id) : id}`,
+							`[name="${CSS && CSS.escape ? CSS.escape(id) : id}"]`
+						].join(',');
+
+					Object.keys(errors || {}).forEach((id) => {
+						const root = document.querySelector<HTMLElement>(selectors(id));
+						if (!root) return;
+
+						const focusable =
+							(root.matches?.('input,select,textarea')
+								? root
+								: root.querySelector('input,select,textarea')) || root;
+
+						try {
+							focusable.dispatchEvent(new Event('focus', { bubbles: true }));
+						} catch (e) {
+							console.log('focus dispatch error:', e);
+						}
+
+						try {
+							focusable.dispatchEvent(new Event('blur', { bubbles: true }));
+						} catch (e) {
+							console.log('blur dispatch error:', e);
+						}
+					});
+				});
+
+				showModal('validation', undefined, errorList);
+				return;
+			}
+
 			if (isValid) {
 				const returnMessage = await saveFormData('save_and_close');
 				if (returnMessage === 'success') {
@@ -414,7 +517,7 @@
 			}
 			//Soft abort (ie. clicking No on Confirmation Modal)
 			if (!error) {
-			return;
+				return;
 			}
 			setModalTitle(label || 'Action failed');
 			setModalMessage(typeof error === 'string' ? error : JSON.stringify(error ?? {}, null, 2));
@@ -487,7 +590,9 @@
 					{/if}
 
 					{#if formDelivery === 'generate'}
-						<Button kind="tertiary" class="no-print" id="generate" onclick={handleGenerate}>Generate</Button>
+						<Button kind="tertiary" class="no-print" id="generate" onclick={handleGenerate}
+							>Generate</Button
+						>
 					{/if}
 
 					{#if (mode === FORM_MODE.edit || mode === FORM_MODE.preview) && formDelivery === 'portal' && (!interfaceItems || interfaceItems.length === 0)}
@@ -501,9 +606,11 @@
 					{#if goBack}
 						<Button kind="tertiary" class="no-print" onclick={goBack}>Back</Button>
 					{/if}
-					
+
 					{#if interfaceItems.length === 0}
-					<Button disabled={disablePrint} kind="tertiary" class="no-print" onclick={handlePrint}>Print</Button>
+						<Button disabled={disablePrint} kind="tertiary" class="no-print" onclick={handlePrint}
+							>Print</Button
+						>
 					{/if}
 				</div>
 
