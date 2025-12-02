@@ -23,7 +23,7 @@
 <style>
     .pdf-container {
         width: 100%;
-        height: calc(100vh - 20px); /* or any height you want */
+        height: calc(100vh - 20px); 
         border: none;
     }
 </style>
