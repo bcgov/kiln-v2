@@ -7,7 +7,7 @@ import type { UseFormLoaderOptions, UseFormLoaderReturn } from '$lib/types/load'
  * Wraps useFormLoader and, when formData arrives, ensures the interface
  * is present in sessionStorage (prefer from payload, else GET /interface).
  */
-export function usePortalFormLoader(options: UseFormLoaderOptions): UseFormLoaderReturn {
+export function usePortalFormLoader(options: UseFormLoaderOptions): UseFormLoaderReturn {  
   const loader = useFormLoader(options);
 
   if (browser) {

@@ -40,3 +40,10 @@ export interface UseFormLoaderReturn {
   load: () => Promise<void>;
   disablePrint: Writable<boolean>;
 }
+
+export interface UsePDFLoaderReturn {
+  isLoading: Writable<boolean>;
+  error: Writable<string | null>;  
+  load: () => Promise<void>;
+  pdfBlob: Writable<Blob | null>
+}

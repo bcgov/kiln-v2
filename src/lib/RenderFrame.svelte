@@ -198,13 +198,14 @@
 	}
 
 	function handleHTMLPrint() {
+		const isPuppeteer = navigator.userAgent.includes('HeadlessChrome');
 		printing = true;
 
 		setTimeout(() => {
 			const originalTitle = document.title;
 			// Match legacy behavior: set title to form id for print session
 			document.title = formData?.form_id || 'CustomFormName';
-
+			
 			// Prepare footer text: e.g., "CF0609 - Consent to Disclosure (2025-11-24)"
 			const formattedVersionDate = formatWithAppTokens(
 				formData?.version_date,
@@ -266,9 +267,11 @@
 			window.addEventListener('focus', cleanup);
 
 			// Print after slight delay to ensure styles are applied
+			 if (!isPuppeteer) {
 			setTimeout(() => {
 				window.print();
 			}, 150);
+			}
 
 			// Reset printing state after print dialog
 			setTimeout(() => {
@@ -608,9 +611,7 @@
 					{/if}
 
 					{#if interfaceItems.length === 0}
-						<Button disabled={disablePrint} kind="tertiary" class="no-print" onclick={handlePrint}
-							>Print</Button
-						>
+					<Button disabled={disablePrint} kind="tertiary" id="print" class="no-print" onclick={handlePrint}>Print</Button>
 					{/if}
 				</div>
 
