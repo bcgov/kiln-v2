@@ -495,5 +495,18 @@ export function validateAllFields(
     ? 'All fields are valid.'
     : ['Please fix the following errors:', ...errorList.map((e) => `• ${e}`)].join('\n');
 
+  try {
+    if (typeof window !== 'undefined') {
+      (window as any).__kilnLastValidation = { isValid, errors, errorList, consolidatedMessage };
+      window.dispatchEvent(
+        new CustomEvent('kiln2:validation-result', {
+          detail: { isValid, errors, errorList, consolidatedMessage }
+        })
+      );
+    }
+  } catch (e) {
+    console.log('validation broadcast error:', e);
+  }
+  
   return { isValid, errors, errorList, consolidatedMessage };
 }
