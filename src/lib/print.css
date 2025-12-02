@@ -103,11 +103,36 @@
   .header-title-print {
     color: #000;
     text-align: right;
-    font-size: 14px;
+    font-size: 20px;
+    font-family: 'BC Sans', sans-serif;
     font-style: normal;
     font-weight: 600;
     line-height: normal;
   }
+
+  fieldset legend h2,
+  .container-group legend h2{
+    font-weight: 700 !important;
+    font-size: 18px !important;
+    line-height: normal !important;
+    margin-bottom: 8px !important;
+  }
+
+  fieldset legend h3,
+  .container-group legend h3,
+  fieldset legend h4,
+  .container-group legend h4,
+  fieldset legend h5,
+  .container-group legend h5,
+  fieldset legend h6,
+  .container-group legend h6
+  {
+    font-weight: 700 !important;
+    font-size: 16px !important;
+    line-height: normal !important;
+    margin-bottom: 8px !important;
+  }
+
 
   /* Ensure the title block occupies remaining space on the right */
   .form-title {
