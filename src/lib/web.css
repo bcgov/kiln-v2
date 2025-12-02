@@ -122,21 +122,35 @@
   margin: auto;
 }
 
-/* Utility class to hide content on screen (used to reveal in print) */
 .hidden-on-screen {
   display: none;
 }
 
-/* Default grid for the form renderer on screen */
 .form-renderer {
   display: grid;
   grid-template-columns: repeat(1, 1fr);
-  gap: 1rem;
 }
 
-/* When in "printing" state during HTML print prep */
 .form-renderer.printing {
   display: block;
   gap: 0;
 }
 
+@media (max-width: 768px) {
+  .fixed {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .header-buttons-only,
+  .custom-buttons-only,
+  .custom-buttons-no-bg {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.bx--radio-button-group,
+.cds--radio-button-group {
+  margin-top: 1.25rem !important;
+}

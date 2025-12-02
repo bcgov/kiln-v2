@@ -1,9 +1,9 @@
 <script lang="ts">
 	import favicon from '$lib/assets/kiln.svg';
 	import type { CarbonTheme } from 'carbon-components-svelte/src/Theme/Theme.svelte';
-	import './page.css';
 	import { Theme } from 'carbon-components-svelte';
 	import 'carbon-components-svelte/css/all.css';
+	import './page.css';
 	import { browser } from '$app/environment';
 	let { children } = $props();
 
@@ -20,9 +20,12 @@
 	}
 
 	$effect(() => {
-		// const storedTheme = (localStorage.getItem('theme') as CarbonTheme) || 'white';
-		// theme = storedTheme;
-		document.documentElement.setAttribute('theme', theme);
+		// Ensure white theme is set
+		if (browser) {
+			localStorage.setItem('__carbon-theme', 'white');
+		}
+		theme = 'white';
+		document.documentElement.setAttribute('theme', 'white');
 	});
 </script>
 

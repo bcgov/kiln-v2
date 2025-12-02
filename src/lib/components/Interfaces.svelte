@@ -29,6 +29,7 @@
 		order?: number;
 		[key: string]: any;
 		mode?: string[]; // e.g. ["portalEdit"]
+		validate?: boolean;
 	};
 
 	const props = $props<{
@@ -47,7 +48,7 @@
 	// Snapshotting other props is fine; update similarly if you expect them to change dynamically
 	let disabled: boolean = props.disabled ?? false;
 	let size: 'small' | 'default' | 'lg' = props.size ?? 'small';
-	let validate: boolean = props.validate ?? true;
+	let validate: boolean = props.validate ?? false;
 	let ariaLabel: string = props.ariaLabel ?? 'Form actions';
 	let context: Record<string, any> = props.context ?? undefined;
 
@@ -219,8 +220,7 @@
 			if (!endpoint) {
 				const url = buildUrl(interpolate(action.host, ctx), interpolate(action.path, ctx));
 				endpoint = url.toString();
-			}
-
+			}			
 			// Compute body
 			const bodyFromAction =
 				typeof action.body === 'string'
@@ -239,8 +239,7 @@
 				...(action.path ? { path: action.path } : {}),
 				...(action.headers ? { headers: action.headers } : {}),
 				...(action.type ? { type: action.type } : {})
-			};
-
+			};			
 			const method = (action.type || 'POST').toUpperCase();
 			const fetchInit: RequestInit = { method, headers };
 
@@ -352,9 +351,9 @@
 
 	async function handleClick(idx: number, btn: InterfaceButton) {
 		if (disabled || pending[idx] === 'loading') return;
-
+		console.log("validate >",validate);
 		// Optional validation phase
-		if (validate) {
+		if (btn.validate) {
 			const { isValid, errorList } = validateAllFields();
 			if (!isValid) {
 				props.onActionResult?.({
@@ -381,7 +380,7 @@
 				index: idx,
 				label: btn?.label,
 				ok: false,
-				error: { message: err?.message || 'Unknown error' }
+				error: 'The action failed. Please try again.'
 			});
 		} finally {
 			// brief success/error state, then reset

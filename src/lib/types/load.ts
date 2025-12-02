@@ -38,4 +38,5 @@ export interface UseFormLoaderReturn {
   formData: Writable<object>;
   saveData: Writable<object>;
   load: () => Promise<void>;
+  disablePrint: Writable<boolean>;
 }

@@ -103,7 +103,7 @@ export const comparators = {
 	strict: <T>(a: T, b: T) => a !== b,
 	number: (a: number, b: number) => !isNaN(a) && a !== b,
 	string: (a: string, b: string) => a !== b,
-	date: (a: string | null, b: string | null) => (a ?? '') === (b ?? '')
+	date: (a: string | null, b: string | null) => (a ?? '') !== (b ?? '')
 };
 
 

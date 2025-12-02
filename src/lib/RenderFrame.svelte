@@ -21,13 +21,15 @@
 	import { getSessionInterface } from '$lib/utils/interface';
 	import type { ActionResultPayload } from '$lib/types/interfaces';
 	import { bindDataToForm } from './utils/databinder';
+	import { formatWithAppTokens } from '$lib/utils/dateFormats';
 
 	let {
 		saveData = undefined,
 		formData,
 		goBack = undefined,
 		mode = 'preview',
-		formDelivery = undefined
+		formDelivery = undefined,
+		disablePrint = false
 	} = $props();
 
 	// Modal and loading state
@@ -38,6 +40,26 @@
 	let isFormCleared = $state(false);
 	let modalErrors = $state<string[]>([]);
 
+	let modalMode = $state<'info' | 'confirm'>('info');
+	let modalPrimaryText = $state('OK');
+	let modalSecondaryText = $state<string | null>(null);
+	let modalResolver = $state<((result: boolean) => void) | null>(null);
+
+	function resetModalRuntime() {
+		modalMode = 'info';
+		modalPrimaryText = 'OK';
+		modalSecondaryText = null;
+		modalResolver = null;
+	}
+
+	function resolveModal(result: boolean) {
+		if (modalMode === 'confirm' && modalResolver) {
+			modalResolver(result);
+		}
+		modalOpen = false;
+		resetModalRuntime();
+	}
+
 	let interfaceItems = $derived.by(() => {
 		// Prefer interface embedded in the payload (array or { interface: [] })
 		const fd =
@@ -46,7 +68,7 @@
 			(formData as any)?.interface?.interface ??
 			(formData as any)?.interface;
 
-		if (Array.isArray(fd)) return fd;
+		if (Array.isArray(fd) && fd.length > 0) return fd;
 
 		// Fallback: sessionStorage (set earlier by the loader/wrapper)
 		const ss = getSessionInterface();
@@ -68,10 +90,13 @@
 			validateAllFields,
 			handlePrint,
 			handleCancel,
-			handleSubmit, 
+			handleSubmit,
 			// utils imported above:
 			createSavedData,
 			submitForButtonAction, // in case scripts choose to call it
+
+			// confirmation modal helper
+			confirmModal,
 
 			// route/query params
 			params
@@ -114,14 +139,41 @@
 		modalOpen = true;
 	}
 
+	async function confirmModal(message?: string): Promise<boolean> {
+		const defaultMessage = `
+		Do you want to submit this form?
+
+		If you answer "No", you will be able to return to this form later and enter more responses.
+		If you answer "Yes", the form will no longer be editable.
+		`.trim();
+
+		return await new Promise<boolean>((resolve) => {
+			modalMode = 'confirm';
+			modalTitle = 'Confirmation';
+			modalMessage = (message || defaultMessage).trim();
+			modalErrors = [];
+			modalPrimaryText = 'Yes';
+			modalSecondaryText = 'No';
+
+			modalResolver = (result: boolean) => {
+				resolve(result);
+			};
+
+			modalOpen = true;
+		});
+	}
+
 	let mergedFormData = $derived.by(() => {
 		if (!formData) return null;
 
-		if (mode === 'view') {
+		if (mode === 'view' || mode === 'portalView') {
 			setReadOnlyFields(formData);
 		}
 
-		return bindDataToForm({ data: saveData, form_definition: formData?.formversion ? formData.formversion : formData }).mappedFormDef;
+		return bindDataToForm({
+			data: saveData,
+			form_definition: formData?.formversion ? formData.formversion : formData
+		}).mappedFormDef;
 	});
 
 	let ministryLogoPath = $derived.by(() => {
@@ -153,11 +205,20 @@
 			// Match legacy behavior: set title to form id for print session
 			document.title = formData?.form_id || 'CustomFormName';
 
-			// Prepare footer text: e.g., "CF0609 - Consent to Disclosure"
-			const footerText = `${formData?.form_id || ''}${
-				formData?.form_id ? ' - ' : ''
-			}${formData?.title || formData?.name || ''}`.trim();
-			// Expose footer text to @page margin boxes via attribute
+			// Prepare footer text: e.g., "CF0609 - Consent to Disclosure (2025-11-24)"
+			const formattedVersionDate = formatWithAppTokens(
+				formData?.version_date,
+				formData?.version_date_format,
+				'YYYY-MM-DD'
+			);
+
+			const footerText = `
+				${formData?.form_id || ''}
+				${formData?.form_id ? ' - ' : ''}
+				${formData?.title || formData?.name || ''}
+				${formattedVersionDate ? ` (${formattedVersionDate})` : ''}
+			`.trim();
+
 			document.documentElement.setAttribute('data-form-id', footerText);
 			// Also populate the fixed footer (for browsers without margin boxes)
 			const fixedFooterLeft = document.getElementById('print-footer-left');
@@ -223,7 +284,55 @@
 		modalOpen = false;
 
 		try {
-			const { isValid, errorList } = validateAllFields();
+			const { isValid, errorList, errors } = validateAllFields();
+
+			if (!isValid) {
+				try {
+					window.dispatchEvent(
+						new CustomEvent('kiln2:validate-all', {
+							detail: { errors }
+						})
+					);
+				} catch (e) {
+					console.log('validation-all event error:', e);
+				}
+
+				requestAnimationFrame(() => {
+					const selectors = (id: string) =>
+						[
+							`[data-attr-id="${id}"]`,
+							`[data-field-id="${id}"]`,
+							`#${CSS && CSS.escape ? CSS.escape(id) : id}`,
+							`[name="${CSS && CSS.escape ? CSS.escape(id) : id}"]`
+						].join(',');
+
+					Object.keys(errors || {}).forEach((id) => {
+						const root = document.querySelector<HTMLElement>(selectors(id));
+						if (!root) return;
+
+						const focusable =
+							(root.matches?.('input,select,textarea')
+								? root
+								: root.querySelector('input,select,textarea')) || root;
+
+						try {
+							focusable.dispatchEvent(new Event('focus', { bubbles: true }));
+						} catch (e) {
+							console.log('focus dispatch error:', e);
+						}
+
+						try {
+							focusable.dispatchEvent(new Event('blur', { bubbles: true }));
+						} catch (e) {
+							console.log('blur dispatch error:', e);
+						}
+					});
+				});
+
+				showModal('validation', undefined, errorList);
+				return;
+			}
+
 			if (isValid) {
 				const returnMessage = await saveFormData('save');
 				if (returnMessage === 'success') {
@@ -247,7 +356,55 @@
 		modalOpen = false;
 
 		try {
-			const { isValid, errorList } = validateAllFields();
+			const { isValid, errorList, errors } = validateAllFields();
+
+			if (!isValid) {
+				try {
+					window.dispatchEvent(
+						new CustomEvent('kiln2:validate-all', {
+							detail: { errors }
+						})
+					);
+				} catch (e) {
+					console.log('validation-all event error:', e);
+				}
+
+				requestAnimationFrame(() => {
+					const selectors = (id: string) =>
+						[
+							`[data-attr-id="${id}"]`,
+							`[data-field-id="${id}"]`,
+							`#${CSS && CSS.escape ? CSS.escape(id) : id}`,
+							`[name="${CSS && CSS.escape ? CSS.escape(id) : id}"]`
+						].join(',');
+
+					Object.keys(errors || {}).forEach((id) => {
+						const root = document.querySelector<HTMLElement>(selectors(id));
+						if (!root) return;
+
+						const focusable =
+							(root.matches?.('input,select,textarea')
+								? root
+								: root.querySelector('input,select,textarea')) || root;
+
+						try {
+							focusable.dispatchEvent(new Event('focus', { bubbles: true }));
+						} catch (e) {
+							console.log('focus dispatch error:', e);
+						}
+
+						try {
+							focusable.dispatchEvent(new Event('blur', { bubbles: true }));
+						} catch (e) {
+							console.log('blur dispatch error:', e);
+						}
+					});
+				});
+
+				showModal('validation', undefined, errorList);
+				return;
+			}
+
 			if (isValid) {
 				const returnMessage = await saveFormData('save_and_close');
 				if (returnMessage === 'success') {
@@ -320,7 +477,7 @@
 	};
 
 	$effect(() => {
-		if (mode !== FORM_MODE.preview && mode !== FORM_MODE.view && typeof window !== 'undefined') {
+		if (mode !== FORM_MODE.preview && mode !== FORM_MODE.view &&  mode !== FORM_MODE.portalEdit &&  mode !== FORM_MODE.portalView && typeof window !== 'undefined') {
 			const handleClose = (event: BeforeUnloadEvent) => {
 				if (!isFormCleared) {
 					event.preventDefault();
@@ -358,6 +515,10 @@
 				setModalOpen(true);
 				return;
 			}
+			//Soft abort (ie. clicking No on Confirmation Modal)
+			if (!error) {
+				return;
+			}
 			setModalTitle(label || 'Action failed');
 			setModalMessage(typeof error === 'string' ? error : JSON.stringify(error ?? {}, null, 2));
 			setModalOpen(true);
@@ -365,9 +526,9 @@
 		}
 
 		// Success path
-		setModalTitle(label || 'Success');
-		setModalMessage('Done.');
-		setModalOpen(true);
+		// setModalTitle(label || 'Success');
+		// setModalMessage('Done.');
+		// setModalOpen(true);
 	}
 </script>
 
@@ -385,9 +546,11 @@
 <Modal
 	bind:open={modalOpen}
 	modalHeading={modalTitle}
-	primaryButtonText="OK"
-	on:click:button--primary={() => (modalOpen = false)}
-	on:close={() => (modalOpen = false)}
+	primaryButtonText={modalPrimaryText}
+	secondaryButtonText={modalSecondaryText || undefined}
+	on:click:button--primary={() => resolveModal(true)}
+	on:click:button--secondary={() => resolveModal(false)}
+	on:close={() => resolveModal(false)}
 >
 	{#if modalErrors.length > 0}
 		<p style="white-space: pre-line;">{modalMessage}</p>
@@ -427,7 +590,9 @@
 					{/if}
 
 					{#if formDelivery === 'generate'}
-						<Button kind="tertiary" class="no-print" onclick={handleGenerate}>Generate</Button>
+						<Button kind="tertiary" class="no-print" id="generate" onclick={handleGenerate}
+							>Generate</Button
+						>
 					{/if}
 
 					{#if (mode === FORM_MODE.edit || mode === FORM_MODE.preview) && formDelivery === 'portal' && (!interfaceItems || interfaceItems.length === 0)}
@@ -442,7 +607,11 @@
 						<Button kind="tertiary" class="no-print" onclick={goBack}>Back</Button>
 					{/if}
 
-					<Button kind="tertiary" class="no-print" onclick={handlePrint}>Print</Button>
+					{#if interfaceItems.length === 0}
+						<Button disabled={disablePrint} kind="tertiary" class="no-print" onclick={handlePrint}
+							>Print</Button
+						>
+					{/if}
 				</div>
 
 				<div class="form-title hidden-on-screen">
