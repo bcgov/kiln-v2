@@ -251,7 +251,8 @@
 
 			// Force reflow
 			document.body.offsetHeight;
-
+			
+			 if (!isPuppeteer) {
 			const cleanup = () => {
 				printing = false;
 				document.title = originalTitle;
@@ -272,7 +273,7 @@
 			window.addEventListener('focus', cleanup);
 
 			// Print after slight delay to ensure styles are applied
-			 if (!isPuppeteer) {
+			
 			setTimeout(() => {
 				window.print();
 			}, 150);
@@ -280,7 +281,7 @@
 
 			// Reset printing state after print dialog
 			setTimeout(() => {
-				if (printing) {
+				if (!isPuppeteer && printing) {
 					printing = false;
 				}
 			}, 150);
