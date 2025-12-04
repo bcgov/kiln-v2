@@ -9,14 +9,6 @@ service:
   type: ClusterIP
   port: 8080
 
-resources:
-  requests:
-    memory: "512Mi"
-    cpu: "20m"
-  limits:
-    memory: "1Gi"
-    cpu: "250m"
-
 nodeSelector: {}
 
 tolerations: []
