@@ -401,7 +401,8 @@ export async function unlockICMFinalFlags(): Promise<string> {
     const response = await fetch(unlockICMFinalEndpoint, {
       method: 'POST',
       headers,
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      keepalive: true
     });
     if (response.ok) {
       try {
