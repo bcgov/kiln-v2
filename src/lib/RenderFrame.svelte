@@ -177,8 +177,13 @@
 	});
 
 	let ministryLogoPath = $derived.by(() => {
+		const base = 
+		typeof window !== 'undefined' && window.location.href.includes('klamm')
+			? '/ministries'
+			: './ministries';
+
 		const path = mergedFormData?.ministry_id
-			? `./ministries/${mergedFormData.ministry_id}.png`
+			? `${base}/${mergedFormData.ministry_id}.png`
 			: null;
 		return path;
 	});
