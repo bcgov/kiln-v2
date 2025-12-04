@@ -177,8 +177,13 @@
 	});
 
 	let ministryLogoPath = $derived.by(() => {
+		const base = 
+		typeof window !== 'undefined' && window.location.href.includes('klamm')
+			? '/ministries'
+			: './ministries';
+
 		const path = mergedFormData?.ministry_id
-			? `./ministries/${mergedFormData.ministry_id}.png`
+			? `${base}/${mergedFormData.ministry_id}.png`
 			: null;
 		return path;
 	});
@@ -198,13 +203,14 @@
 	}
 
 	function handleHTMLPrint() {
+		const isPuppeteer = navigator.userAgent.includes('HeadlessChrome');
 		printing = true;
 
 		setTimeout(() => {
 			const originalTitle = document.title;
 			// Match legacy behavior: set title to form id for print session
 			document.title = formData?.form_id || 'CustomFormName';
-
+			
 			// Prepare footer text: e.g., "CF0609 - Consent to Disclosure (2025-11-24)"
 			const formattedVersionDate = formatWithAppTokens(
 				formData?.version_date,
@@ -245,7 +251,8 @@
 
 			// Force reflow
 			document.body.offsetHeight;
-
+			
+			 if (!isPuppeteer) {
 			const cleanup = () => {
 				printing = false;
 				document.title = originalTitle;
@@ -266,13 +273,15 @@
 			window.addEventListener('focus', cleanup);
 
 			// Print after slight delay to ensure styles are applied
+			
 			setTimeout(() => {
 				window.print();
 			}, 150);
+			}
 
 			// Reset printing state after print dialog
 			setTimeout(() => {
-				if (printing) {
+				if (!isPuppeteer && printing) {
 					printing = false;
 				}
 			}, 150);
@@ -608,9 +617,7 @@
 					{/if}
 
 					{#if interfaceItems.length === 0}
-						<Button disabled={disablePrint} kind="tertiary" class="no-print" onclick={handlePrint}
-							>Print</Button
-						>
+					<Button disabled={disablePrint} kind="tertiary" id="print" class="no-print" onclick={handlePrint}>Print</Button>
 					{/if}
 				</div>
 
