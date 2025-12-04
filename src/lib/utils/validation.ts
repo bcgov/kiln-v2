@@ -288,8 +288,11 @@ export function rulesFromAttributes(
       // Real formatting mask => compile a strict full-match regex
       rules.pattern = compileMaskToRegex(raw);
     } else {
-      // Not a known mask; ignore to avoid false "format" errors
-      // (If you ever want to accept literal regex strings, add parsing here.)
+      try {
+        rules.pattern = new RegExp(raw);
+      } catch {
+        console.warn("Invalid regex mask ignored:", raw);
+      }
     }
   }
 

@@ -34,7 +34,7 @@
 	//   '*': { pattern: /[a-zA-Z0-9]/ }, // letters & digits
 	// }
 
-	let mask = item.attributes?.mask ?? undefined;
+	//let mask = item.attributes?.mask ?? undefined;
 	let hideLabel = item.attributes?.hideLabel ?? false;
 	let maxCount = item.attributes?.maxCount ?? undefined;
 	let touched = $state(false);
@@ -101,6 +101,24 @@
 	const DASH_RX = /[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g;
 	const normalizeDash = (s?: string) => s?.normalize('NFKC').replace(DASH_RX, '-') ?? '';
 
+	function isRegexMask(mask: unknown): mask is string {
+		if (typeof mask !== 'string') return false;
+		const s = mask.trim();
+
+		// Quick heuristics — very safe
+		if (s.startsWith('^')) return true;
+		if (s.endsWith('$')) return true;
+		if (s.includes('{') || s.includes('}') || s.includes('(') || s.includes('|')) return true;
+		if (s.includes('?:')) return true;
+
+		// Optional strict validation
+		try {
+			new RegExp(s);
+			return true;
+		} catch {
+			return false;
+		}
+	}
 	// class-spec = "a-z", "A-Z", "0-9", "a-z0-9", or "[A-Za-z' -]"
 	const isClassSpecMask = (m: unknown) => {
 		if (typeof m !== 'string') return false;
@@ -116,6 +134,7 @@
 	$effect(() => {
 		if (maskApplied || typeof document === 'undefined') return;
 		const raw = normalizeDash(item.attributes?.mask).trim();
+		if (isRegexMask(raw)) return;
 		if (!raw || isClassSpecMask(raw) || !hasMaskTokens(raw)) return; // ⟵ skip literal/class-spec masks
 
 		const el = document.getElementById(item.uuid) as HTMLInputElement | null;
@@ -130,7 +149,11 @@
 <div class="field-container text-input-field">
 	<PrintRow {item} {printing} {labelText} value={value || ''} />
 
-	<div class="web-input" class:visible={!printing && item.visible_web !== false} class:moustache={enableVarSub}>
+	<div
+		class="web-input"
+		class:visible={!printing && item.visible_web !== false}
+		class:moustache={enableVarSub}
+	>
 		<TextInput
 			{...filterAttributes(item?.attributes)}
 			id={item.uuid}
