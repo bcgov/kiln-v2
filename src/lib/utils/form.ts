@@ -1,6 +1,5 @@
 import type { FormDefinition, Item, FieldValue, FormData, SavedData } from '../types/form';
 import { ensureFreshToken } from '$lib/utils/keycloak';
-import { getOriginalServerHeader } from './auth-headers';
 
 
 function getCookie(name: string): string | null {
