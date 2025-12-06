@@ -284,7 +284,7 @@ label {
 .bx--radio-button__label span,
 .cds--radio-button__label span {
   font-weight: normal !important;
-  font-size: 14px !important;
+  font-size: 16px !important;
 }
 
 /* Readonly field styles */

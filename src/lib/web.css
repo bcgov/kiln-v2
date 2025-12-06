@@ -149,3 +149,9 @@
     justify-content: center;
   }
 }
+
+.helper-text {
+	color: #525252;
+	font-size: 16px;
+	margin-top: .25rem;
+}
