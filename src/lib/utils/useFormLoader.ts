@@ -62,6 +62,8 @@ export function useFormLoader({
 				}
 			} else {				
 				const finalParams = transformParams ? transformParams(params) : params;
+				console.log('(Form Loader) endpoint:', apiEndpoint);
+				console.log('(Form Loader) params:', finalParams);
 
 				// Delegate fetch and error handling to loadFormData
 				let raw: any = undefined;
@@ -88,7 +90,7 @@ export function useFormLoader({
 						onError: (msg) => error.set(msg)
 					}
 				);
-
+				console.log('(Form Loader) raw result:', raw);
 				// If raw is undefined, an error likely occurred and was set via onError
 				if (raw !== undefined) {
 					const payload = expectSaveData ? (raw?.save_data ?? raw) : raw;
