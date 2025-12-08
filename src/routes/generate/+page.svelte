@@ -23,7 +23,7 @@
 	<RenderFrame
 		formData={$formData}
 		saveData={$saveData}
-		mode={FORM_MODE.view}
+		mode={FORM_MODE.generate}
 		formDelivery={FORM_DELIVERY_MODE.generate}
 		disablePrint={$disablePrint}
 	/>

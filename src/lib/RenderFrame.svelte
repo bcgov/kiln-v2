@@ -598,7 +598,7 @@
 						</Button>
 					{/if}
 
-					{#if formDelivery === 'generate'}
+					{#if formDelivery === 'generate' || mode === FORM_MODE.generate}
 						<Button kind="tertiary" class="no-print" id="generate" onclick={handleGenerate}
 							>Generate</Button
 						>
