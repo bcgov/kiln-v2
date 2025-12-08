@@ -103,8 +103,8 @@
   .header-title-print {
     color: #000;
     text-align: right;
+    font-family: 'BC Sans', sans-serif !important;
     font-size: 20px;
-    font-family: 'BC Sans', sans-serif;
     font-style: normal;
     font-weight: 600;
     line-height: normal;
@@ -147,6 +147,7 @@
   .header-form-id-print {
     color: #000;
     text-align: right;
+    font-family: 'BC Sans', sans-serif !important;
     font-size: 11px;
     font-style: normal;
     font-weight: 300;
