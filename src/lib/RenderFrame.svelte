@@ -591,7 +591,7 @@
 						disabled={typeof goBack === 'function'}
 						onActionResult={handleInterfaceResult}
 					/>
-					{#if mode === FORM_MODE.edit}
+					{#if mode === FORM_MODE.edit || mode === FORM_MODE.generate}
 						<Button kind="tertiary" class="no-print" onclick={handleSave}>Save</Button>
 						<Button kind="tertiary" class="no-print" onclick={handleSaveAndClose}>
 							Save And Close
