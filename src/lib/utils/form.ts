@@ -423,7 +423,7 @@ export async function unlockICMFinalFlags(): Promise<string> {
 }
 
 // --- PDF Payload Placeholder---
-export async function pdf-templategeneratePDF(formData: FormDefinition, pdfId: string){
+export async function generatePDF(formData: FormDefinition, pdfId: string){
   const payload: Record<string, any> = {}
   		try {
 			const { getAuthHeaders } = await import('./auth-headers');
