@@ -214,7 +214,7 @@
 	function paginateContentForPrint(): () => void {
 		// Available height per page in pixels (tuned for print)
 		// This value accounts for: page margins, header, Content Footer, Page Footer
-		const AVAILABLE_HEIGHT_PX = 380; // Reduced further to prevent overlap
+		const AVAILABLE_HEIGHT_PX = 580; // Increased to fit more content per page
 
 		console.log('Print pagination: availableHeight =', AVAILABLE_HEIGHT_PX);
 
@@ -224,6 +224,19 @@
 			console.log('No letter content found for pagination');
 			return () => {};
 		}
+
+		// Letter content may be hidden on screen (display:none) but visible in print
+		// Temporarily show it for measurement
+		const originalDisplay = letterContent.style.display;
+		const originalVisibility = letterContent.style.visibility;
+		const originalPosition = letterContent.style.position;
+
+		letterContent.style.display = 'block';
+		letterContent.style.visibility = 'hidden'; // Keep hidden visually
+		letterContent.style.position = 'absolute'; // Don't affect layout
+
+		// Force reflow to apply styles
+		letterContent.offsetHeight;
 
 		// Get the bounding rect of the letter content
 		const letterRect = letterContent.getBoundingClientRect();
@@ -236,10 +249,20 @@
 		const letterContentHeight = letterContent.scrollHeight;
 		console.log(`Found ${elements.length} paragraph elements, total content height: ${letterContentHeight}px`);
 
+		// If measurements are still zero, restore and skip pagination
+		if (letterContentHeight === 0) {
+			letterContent.style.display = originalDisplay;
+			letterContent.style.visibility = originalVisibility;
+			letterContent.style.position = originalPosition;
+			console.warn('Letter content height is 0 - skipping pagination');
+			return () => {};
+		}
+
 		const insertedBreaks: HTMLElement[] = [];
 		let pageNumber = 1;
 		let pageStartOffset = 0;
 
+		// Measure and insert breaks while element is still visible
 		elements.forEach((el, index) => {
 			// Calculate position relative to letter content start
 			const elRect = el.getBoundingClientRect();
@@ -268,6 +291,11 @@
 
 		console.log(`Total pages: ${pageNumber}, breaks inserted: ${insertedBreaks.length}`);
 
+		// Restore original styles after all measurements and breaks are done
+		letterContent.style.display = originalDisplay;
+		letterContent.style.visibility = originalVisibility;
+		letterContent.style.position = originalPosition;
+
 		// Return cleanup function
 		return () => {
 			insertedBreaks.forEach(breakEl => breakEl.remove());
@@ -282,6 +310,9 @@
 			const originalTitle = document.title;
 			// Match legacy behavior: set title to form id for print session
 			document.title = formData?.form_id || 'CustomFormName';
+
+			// Force reflow to ensure elements are measured correctly
+			document.body.offsetHeight;
 
 			// Paginate content to prevent footer overlap
 			const cleanupPagination = paginateContentForPrint();
