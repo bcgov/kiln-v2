@@ -1,6 +1,15 @@
+<!--
+	PrintFooter Component - "Page Footer"
+
+	System footer that appears in the bottom margin of every printed page.
+	Shows form ID, title, version date (left) and page numbers (right).
+
+	Note: This is different from "Content Footer" which is custom content
+	defined in form JSON and rendered by TextInfo.svelte.
+-->
 <script lang="ts">
 	/**
-	 * PrintFooter Component
+	 * PrintFooter Component - "Page Footer"
 	 *
 	 * Manages the print footer for forms via CSS @page margin boxes.
 	 * Sets the data-form-id attribute on documentElement which is read by
