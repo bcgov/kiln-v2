@@ -212,24 +212,7 @@
     margin-bottom: 0 !important;
   }
 
-  /* Fixed footer fallback for browsers without margin box support */
-  .paged-page {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 6px 10mm;
-    font-size: 11px;
-    color: #000;
-    z-index: 9999;
-  }
-
-  .paged-page .footer-right::after {
-    /* content: counter(page) " / " counter(pages); */
-  }
+  /* Fixed footer styling is now in PrintFooter.svelte component */
 
   /* Leave room for the footer so content doesn't overlap */
   body {
