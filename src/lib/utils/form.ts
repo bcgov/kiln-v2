@@ -258,11 +258,14 @@ function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
   walk((formDefinition.elements as Item[]) || []);
 }
 
-export async function saveFormData(action: 'save' | 'save_and_close'): Promise<string> {
+export async function saveFormData(action: 'save' | 'save_and_close' | 'generate'): Promise<string> {
   try {
     // @ts-ignore
     const { API } = await import('$lib/utils/api');
-    const saveFormDataEndpoint = API.saveFormData;
+    let saveFormDataEndpoint = API.saveFormData;
+    if (action === 'generate'){
+      saveFormDataEndpoint = API.saveFormDataGenerate;
+    }
 
     const win: any = typeof window !== 'undefined' ? window : undefined;
 
@@ -420,7 +423,7 @@ export async function unlockICMFinalFlags(): Promise<string> {
 }
 
 // --- PDF Payload Placeholder---
-export async function generatePDF(formData: FormDefinition, pdfId: string){
+export async function pdf-templategeneratePDF(formData: FormDefinition, pdfId: string){
   const payload: Record<string, any> = {}
   		try {
 			const { getAuthHeaders } = await import('./auth-headers');

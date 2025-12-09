@@ -440,7 +440,7 @@
 		modalOpen = false;
 
 		try {
-			const returnMessage = await saveFormData('save');
+			const returnMessage = await saveFormData('generate');
 			if (returnMessage === 'success') {
 				showModal('success');
 			} else {
