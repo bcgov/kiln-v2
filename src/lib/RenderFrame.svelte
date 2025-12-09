@@ -214,7 +214,7 @@
 	function paginateContentForPrint(): () => void {
 		// Available height per page in pixels (tuned for print)
 		// This value accounts for: page margins, header, Content Footer, Page Footer
-		const AVAILABLE_HEIGHT_PX = 580; // Increased to fit more content per page
+		const AVAILABLE_HEIGHT_PX = 590; // Fine-tuned with small gap before footer
 
 		console.log('Print pagination: availableHeight =', AVAILABLE_HEIGHT_PX);
 
