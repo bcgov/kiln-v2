@@ -21,14 +21,17 @@
 
     @bottom-left {
       content: attr(data-form-id);
+      background-color: yellow;      
     }
 
     @bottom-center {
       content: "";
+      background-color: yellow;      
     }
 
     @bottom-right {
       content: counter(page) " / " counter(pages);
+      background-color: yellow;      
     }
   }
 
@@ -265,12 +268,19 @@
     break-inside: auto !important;
   }
 
-  /* Common “top spacer” classes used at the start of letters — keep modest */
+  /* Common "top spacer" classes used at the start of letters — keep modest */
   .letter-header,
   .date-case-line,
   .text-break {
     margin-top: 0 !important;
     padding-top: 0 !important;
+  }
+
+  /* Content Footer - custom footer defined in form JSON */
+  .print-footer {
+    background-color: #b3dae8 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
 }
