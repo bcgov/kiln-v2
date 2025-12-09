@@ -206,97 +206,57 @@
 		handleHTMLPrint();
 	}
 
-	/**
-	 * Calculates available content height per page and inserts page breaks
-	 * to prevent content from overlapping the fixed Content Footer.
-	 * Returns a cleanup function to remove inserted page breaks.
-	 */
 	function paginateContentForPrint(): () => void {
-		// Available height per page in pixels (tuned for print)
-		// This value accounts for: page margins, header, Content Footer, Page Footer
-		const AVAILABLE_HEIGHT_PX = 590; // Fine-tuned with small gap before footer
+		const AVAILABLE_HEIGHT_PX = 590;
 
-		console.log('Print pagination: availableHeight =', AVAILABLE_HEIGHT_PX);
-
-		// Find letter content
 		const letterContent = document.querySelector('.letter-content, [id^="letter-content-"]') as HTMLElement;
 		if (!letterContent) {
-			console.log('No letter content found for pagination');
 			return () => {};
 		}
 
-		// Letter content may be hidden on screen (display:none) but visible in print
-		// Temporarily show it for measurement
 		const originalDisplay = letterContent.style.display;
 		const originalVisibility = letterContent.style.visibility;
 		const originalPosition = letterContent.style.position;
 
 		letterContent.style.display = 'block';
-		letterContent.style.visibility = 'hidden'; // Keep hidden visually
-		letterContent.style.position = 'absolute'; // Don't affect layout
-
-		// Force reflow to apply styles
+		letterContent.style.visibility = 'hidden';
+		letterContent.style.position = 'absolute';
 		letterContent.offsetHeight;
 
-		// Get the bounding rect of the letter content
 		const letterRect = letterContent.getBoundingClientRect();
-
-		// Get only paragraph elements for cleaner break points
 		const breakableElements = letterContent.querySelectorAll('p');
 		const elements = Array.from(breakableElements) as HTMLElement[];
-
-		// Calculate total content height
 		const letterContentHeight = letterContent.scrollHeight;
-		console.log(`Found ${elements.length} paragraph elements, total content height: ${letterContentHeight}px`);
 
-		// If measurements are still zero, restore and skip pagination
 		if (letterContentHeight === 0) {
 			letterContent.style.display = originalDisplay;
 			letterContent.style.visibility = originalVisibility;
 			letterContent.style.position = originalPosition;
-			console.warn('Letter content height is 0 - skipping pagination');
 			return () => {};
 		}
 
 		const insertedBreaks: HTMLElement[] = [];
-		let pageNumber = 1;
 		let pageStartOffset = 0;
 
-		// Measure and insert breaks while element is still visible
-		elements.forEach((el, index) => {
-			// Calculate position relative to letter content start
+		elements.forEach((el) => {
 			const elRect = el.getBoundingClientRect();
 			const relativeTop = elRect.top - letterRect.top;
-
-			// Log first few elements for debugging
-			if (index < 5) {
-				console.log(`P ${index}: relativeTop=${relativeTop.toFixed(0)}, height=${el.offsetHeight}`);
-			}
-
-			// Check if this element would overflow the current page
 			const positionOnCurrentPage = relativeTop - pageStartOffset;
+
 			if (positionOnCurrentPage > AVAILABLE_HEIGHT_PX) {
-				// Insert a page break before this element
 				const pageBreak = document.createElement('div');
 				pageBreak.className = 'print-page-break';
 				pageBreak.style.cssText = 'page-break-before: always; break-before: page;';
 				el.parentNode?.insertBefore(pageBreak, el);
 				insertedBreaks.push(pageBreak);
-
 				pageStartOffset = relativeTop;
-				pageNumber++;
-				console.log(`Page ${pageNumber}: Break before P ${index}, relativeTop=${relativeTop.toFixed(0)}px`);
 			}
 		});
 
-		console.log(`Total pages: ${pageNumber}, breaks inserted: ${insertedBreaks.length}`);
-
-		// Restore original styles after all measurements and breaks are done
 		letterContent.style.display = originalDisplay;
 		letterContent.style.visibility = originalVisibility;
 		letterContent.style.position = originalPosition;
 
-		// Return cleanup function
 		return () => {
 			insertedBreaks.forEach(breakEl => breakEl.remove());
 		};
