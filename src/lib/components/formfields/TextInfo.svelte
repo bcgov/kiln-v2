@@ -1,11 +1,3 @@
-<!--
-	TextInfo Component
-
-	Renders static text/HTML content defined in form JSON.
-	This component is used for the "Content Footer" (custom footer with
-	ministry info, contact details, etc.) when a text-info field is added
-	to the form definition.
--->
 <script lang="ts">
 	import type { Item } from '$lib/types/form';
 	import './fields.css';
