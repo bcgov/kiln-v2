@@ -283,4 +283,23 @@
     print-color-adjust: exact !important;
   }
 
+  /* Debug: red border around letter content */
+  .letter-content,
+  [id^="letter-content-"] {
+    border: 1px dashed red !important;
+    padding-bottom: 0 !important;
+  }
+
+  /* Force page breaks inserted by JavaScript pagination */
+  .print-page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+    page-break-after: auto !important;
+    break-after: auto !important;
+    display: block !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
 }

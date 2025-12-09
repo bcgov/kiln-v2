@@ -206,6 +206,74 @@
 		handleHTMLPrint();
 	}
 
+	/**
+	 * Calculates available content height per page and inserts page breaks
+	 * to prevent content from overlapping the fixed Content Footer.
+	 * Returns a cleanup function to remove inserted page breaks.
+	 */
+	function paginateContentForPrint(): () => void {
+		// Available height per page in pixels (tuned for print)
+		// This value accounts for: page margins, header, Content Footer, Page Footer
+		const AVAILABLE_HEIGHT_PX = 380; // Reduced further to prevent overlap
+
+		console.log('Print pagination: availableHeight =', AVAILABLE_HEIGHT_PX);
+
+		// Find letter content
+		const letterContent = document.querySelector('.letter-content, [id^="letter-content-"]') as HTMLElement;
+		if (!letterContent) {
+			console.log('No letter content found for pagination');
+			return () => {};
+		}
+
+		// Get the bounding rect of the letter content
+		const letterRect = letterContent.getBoundingClientRect();
+
+		// Get only paragraph elements for cleaner break points
+		const breakableElements = letterContent.querySelectorAll('p');
+		const elements = Array.from(breakableElements) as HTMLElement[];
+
+		// Calculate total content height
+		const letterContentHeight = letterContent.scrollHeight;
+		console.log(`Found ${elements.length} paragraph elements, total content height: ${letterContentHeight}px`);
+
+		const insertedBreaks: HTMLElement[] = [];
+		let pageNumber = 1;
+		let pageStartOffset = 0;
+
+		elements.forEach((el, index) => {
+			// Calculate position relative to letter content start
+			const elRect = el.getBoundingClientRect();
+			const relativeTop = elRect.top - letterRect.top;
+
+			// Log first few elements for debugging
+			if (index < 5) {
+				console.log(`P ${index}: relativeTop=${relativeTop.toFixed(0)}, height=${el.offsetHeight}`);
+			}
+
+			// Check if this element would overflow the current page
+			const positionOnCurrentPage = relativeTop - pageStartOffset;
+			if (positionOnCurrentPage > AVAILABLE_HEIGHT_PX) {
+				// Insert a page break before this element
+				const pageBreak = document.createElement('div');
+				pageBreak.className = 'print-page-break';
+				pageBreak.style.cssText = 'page-break-before: always; break-before: page;';
+				el.parentNode?.insertBefore(pageBreak, el);
+				insertedBreaks.push(pageBreak);
+
+				pageStartOffset = relativeTop;
+				pageNumber++;
+				console.log(`Page ${pageNumber}: Break before P ${index}, relativeTop=${relativeTop.toFixed(0)}px`);
+			}
+		});
+
+		console.log(`Total pages: ${pageNumber}, breaks inserted: ${insertedBreaks.length}`);
+
+		// Return cleanup function
+		return () => {
+			insertedBreaks.forEach(breakEl => breakEl.remove());
+		};
+	}
+
 	function handleHTMLPrint() {
 		const isPuppeteer = navigator.userAgent.includes('HeadlessChrome');
 		printing = true;
@@ -214,6 +282,9 @@
 			const originalTitle = document.title;
 			// Match legacy behavior: set title to form id for print session
 			document.title = formData?.form_id || 'CustomFormName';
+
+			// Paginate content to prevent footer overlap
+			const cleanupPagination = paginateContentForPrint();
 
 			// Prepare and set footer text via PrintFooter component
 			const footerText = buildPrintFooterText();
@@ -236,6 +307,9 @@
 
 					// Clear footer via PrintFooter component
 					printFooter?.clearFooterText();
+
+					// Remove inserted page breaks
+					cleanupPagination();
 
 					window.removeEventListener('afterprint', cleanup);
 					window.removeEventListener('focus', cleanup);
