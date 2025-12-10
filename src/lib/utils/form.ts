@@ -223,12 +223,8 @@ function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
             const childUuid = child.uuid;
             for (const groupId of groupIds) {
               const stableKey = `${item.uuid}-${groupId}-${childUuid}`;
-
-              // Don’t clobber a value that’s already in formState
-              if (formState[stableKey] !== undefined) continue;
-
               const v = readElementValue(stableKey);
-              if (v !== undefined) {
+              if (v !== undefined && formState[stableKey] !== v) {
                 formState[stableKey] = v;
               }
             }
@@ -244,10 +240,6 @@ function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
       // Simple field (non-container)
       const uuid = item.uuid;
       if (!uuid) continue;
-
-      // Skip if we already have a value recorded (touched/dirty)
-      if (formState[uuid] !== undefined) continue;
-
       const v = readElementValue(uuid);
       if (v !== undefined) {
         formState[uuid] = v;
@@ -302,6 +294,145 @@ export async function saveFormData(action: 'save' | 'save_and_close'): Promise<s
       });
     }
 
+    // Normalize repeater groupState: accept either
+    // - array of row objects: [{[childUuid]: value}, ...] 
+    // - array of group IDs:   ["gidA","gidB", ...]  (convert to row objects using formState)
+    (items || []).forEach((it) => {
+      if (it?.type !== 'container') return;
+      if (it?.attributes?.isRepeatable !== true) return;
+
+      const containerUuid = it.uuid;
+      const gs = groupState[containerUuid] as any;
+
+      // already row objects -> leave as-is
+      if (Array.isArray(gs) && gs.length > 0) {
+        const first = gs[0];
+        const looksLikeRowObject =
+          typeof first === 'object' && first !== null && !Array.isArray(first);
+        if (looksLikeRowObject) return;
+
+        // ID array -> build rows from formState IN THAT ORDER
+        const idArray: string[] = gs as string[];
+        const rows: Record<string, FieldValue>[] = idArray.map((gid) => {
+          const row: Record<string, FieldValue> = {};
+          for (const child of (it.children || [])) {
+            const childUuid = (child as Item).uuid;
+            const stableKey = `${containerUuid}-${gid}-${childUuid}`;
+            const v = formState[stableKey];
+            if (v !== undefined) row[childUuid] = v;
+          }
+          return row;
+        });
+
+        groupState[containerUuid] = rows as unknown as FieldValue[];
+        return;
+      }
+
+      // empty/missing -> infer rows; try to preserve order via __kilnActiveGroups
+      if (!gs || (Array.isArray(gs) && gs.length === 0)) {
+        const active: string[] =
+          (win?.__kilnActiveGroups && win.__kilnActiveGroups[containerUuid]) || [];
+
+        // discover group ids present in formState for this container
+        const present = new Set<string>();
+        Object.keys(formState).forEach((k) => {
+          if (!k.startsWith(containerUuid + '-')) return;
+          const rest = k.slice(containerUuid.length + 1);
+          const gid = rest.split('-')[0];
+          present.add(gid);
+        });
+
+        const orderedIds = active.length
+          ? active.filter((gid) => present.has(gid))
+          : Array.from(present.values());
+
+        const rows: Record<string, FieldValue>[] = orderedIds.map((gid) => {
+          const row: Record<string, FieldValue> = {};
+          for (const child of (it.children || [])) {
+            const childUuid = (child as Item).uuid;
+            const stableKey = `${containerUuid}-${gid}-${childUuid}`;
+            const v = formState[stableKey];
+            if (v !== undefined) row[childUuid] = v;
+          }
+          return row;
+        });
+
+        groupState[containerUuid] = rows as unknown as FieldValue[];
+      }
+    });
+
+    // ---- NORMALIZE groupState (handles nested repeaters) ----
+    function normalizeGroupStateTree(list: Item[]) {
+      if (!Array.isArray(list)) return;
+
+      for (const it of list) {
+        if (!it) continue;
+
+        // If this item is a repeatable container, normalize its groupState entry
+        if (it.type === 'container' && it.attributes?.isRepeatable === true) {
+          const containerUuid = it.uuid;
+          const gs = groupState[containerUuid] as any;
+
+          if (Array.isArray(gs) && gs.length > 0) {
+            const first = gs[0];
+            const looksLikeRowObject =
+              typeof first === 'object' && first !== null && !Array.isArray(first);
+
+            if (!looksLikeRowObject) {
+              // ID array -> build row objects IN THAT ORDER, using latest formState
+              const idArray: string[] = gs as string[];
+              const rows: Record<string, FieldValue>[] = idArray.map((gid) => {
+                const row: Record<string, FieldValue> = {};
+                for (const child of (it.children || [])) {
+                  const childUuid = (child as Item).uuid;
+                  const stableKey = `${containerUuid}-${gid}-${childUuid}`;
+                  const v = formState[stableKey];
+                  if (v !== undefined) row[childUuid] = v;
+                }
+                return row;
+              });
+              groupState[containerUuid] = rows as unknown as FieldValue[];
+            }
+          } else if (!gs || gs.length === 0) {
+            // Fallback: infer rows from formState; preserve order via __kilnActiveGroups if present
+            const active: string[] =
+              (win?.__kilnActiveGroups && win.__kilnActiveGroups[containerUuid]) || [];
+
+            const present = new Set<string>();
+            Object.keys(formState).forEach((k) => {
+              if (!k.startsWith(containerUuid + '-')) return;
+              const rest = k.slice(containerUuid.length + 1);
+              const gid = rest.split('-')[0];
+              present.add(gid);
+            });
+
+            const orderedIds = active.length
+              ? active.filter((gid) => present.has(gid))
+              : Array.from(present);
+
+            const rows: Record<string, FieldValue>[] = orderedIds.map((gid) => {
+              const row: Record<string, FieldValue> = {};
+              for (const child of (it.children || [])) {
+                const childUuid = (child as Item).uuid;
+                const stableKey = `${containerUuid}-${gid}-${childUuid}`;
+                const v = formState[stableKey];
+                if (v !== undefined) row[childUuid] = v;
+              }
+              return row;
+            });
+
+            groupState[containerUuid] = rows as unknown as FieldValue[];
+          }
+        }
+
+        // Recurse into children (handles nested containers)
+        if (it.type === 'container' && Array.isArray(it.children) && it.children.length) {
+          normalizeGroupStateTree(it.children as Item[]);
+        }
+      }
+    }
+    normalizeGroupStateTree(items);
+
     const payload = {
       action,
       formState,
@@ -319,12 +450,12 @@ export async function saveFormData(action: 'save' | 'save_and_close'): Promise<s
     const username = getCookie("username");
     if (username && username.trim() !== "") {
       payload.sessionParams.username = username.trim();
-    } 
+    }
     else {
       let token = (window as any)?.keycloak?.token ?? (getCookie("token") as string | null) ?? null;
       if (!token) {
         const freshToken = await ensureFreshToken(5);
-        token = freshToken ?? null; 
+        token = freshToken ?? null;
       }
       if (token) {
         payload.sessionParams.token = token;
@@ -364,6 +495,7 @@ export async function saveFormData(action: 'save' | 'save_and_close'): Promise<s
     return "failed";
   }
 }
+
 
 export async function unlockICMFinalFlags(): Promise<string> {
   try {

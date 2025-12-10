@@ -65,6 +65,28 @@
 		w.__kilnActiveGroups[item.uuid] = activeGroupIds();
 	}
 
+	function syncGroupStateRegistry() {
+		const w = win();
+		if (!w) return;
+		const state: Record<string, any> = (w.__kilnFormState ||= {});
+		w.__kilnGroupState ||= {};
+
+		// rows in the exact visual order
+		const rows = groups
+			.map((g) => {
+				const row: Record<string, any> = {};
+				for (const child of children) {
+					const stableKey = `${item.uuid}-${g.id}-${child.uuid}`;
+					const v = state[stableKey];
+					if (v !== undefined) row[child.uuid] = v;
+				}
+				return row;
+			})
+			.filter((r) => Object.keys(r).length > 0);
+
+		w.__kilnGroupState[item.uuid] = rows;
+	}
+
 	function cleanupStaleFormState() {
 		const w = win();
 		if (!w) return;
@@ -82,14 +104,18 @@
 			}
 		}
 
-		// Also reset per-container computed group rows so validators won’t use stale rows
 		w.__kilnGroupState = w.__kilnGroupState || {};
-		w.__kilnGroupState[item.uuid] = [];
+		w.__kilnGroupState[item.uuid] = activeGroupIds();
+	}
+
+	function syncRegistries() {
+		syncActiveGroupsRegistry();
+		syncGroupStateRegistry();
 	}
 
 	// Use $effect.pre() to prevent race condition where child fields initialize before seeing preloaded data
 	$effect.pre(() => {
-		syncActiveGroupsRegistry();
+		syncRegistries();
 		syncInitialGroupDataToFormState();
 	});
 
@@ -125,7 +151,7 @@
 		groups.push(newGroup);
 		groups = groups;
 		// keep registry in sync
-		syncActiveGroupsRegistry();
+		syncRegistries();
 	}
 
 	function removeGroup(index: number) {
@@ -133,7 +159,7 @@
 		groups.splice(index, 1);
 		groups = groups.map((group, idx) => ({ ...group, index: idx }));
 		// update registry and purge any stale keys that belonged to the removed group
-		syncActiveGroupsRegistry();
+		syncRegistries();
 		cleanupStaleFormState();
 	}
 
