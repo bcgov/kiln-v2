@@ -212,24 +212,7 @@
     margin-bottom: 0 !important;
   }
 
-  /* Fixed footer fallback for browsers without margin box support */
-  .paged-page {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 6px 10mm;
-    font-size: 11px;
-    color: #000;
-    z-index: 9999;
-  }
-
-  .paged-page .footer-right::after {
-    /* content: counter(page) " / " counter(pages); */
-  }
+  /* Fixed footer styling is now in PrintFooter.svelte component */
 
   /* Leave room for the footer so content doesn't overlap */
   body {
@@ -282,12 +265,36 @@
     break-inside: auto !important;
   }
 
-  /* Common “top spacer” classes used at the start of letters — keep modest */
+  /* Common "top spacer" classes used at the start of letters — keep modest */
   .letter-header,
   .date-case-line,
   .text-break {
     margin-top: 0 !important;
     padding-top: 0 !important;
+  }
+
+  /* Content Footer - custom footer defined in form JSON */
+  .print-footer {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Debug: red border around letter content */
+  .letter-content,
+  [id^="letter-content-"] {
+    padding-bottom: 0 !important;
+  }
+
+  /* Force page breaks inserted by JavaScript pagination */
+  .print-page-break {
+    page-break-before: always !important;
+    break-before: page !important;
+    page-break-after: auto !important;
+    break-after: auto !important;
+    display: block !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
 }
