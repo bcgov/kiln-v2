@@ -224,8 +224,8 @@
 		letterContent.offsetHeight;
 
 		const letterRect = letterContent.getBoundingClientRect();
-		const breakableElements = letterContent.querySelectorAll('p');
-		const elements = Array.from(breakableElements) as HTMLElement[];
+		const existingBreaks = letterContent.querySelectorAll('.page-break');
+		const breakableElements = letterContent.querySelectorAll('p, li');
 		const letterContentHeight = letterContent.scrollHeight;
 
 		if (letterContentHeight === 0) {
@@ -235,12 +235,26 @@
 			return () => {};
 		}
 
+		const existingBreakPositions = Array.from(existingBreaks).map((el) => {
+			const rect = (el as HTMLElement).getBoundingClientRect();
+			return rect.top - letterRect.top;
+		});
+
 		const insertedBreaks: HTMLElement[] = [];
 		let pageStartOffset = 0;
 
+		const elements = Array.from(breakableElements) as HTMLElement[];
 		elements.forEach((el) => {
 			const elRect = el.getBoundingClientRect();
 			const relativeTop = elRect.top - letterRect.top;
+
+			const existingBreakBefore = existingBreakPositions.find(
+				(pos) => pos > pageStartOffset && pos <= relativeTop
+			);
+			if (existingBreakBefore !== undefined) {
+				pageStartOffset = existingBreakBefore;
+			}
+
 			const positionOnCurrentPage = relativeTop - pageStartOffset;
 
 			if (positionOnCurrentPage > AVAILABLE_HEIGHT_PX) {
