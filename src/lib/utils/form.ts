@@ -250,11 +250,14 @@ function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
   walk((formDefinition.elements as Item[]) || []);
 }
 
-export async function saveFormData(action: 'save' | 'save_and_close'): Promise<string> {
+export async function saveFormData(action: 'save' | 'save_and_close' | 'generate'): Promise<string> {
   try {
     // @ts-ignore
     const { API } = await import('$lib/utils/api');
-    const saveFormDataEndpoint = API.saveFormData;
+    let saveFormDataEndpoint = API.saveFormData;
+    if (action === 'generate'){
+      saveFormDataEndpoint = API.saveFormDataGenerate;
+    }
 
     const win: any = typeof window !== 'undefined' ? window : undefined;
 
