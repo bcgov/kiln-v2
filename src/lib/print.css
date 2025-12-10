@@ -21,17 +21,14 @@
 
     @bottom-left {
       content: attr(data-form-id);
-      background-color: yellow;      
     }
 
     @bottom-center {
       content: "";
-      background-color: yellow;      
     }
 
     @bottom-right {
       content: counter(page) " / " counter(pages);
-      background-color: yellow;      
     }
   }
 
@@ -278,7 +275,6 @@
 
   /* Content Footer - custom footer defined in form JSON */
   .print-footer {
-    background-color: #b3dae8 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -286,7 +282,6 @@
   /* Debug: red border around letter content */
   .letter-content,
   [id^="letter-content-"] {
-    border: 1px dashed red !important;
     padding-bottom: 0 !important;
   }
 
