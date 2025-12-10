@@ -214,6 +214,11 @@
 			return () => {};
 		}
 
+		document.querySelectorAll('.print-page-break').forEach((el) => el.remove());
+
+		const existingBreaks = Array.from(letterContent.querySelectorAll('.page-break')) as HTMLElement[];
+		existingBreaks.forEach((el) => el.style.display = 'none');
+
 		const originalDisplay = letterContent.style.display;
 		const originalVisibility = letterContent.style.visibility;
 		const originalPosition = letterContent.style.position;
@@ -224,7 +229,6 @@
 		letterContent.offsetHeight;
 
 		const letterRect = letterContent.getBoundingClientRect();
-		const existingBreaks = letterContent.querySelectorAll('.page-break');
 		const breakableElements = letterContent.querySelectorAll('p, li');
 		const letterContentHeight = letterContent.scrollHeight;
 
@@ -232,13 +236,9 @@
 			letterContent.style.display = originalDisplay;
 			letterContent.style.visibility = originalVisibility;
 			letterContent.style.position = originalPosition;
+			existingBreaks.forEach((el) => el.style.display = '');
 			return () => {};
 		}
-
-		const existingBreakPositions = Array.from(existingBreaks).map((el) => {
-			const rect = (el as HTMLElement).getBoundingClientRect();
-			return rect.top - letterRect.top;
-		});
 
 		const insertedBreaks: HTMLElement[] = [];
 		let pageStartOffset = 0;
@@ -247,14 +247,6 @@
 		elements.forEach((el) => {
 			const elRect = el.getBoundingClientRect();
 			const relativeTop = elRect.top - letterRect.top;
-
-			const existingBreakBefore = existingBreakPositions.find(
-				(pos) => pos > pageStartOffset && pos <= relativeTop
-			);
-			if (existingBreakBefore !== undefined) {
-				pageStartOffset = existingBreakBefore;
-			}
-
 			const positionOnCurrentPage = relativeTop - pageStartOffset;
 
 			if (positionOnCurrentPage > AVAILABLE_HEIGHT_PX) {
@@ -272,7 +264,8 @@
 		letterContent.style.position = originalPosition;
 
 		return () => {
-			insertedBreaks.forEach(breakEl => breakEl.remove());
+			insertedBreaks.forEach((el) => el.remove());
+			existingBreaks.forEach((el) => el.style.display = '');
 		};
 	}
 
