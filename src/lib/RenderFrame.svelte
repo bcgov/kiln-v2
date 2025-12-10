@@ -338,10 +338,6 @@
 		}, 150);
 	}
 
-	/**
-	 * Builds the footer text for print.
-	 * Format: "CF0609 - Form Title (2025-01-01)"
-	 */
 	function buildPrintFooterText(): string {
 		const formId = formData?.form_id || '';
 		const title = formData?.title || formData?.name || '';
@@ -359,10 +355,6 @@
 		return parts.join('').trim();
 	}
 
-	/**
-	 * Creates metadata elements for print (description, author, language).
-	 * Returns array of elements to be appended to document head.
-	 */
 	function createPrintMetadata(): HTMLMetaElement[] {
 		const metaDescription = document.createElement('meta');
 		metaDescription.name = 'description';
