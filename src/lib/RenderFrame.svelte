@@ -5,6 +5,7 @@
 	import FormRenderer from './components/FormRenderer.svelte';
 	import ScriptStyleInjection from './components/ScriptStyleInjection.svelte';
 	import { FORM_MODE } from './constants/formMode';
+	import { onMount } from 'svelte';
 	import {
 		saveFormData,
 		unlockICMFinalFlags,
@@ -485,6 +486,16 @@
 		window.parent.postMessage(JSON.stringify({ event: 'submit' }), '*');
 	};
 
+	const clickButtonByText = (text: string) => {
+		const targetText = text.trim().toLowerCase();
+
+		const targetButton = Array.from(document.querySelectorAll("button")).find((b) =>
+			b.innerText.trim().toLowerCase() === targetText
+		);
+
+		targetButton?.click();
+	};
+
 	$effect(() => {
 		if (mode !== FORM_MODE.preview && mode !== FORM_MODE.view &&  mode !== FORM_MODE.portalEdit &&  mode !== FORM_MODE.portalView && typeof window !== 'undefined') {
 			const handleClose = (event: BeforeUnloadEvent) => {
@@ -504,6 +515,18 @@
 			(window as any).__kilnFormDefinition = mergedFormData;
 			(window as any).__kilnFormState = (window as any).__kilnFormState || {};
 		}
+	});
+
+	onMount(() => {
+		const handleMessage = (event: MessageEvent) => {
+			if (event.data?.type === "CLICK_BUTTON_BY_TEXT") {
+				console.log("Message recieved");
+			clickButtonByText(event.data.text);
+			}
+		};
+
+		window.addEventListener("message", handleMessage);
+		return () => window.removeEventListener("message", handleMessage);
 	});
 
 	$effect(() => {
