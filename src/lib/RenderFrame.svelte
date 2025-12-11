@@ -207,7 +207,7 @@
 	}
 
 	function paginateContentForPrint(): () => void {
-		let availableContentHeightPerPagePx = 840;
+		let contentHeightPx = 840;
 
 		const letterContent = document.querySelector('.letter-content, [id^="letter-content-"]') as HTMLElement;
 		if (!letterContent) {
@@ -216,15 +216,23 @@
 
         const footer = document.querySelector(".print-footer") as HTMLElement | null;
 
-        console.log("> Default availableContentHeightPerPagePx=" + availableContentHeightPerPagePx);
+        console.log("> Default contentHeightPx=" + contentHeightPx);
 
         if (footer) {
-            const footerHeight = Math.ceil(footer.getBoundingClientRect().height);
+            const footerRect = footer.getBoundingClientRect();
+
+            const footerHeight = Math.ceil(footerRect.height);
+            const footerTop = Math.ceil(footerRect.top);
+            const footerBottom = Math.ceil(footerRect.bottom);
+
             console.log("> footerHeight=" + footerHeight);
-            availableContentHeightPerPagePx -= footerHeight;
+            console.log("> footerTop=" + footerTop);
+            console.log("> footerBottom=" + footerBottom);
+
+            contentHeightPx -= footerHeight;
         }
 
-        console.log("> Updated availableContentHeightPerPagePx=" + availableContentHeightPerPagePx);
+        console.log("> Updated contentHeightPx=" + contentHeightPx);
 
 
 
@@ -232,7 +240,7 @@
         // Debug line:
         letterContent.style.position = 'relative';
         letterContent.insertAdjacentHTML('beforeend',
-            `<hr style="position:absolute;top:${availableContentHeightPerPagePx}px;left:0;right:0;border:1px solid black;z-index:9999">`
+            `<hr style="position:absolute;top:${contentHeightPx}px;left:0;right:0;border:1px solid black;z-index:9999">`
         );
         // ===
 
@@ -276,7 +284,7 @@
 			const relativeTop = elRect.top - letterRect.top;
 			const positionOnCurrentPage = relativeTop - pageStartOffset;
 
-			if (positionOnCurrentPage > availableContentHeightPerPagePx) {
+			if (positionOnCurrentPage > contentHeightPx) {
 				const pageBreak = document.createElement('div');
 				pageBreak.className = 'page-break';
 				pageBreak.style.cssText = 'page-break-before: always; break-before: page;';
@@ -284,8 +292,6 @@
 
                 console.log("textContent=" + el.textContent);
                 el.style.color = "blue";
-                console.log("page break added!");
-
 
 				insertedBreaks.push(pageBreak);
 				pageStartOffset = relativeTop;
