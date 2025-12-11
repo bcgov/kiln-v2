@@ -286,7 +286,7 @@
   }
 
   /* Force page breaks inserted by JavaScript pagination */
-  .print-page-break {
+  .page-break {
     page-break-before: always !important;
     break-before: page !important;
     page-break-after: auto !important;
@@ -295,6 +295,7 @@
     height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
+    border: 3px dashed green;
   }
 
 }
