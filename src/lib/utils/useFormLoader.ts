@@ -20,6 +20,7 @@ export function useFormLoader({
 	expectSaveData = false,
 	parseErrorBody = true,
 	includeOriginalServer = true,
+	includeAuth,
 	transformParams
 }: UseFormLoaderOptions): UseFormLoaderReturn {
 	const isLoading = writable(true);
@@ -81,7 +82,7 @@ export function useFormLoader({
 						endpoint: apiEndpoint,
 						params: finalParams,
 						setLoading: (v) => isLoading.set(v),
-						includeAuth: true,
+						includeAuth: includeAuth ?? true,
 						includeOriginalServer,
 						// Always ask for raw result here; we map expectSaveData locally
 						expectSaveData: false,
