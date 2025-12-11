@@ -207,7 +207,8 @@
 	}
 
 	function paginateContentForPrint(): () => void {
-		let contentHeightPx = 840;
+		let contentHeightPx = 820;
+		let defaultFooterHeightPx = 191;
 
 		const letterContent = document.querySelector('.letter-content, [id^="letter-content-"]') as HTMLElement;
 		if (!letterContent) {
@@ -229,7 +230,12 @@
             console.log("> footerTop=" + footerTop);
             console.log("> footerBottom=" + footerBottom);
 
-            contentHeightPx -= footerHeight;
+			if (footerHeight > defaultFooterHeightPx) {
+				contentHeightPx -= footerHeight;
+			}
+			else {
+				contentHeightPx -= defaultFooterHeightPx;
+			}
         }
 
         console.log("> Updated contentHeightPx=" + contentHeightPx);
@@ -237,13 +243,16 @@
 
 
 
-        // Debug line:
-        letterContent.style.position = 'relative';
-        letterContent.insertAdjacentHTML('beforeend',
-            `<hr style="position:absolute;top:${contentHeightPx}px;left:0;right:0;border:1px solid black;z-index:9999">`
-        );
-        // ===
 
+        // Debug line:
+		/*
+        const debugLine = document.createElement('div');
+        debugLine.className = 'debug-page-height-line';
+        debugLine.style.cssText = `position:absolute;top:${contentHeightPx}px;left:0;right:0;height:2px;background-color:red;z-index:9999;pointer-events:none`;
+        letterContent.style.position = 'relative';
+        letterContent.appendChild(debugLine);
+        */
+        // ===
 
 
 
@@ -284,18 +293,23 @@
 			const relativeTop = elRect.top - letterRect.top;
 			const positionOnCurrentPage = relativeTop - pageStartOffset;
 
+			//if (el.)
+
 			if (positionOnCurrentPage > contentHeightPx) {
+				// Add Page Break:
 				const pageBreak = document.createElement('div');
 				pageBreak.className = 'page-break';
-				pageBreak.style.cssText = 'page-break-before: always; break-before: page;';
+				el.style.backgroundColor = "blue";
 				el.parentNode?.insertBefore(pageBreak, el);
 
-                console.log("textContent=" + el.textContent);
-                el.style.color = "blue";
+                console.log(`[PB CONTENT - ${positionOnCurrentPage} > ${contentHeightPx}]=` + el.textContent + " -> Top=" + Math.ceil(elRect.top) + " | Bottom=" + Math.ceil(elRect.bottom));
 
-				insertedBreaks.push(pageBreak);
 				pageStartOffset = relativeTop;
-			}
+			} else {
+                el.style.backgroundColor = "green";
+                console.log(`[NON PB CONTENT - ${positionOnCurrentPage} < ${contentHeightPx}]=` + el.textContent + " -> Top=" + Math.ceil(elRect.top) + " | Bottom=" + Math.ceil(elRect.bottom));
+                //el.textContent = el.textContent + " " + Math.ceil(elRect.top) + "->" + Math.ceil(elRect.bottom) + "|" + Math.ceil(elRect.height);
+            }
 		});
 
 		letterContent.style.display = originalDisplay;
