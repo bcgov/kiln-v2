@@ -207,12 +207,33 @@
 	}
 
 	function paginateContentForPrint(): () => void {
-		const AVAILABLE_HEIGHT_PX = 590;
+		let contentHeightPx = 820;
+		let defaultFooterHeightPx = 191;
 
 		const letterContent = document.querySelector('.letter-content, [id^="letter-content-"]') as HTMLElement;
 		if (!letterContent) {
 			return () => {};
 		}
+
+        const footer = document.querySelector(".print-footer") as HTMLElement | null;
+
+        if (footer) {
+            const footerRect = footer.getBoundingClientRect();
+
+            const footerHeight = Math.ceil(footerRect.height);
+
+			if (footerHeight > defaultFooterHeightPx) {
+				contentHeightPx -= footerHeight;
+			}
+			else {
+				contentHeightPx -= defaultFooterHeightPx;
+			}
+        }
+
+		document.querySelectorAll('.page-break').forEach((el) => el.remove());
+
+		const existingBreaks = Array.from(letterContent.querySelectorAll('.page-break')) as HTMLElement[];
+		existingBreaks.forEach((el) => el.style.display = 'none');
 
 		const originalDisplay = letterContent.style.display;
 		const originalVisibility = letterContent.style.visibility;
@@ -224,21 +245,16 @@
 		letterContent.offsetHeight;
 
 		const letterRect = letterContent.getBoundingClientRect();
-		const existingBreaks = letterContent.querySelectorAll('.page-break');
-		const breakableElements = letterContent.querySelectorAll('p, li');
+		const breakableElements = letterContent.querySelectorAll('p, li, table');
 		const letterContentHeight = letterContent.scrollHeight;
 
 		if (letterContentHeight === 0) {
 			letterContent.style.display = originalDisplay;
 			letterContent.style.visibility = originalVisibility;
 			letterContent.style.position = originalPosition;
+			existingBreaks.forEach((el) => el.style.display = '');
 			return () => {};
 		}
-
-		const existingBreakPositions = Array.from(existingBreaks).map((el) => {
-			const rect = (el as HTMLElement).getBoundingClientRect();
-			return rect.top - letterRect.top;
-		});
 
 		const insertedBreaks: HTMLElement[] = [];
 		let pageStartOffset = 0;
@@ -247,22 +263,13 @@
 		elements.forEach((el) => {
 			const elRect = el.getBoundingClientRect();
 			const relativeTop = elRect.top - letterRect.top;
-
-			const existingBreakBefore = existingBreakPositions.find(
-				(pos) => pos > pageStartOffset && pos <= relativeTop
-			);
-			if (existingBreakBefore !== undefined) {
-				pageStartOffset = existingBreakBefore;
-			}
-
 			const positionOnCurrentPage = relativeTop - pageStartOffset;
 
-			if (positionOnCurrentPage > AVAILABLE_HEIGHT_PX) {
+			if (positionOnCurrentPage > contentHeightPx) {
+				// Add Page Break:
 				const pageBreak = document.createElement('div');
-				pageBreak.className = 'print-page-break';
-				pageBreak.style.cssText = 'page-break-before: always; break-before: page;';
+				pageBreak.className = 'page-break';
 				el.parentNode?.insertBefore(pageBreak, el);
-				insertedBreaks.push(pageBreak);
 				pageStartOffset = relativeTop;
 			}
 		});
@@ -272,7 +279,8 @@
 		letterContent.style.position = originalPosition;
 
 		return () => {
-			insertedBreaks.forEach(breakEl => breakEl.remove());
+			insertedBreaks.forEach((el) => el.remove());
+			existingBreaks.forEach((el) => el.style.display = '');
 		};
 	}
 
