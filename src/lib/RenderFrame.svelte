@@ -223,12 +223,6 @@
             const footerRect = footer.getBoundingClientRect();
 
             const footerHeight = Math.ceil(footerRect.height);
-            const footerTop = Math.ceil(footerRect.top);
-            const footerBottom = Math.ceil(footerRect.bottom);
-
-            console.log("> footerHeight=" + footerHeight);
-            console.log("> footerTop=" + footerTop);
-            console.log("> footerBottom=" + footerBottom);
 
 			if (footerHeight > defaultFooterHeightPx) {
 				contentHeightPx -= footerHeight;
@@ -237,26 +231,6 @@
 				contentHeightPx -= defaultFooterHeightPx;
 			}
         }
-
-        console.log("> Updated contentHeightPx=" + contentHeightPx);
-
-
-
-
-
-        // Debug line:
-		/*
-        const debugLine = document.createElement('div');
-        debugLine.className = 'debug-page-height-line';
-        debugLine.style.cssText = `position:absolute;top:${contentHeightPx}px;left:0;right:0;height:2px;background-color:red;z-index:9999;pointer-events:none`;
-        letterContent.style.position = 'relative';
-        letterContent.appendChild(debugLine);
-        */
-        // ===
-
-
-
-
 
 		document.querySelectorAll('.page-break').forEach((el) => el.remove());
 
@@ -293,23 +267,13 @@
 			const relativeTop = elRect.top - letterRect.top;
 			const positionOnCurrentPage = relativeTop - pageStartOffset;
 
-			//if (el.)
-
 			if (positionOnCurrentPage > contentHeightPx) {
 				// Add Page Break:
 				const pageBreak = document.createElement('div');
 				pageBreak.className = 'page-break';
-				el.style.backgroundColor = "blue";
 				el.parentNode?.insertBefore(pageBreak, el);
-
-                console.log(`[PB CONTENT - ${positionOnCurrentPage} > ${contentHeightPx}]=` + el.textContent + " -> Top=" + Math.ceil(elRect.top) + " | Bottom=" + Math.ceil(elRect.bottom));
-
 				pageStartOffset = relativeTop;
-			} else {
-                el.style.backgroundColor = "green";
-                console.log(`[NON PB CONTENT - ${positionOnCurrentPage} < ${contentHeightPx}]=` + el.textContent + " -> Top=" + Math.ceil(elRect.top) + " | Bottom=" + Math.ceil(elRect.bottom));
-                //el.textContent = el.textContent + " " + Math.ceil(elRect.top) + "->" + Math.ceil(elRect.bottom) + "|" + Math.ceil(elRect.height);
-            }
+			}
 		});
 
 		letterContent.style.display = originalDisplay;
