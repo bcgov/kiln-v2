@@ -4,6 +4,7 @@
 	import { Button, Form, Modal, Loading } from 'carbon-components-svelte';
 	import FormRenderer from './components/FormRenderer.svelte';
 	import ScriptStyleInjection from './components/ScriptStyleInjection.svelte';
+	import PrintFooter from './components/PrintFooter.svelte';
 	import { FORM_MODE } from './constants/formMode';
 	import {
 		saveFormData,
@@ -190,6 +191,9 @@
 
 	let printing = $state(false);
 
+	// Reference to PrintFooter component for calling setFooterText/clearFooterText
+	let printFooter: PrintFooter;
+
 	function handlePrint() {
 		if (!formData) return;
 		const pdfId = formData.pdf_template_id;
@@ -202,6 +206,84 @@
 		handleHTMLPrint();
 	}
 
+	function paginateContentForPrint(): () => void {
+		let contentHeightPx = 820;
+		let defaultFooterHeightPx = 191;
+
+		const letterContent = document.querySelector('.letter-content, [id^="letter-content-"]') as HTMLElement;
+		if (!letterContent) {
+			return () => {};
+		}
+
+        const footer = document.querySelector(".print-footer") as HTMLElement | null;
+
+        if (footer) {
+            const footerRect = footer.getBoundingClientRect();
+
+            const footerHeight = Math.ceil(footerRect.height);
+
+			if (footerHeight > defaultFooterHeightPx) {
+				contentHeightPx -= footerHeight;
+			}
+			else {
+				contentHeightPx -= defaultFooterHeightPx;
+			}
+        }
+
+		document.querySelectorAll('.page-break').forEach((el) => el.remove());
+
+		const existingBreaks = Array.from(letterContent.querySelectorAll('.page-break')) as HTMLElement[];
+		existingBreaks.forEach((el) => el.style.display = 'none');
+
+		const originalDisplay = letterContent.style.display;
+		const originalVisibility = letterContent.style.visibility;
+		const originalPosition = letterContent.style.position;
+
+		letterContent.style.display = 'block';
+		letterContent.style.visibility = 'hidden';
+		letterContent.style.position = 'absolute';
+		letterContent.offsetHeight;
+
+		const letterRect = letterContent.getBoundingClientRect();
+		const breakableElements = letterContent.querySelectorAll('p, li, table');
+		const letterContentHeight = letterContent.scrollHeight;
+
+		if (letterContentHeight === 0) {
+			letterContent.style.display = originalDisplay;
+			letterContent.style.visibility = originalVisibility;
+			letterContent.style.position = originalPosition;
+			existingBreaks.forEach((el) => el.style.display = '');
+			return () => {};
+		}
+
+		const insertedBreaks: HTMLElement[] = [];
+		let pageStartOffset = 0;
+
+		const elements = Array.from(breakableElements) as HTMLElement[];
+		elements.forEach((el) => {
+			const elRect = el.getBoundingClientRect();
+			const relativeTop = elRect.top - letterRect.top;
+			const positionOnCurrentPage = relativeTop - pageStartOffset;
+
+			if (positionOnCurrentPage > contentHeightPx) {
+				// Add Page Break:
+				const pageBreak = document.createElement('div');
+				pageBreak.className = 'page-break';
+				el.parentNode?.insertBefore(pageBreak, el);
+				pageStartOffset = relativeTop;
+			}
+		});
+
+		letterContent.style.display = originalDisplay;
+		letterContent.style.visibility = originalVisibility;
+		letterContent.style.position = originalPosition;
+
+		return () => {
+			insertedBreaks.forEach((el) => el.remove());
+			existingBreaks.forEach((el) => el.style.display = '');
+		};
+	}
+
 	function handleHTMLPrint() {
 		const isPuppeteer = navigator.userAgent.includes('HeadlessChrome');
 		printing = true;
@@ -210,73 +292,49 @@
 			const originalTitle = document.title;
 			// Match legacy behavior: set title to form id for print session
 			document.title = formData?.form_id || 'CustomFormName';
-			
-			// Prepare footer text: e.g., "CF0609 - Consent to Disclosure (2025-11-24)"
-			const formattedVersionDate = formatWithAppTokens(
-				formData?.version_date,
-				formData?.version_date_format,
-				'YYYY-MM-DD'
-			);
 
-			const footerText = `
-				${formData?.form_id || ''}
-				${formData?.form_id ? ' - ' : ''}
-				${formData?.title || formData?.name || ''}
-				${formattedVersionDate ? ` (${formattedVersionDate})` : ''}
-			`.trim();
+			// Force reflow to ensure elements are measured correctly
+			document.body.offsetHeight;
 
-			document.documentElement.setAttribute('data-form-id', footerText);
-			// Also populate the fixed footer (for browsers without margin boxes)
-			const fixedFooterLeft = document.getElementById('print-footer-left');
-			if (fixedFooterLeft) fixedFooterLeft.textContent = footerText;
+			// Paginate content to prevent footer overlap
+			const cleanupPagination = paginateContentForPrint();
 
-			// Create metadata elements
-			const metaDescription = document.createElement('meta');
-			metaDescription.name = 'description';
-			metaDescription.content = 'Form PDF.';
+			// Prepare and set footer text via PrintFooter component
+			const footerText = buildPrintFooterText();
+			printFooter?.setFooterText(footerText);
 
-			const metaAuthor = document.createElement('meta');
-			metaAuthor.name = 'author';
-			metaAuthor.content = 'KILN';
-
-			const metaLanguage = document.createElement('meta');
-			metaLanguage.httpEquiv = 'Content-Language';
-			metaLanguage.content = 'en';
-
-			// Append metadata to the <head>
-			const head = document.head;
-			head.appendChild(metaDescription);
-			head.appendChild(metaAuthor);
-			head.appendChild(metaLanguage);
+			// Add print metadata to document head
+			const metaTags = createPrintMetadata();
+			metaTags.forEach((tag) => document.head.appendChild(tag));
 
 			// Force reflow
 			document.body.offsetHeight;
-			
-			 if (!isPuppeteer) {
-			const cleanup = () => {
-				printing = false;
-				document.title = originalTitle;
 
-				// Remove all metadata elements
-				head.removeChild(metaDescription);
-				head.removeChild(metaAuthor);
-				head.removeChild(metaLanguage);
+			if (!isPuppeteer) {
+				const cleanup = () => {
+					printing = false;
+					document.title = originalTitle;
 
-				// Remove footer attribute
-				document.documentElement.removeAttribute('data-form-id');
+					// Remove metadata elements
+					metaTags.forEach((tag) => document.head.removeChild(tag));
 
-				window.removeEventListener('afterprint', cleanup);
-				window.removeEventListener('focus', cleanup);
-			};
+					// Clear footer via PrintFooter component
+					printFooter?.clearFooterText();
 
-			window.addEventListener('afterprint', cleanup);
-			window.addEventListener('focus', cleanup);
+					// Remove inserted page breaks
+					cleanupPagination();
 
-			// Print after slight delay to ensure styles are applied
-			
-			setTimeout(() => {
-				window.print();
-			}, 150);
+					window.removeEventListener('afterprint', cleanup);
+					window.removeEventListener('focus', cleanup);
+				};
+
+				window.addEventListener('afterprint', cleanup);
+				window.addEventListener('focus', cleanup);
+
+				// Print after slight delay to ensure styles are applied
+				setTimeout(() => {
+					window.print();
+				}, 150);
 			}
 
 			// Reset printing state after print dialog
@@ -286,6 +344,39 @@
 				}
 			}, 150);
 		}, 150);
+	}
+
+	function buildPrintFooterText(): string {
+		const formId = formData?.form_id || '';
+		const title = formData?.title || formData?.name || '';
+		const formattedVersionDate = formatWithAppTokens(
+			formData?.version_date,
+			formData?.version_date_format,
+			'YYYY-MM-DD'
+		);
+
+		const parts = [formId, formId && title ? ' - ' : '', title];
+		if (formattedVersionDate) {
+			parts.push(` (${formattedVersionDate})`);
+		}
+
+		return parts.join('').trim();
+	}
+
+	function createPrintMetadata(): HTMLMetaElement[] {
+		const metaDescription = document.createElement('meta');
+		metaDescription.name = 'description';
+		metaDescription.content = 'Form PDF.';
+
+		const metaAuthor = document.createElement('meta');
+		metaAuthor.name = 'author';
+		metaAuthor.content = 'KILN';
+
+		const metaLanguage = document.createElement('meta');
+		metaLanguage.httpEquiv = 'Content-Language';
+		metaLanguage.content = 'en';
+
+		return [metaDescription, metaAuthor, metaLanguage];
 	}
 
 	async function handleSave() {
@@ -440,7 +531,7 @@
 		modalOpen = false;
 
 		try {
-			const returnMessage = await saveFormData('save');
+			const returnMessage = await saveFormData('generate');
 			if (returnMessage === 'success') {
 				showModal('success');
 			} else {
@@ -598,7 +689,7 @@
 						</Button>
 					{/if}
 
-					{#if formDelivery === 'generate'}
+					{#if formDelivery === 'generate' || mode === FORM_MODE.generate}
 						<Button kind="tertiary" class="no-print" id="generate" onclick={handleGenerate}
 							>Generate</Button
 						>
@@ -664,8 +755,5 @@
 		</div>
 	</div>
 
-	<div id="footer" style="display: none;">
-		Form ID: {formData?.form_id || 'Form-12345'}
-	</div>
-	<div class="paged-page" data-footer-text=""></div>
+	<PrintFooter bind:this={printFooter} />
 </div>

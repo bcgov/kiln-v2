@@ -34,6 +34,7 @@ export const API = {
   loadBoundForm: getApiUrl("/loadBoundForm", import.meta.env.VITE_COMM_API_LOAD_BOUND_FORM_ENDPOINT_URL),
   bindPreviewForm: getApiUrl("/bindPreviewForm", import.meta.env.VITE_COMM_API_BIND_PREVIEW_FORM_ENDPOINT_URL),
   saveFormData: getApiUrl("/saveFormData", import.meta.env.VITE_COMM_API_SAVEFORMDATA_ENDPOINT_URL),
+  saveFormDataGenerate: getApiUrl("/saveFormData", import.meta.env.VITE_COMM_API_SAVEFORMDATA_GENERATE_ENDPOINT_URL),
   getFormById: `${getKlammApiBaseUrl()}/api/form-versions/`,
   getFormKlammURL: `${getKlammApiBaseUrl()}/forms/form-versions/`,
   saveButtonAction: getApiUrl("/saveForPortalAction", import.meta.env.VITE_COMM_API_SUBMIT_TO_ACTION_ENDPOINT_URL),
