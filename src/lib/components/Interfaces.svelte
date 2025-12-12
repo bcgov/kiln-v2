@@ -3,6 +3,7 @@
 	import { Button } from 'carbon-components-svelte';
 	import { validateAllFields } from '$lib/utils/validation';
 	import type { ActionResultPayload } from '$lib/types/interfaces';
+	import { onMount } from 'svelte';
 
 	type InterfaceAction = {
 		label?: string;
@@ -389,6 +390,43 @@
 			}, 800);
 		}
 	}
+
+	const clickButtonByText = (text: string) => {
+		const targetText = text.trim().toLowerCase();
+
+		const targetButton = Array.from(document.querySelectorAll("button")).find((b) =>
+			b.innerText.trim().toLowerCase() === targetText
+		);
+
+		targetButton?.click();
+	};
+
+	onMount(() => {
+		const handleMessage = (event: MessageEvent) => {			
+			const originalServer =getOriginalServerHeader()?.['X-Original-Server'];
+			console.log("originalServer",originalServer);
+			console.log("event.origin",event.origin);
+			if (originalServer) {
+				if (event.origin !== originalServer) {
+					console.warn("Rejected message from untrusted origin:", event.origin);
+					return;
+				}
+			} else {
+				// No origin header → local dev → optionally allow localhost only
+				if (!event.origin.startsWith("http://localhost")) {
+					console.warn("Rejected message in local mode:", event.origin);
+					return;
+				}
+			}
+			if (event.data?.type === "CLICK_BUTTON_BY_TEXT") {
+				console.log("Message recieved");				
+				clickButtonByText(event.data.text);
+			}
+		};
+
+		window.addEventListener("message", handleMessage);
+		return () => window.removeEventListener("message", handleMessage);
+	});
 </script>
 
 <div class="interfaces no-print" role="group" aria-label={ariaLabel}>

@@ -5,8 +5,7 @@
 	import FormRenderer from './components/FormRenderer.svelte';
 	import ScriptStyleInjection from './components/ScriptStyleInjection.svelte';
 	import PrintFooter from './components/PrintFooter.svelte';
-	import { FORM_MODE } from './constants/formMode';
-	import { onMount } from 'svelte';
+	import { FORM_MODE } from './constants/formMode';	
 	import {
 		saveFormData,
 		unlockICMFinalFlags,
@@ -599,18 +598,7 @@
 			(window as any).__kilnFormState = (window as any).__kilnFormState || {};
 		}
 	});
-
-	onMount(() => {
-		const handleMessage = (event: MessageEvent) => {
-			if (event.data?.type === "CLICK_BUTTON_BY_TEXT") {
-				console.log("Message recieved");
-			clickButtonByText(event.data.text);
-			}
-		};
-
-		window.addEventListener("message", handleMessage);
-		return () => window.removeEventListener("message", handleMessage);
-	});
+	
 
 	$effect(() => {
 		// Install the external-update bridge
