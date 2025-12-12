@@ -206,29 +206,40 @@
 		handleHTMLPrint();
 	}
 
+	function getContentHeight(): number {
+		const DEFAULT_HEIGHT = 790;
+		const DEFAULT_FOOTER_HEIGHT = 191;
+
+		const SCALE_BREAKPOINTS = [
+			{ minScale: 1.5, height: 980 },
+			{ minScale: 1.25, height: 850 },
+			{ minScale: 1, height: DEFAULT_HEIGHT },
+		] as const;
+
+		const scale = window.devicePixelRatio || 1;
+		const match = SCALE_BREAKPOINTS.find(bp => scale >= bp.minScale);
+		let contentHeightPx = match?.height ?? DEFAULT_HEIGHT;
+
+		const footer = document.querySelector(".print-footer") as HTMLElement | null;
+		if (footer) {
+			const footerHeight = Math.ceil(footer.getBoundingClientRect().height);
+			contentHeightPx -= footerHeight > DEFAULT_FOOTER_HEIGHT ? footerHeight : DEFAULT_FOOTER_HEIGHT;
+		} else {
+			contentHeightPx -= DEFAULT_FOOTER_HEIGHT;
+		}
+
+		return contentHeightPx;
+	}
+
 	function paginateContentForPrint(): () => void {
-		let contentHeightPx = 785;
-		let defaultFooterHeightPx = 191;
+		const contentHeightPx = getContentHeight();
+
+		console.log("--> contentHeightPx=" + contentHeightPx);
 
 		const letterContent = document.querySelector('.letter-content, [id^="letter-content-"]') as HTMLElement;
 		if (!letterContent) {
 			return () => {};
 		}
-
-        const footer = document.querySelector(".print-footer") as HTMLElement | null;
-
-        if (footer) {
-            const footerRect = footer.getBoundingClientRect();
-
-            const footerHeight = Math.ceil(footerRect.height);
-
-			if (footerHeight > defaultFooterHeightPx) {
-				contentHeightPx -= footerHeight;
-			}
-			else {
-				contentHeightPx -= defaultFooterHeightPx;
-			}
-        }
 
 		document.querySelectorAll('.page-break').forEach((el) => el.remove());
 
