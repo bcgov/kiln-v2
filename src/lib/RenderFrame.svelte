@@ -217,8 +217,6 @@
 
         const footer = document.querySelector(".print-footer") as HTMLElement | null;
 
-        console.log("> Default contentHeightPx=" + contentHeightPx);
-
         if (footer) {
             const footerRect = footer.getBoundingClientRect();
 
