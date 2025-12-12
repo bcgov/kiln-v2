@@ -207,7 +207,7 @@
 	}
 
 	function paginateContentForPrint(): () => void {
-		let contentHeightPx = 820;
+		let contentHeightPx = 810;
 		let defaultFooterHeightPx = 191;
 
 		const letterContent = document.querySelector('.letter-content, [id^="letter-content-"]') as HTMLElement;
