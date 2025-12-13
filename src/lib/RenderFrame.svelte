@@ -207,7 +207,7 @@
 	}
 
 	function getContentHeight(): number {
-		const DEFAULT_HEIGHT = 790;
+		const DEFAULT_HEIGHT = 785;
 		const DEFAULT_FOOTER_HEIGHT = 191;
 
 		const SCALE_BREAKPOINTS = [
