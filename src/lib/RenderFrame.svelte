@@ -207,11 +207,11 @@
 	}
 
 	function getContentHeight(): number {
-		const DEFAULT_HEIGHT = 785;
+		const DEFAULT_HEIGHT = 790;
 		const DEFAULT_FOOTER_HEIGHT = 191;
 
 		const SCALE_BREAKPOINTS = [
-			{ minScale: 1.5, height: 980 },
+			{ minScale: 1.5, height: 910 },
 			{ minScale: 1.25, height: 850 },
 			{ minScale: 1, height: DEFAULT_HEIGHT },
 		] as const;
@@ -267,7 +267,6 @@
 			return () => {};
 		}
 
-		const insertedBreaks: HTMLElement[] = [];
 		let pageStartOffset = 0;
 
 		const elements = Array.from(breakableElements) as HTMLElement[];
@@ -290,7 +289,6 @@
 		letterContent.style.position = originalPosition;
 
 		return () => {
-			insertedBreaks.forEach((el) => el.remove());
 			existingBreaks.forEach((el) => el.style.display = '');
 		};
 	}
