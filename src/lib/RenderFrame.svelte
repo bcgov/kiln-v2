@@ -211,14 +211,26 @@
 		const DEFAULT_FOOTER_HEIGHT = 191;
 
 		const SCALE_BREAKPOINTS = [
-			{ minScale: 1.5, height: 910 },
-			{ minScale: 1.25, height: 850 },
-			{ minScale: 1, height: DEFAULT_HEIGHT },
-		] as const;
+			{ scale: 1.5, height: 910 },
+			{ scale: 1.25, height: 850 },
+			{ scale: 1, height: DEFAULT_HEIGHT }
+		];
+
+		const screenHeight = window.screen.height * window.devicePixelRatio;
 
 		const scale = window.devicePixelRatio || 1;
-		const match = SCALE_BREAKPOINTS.find(bp => scale >= bp.minScale);
+		const match = SCALE_BREAKPOINTS.find(bp => scale >= bp.scale);
+
 		let contentHeightPx = match?.height ?? DEFAULT_HEIGHT;
+
+		if (scale > 1 && screenHeight != 1080) {
+			// Increasing contentHeightPx 4% for specific screen heights:
+			// TODO: test with more screen heights and update accordingly
+			if (screenHeight === 1050 || screenHeight === 1600) {
+				console.log("Increasing screenHeight 4%");
+				contentHeightPx = Math.ceil(contentHeightPx * 1.04);
+			}
+		}
 
 		const footer = document.querySelector(".print-footer") as HTMLElement | null;
 		if (footer) {
