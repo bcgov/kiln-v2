@@ -207,7 +207,11 @@
 	}
 
 	function getContentHeight(): number {
-		const DEFAULT_HEIGHT = 785;
+		const formId = formData?.form_id;
+		const scale = window.devicePixelRatio || 1;
+
+		const DEFAULT_HEIGHT = formId === 'HR3472' && scale === 1 ? 700 : 785;
+
 		const DEFAULT_FOOTER_HEIGHT = 191;
 
 		const SCALE_BREAKPOINTS = [
@@ -216,7 +220,6 @@
 			{ scale: 1, height: DEFAULT_HEIGHT }
 		];
 
-		const scale = window.devicePixelRatio || 1;
 		const match = SCALE_BREAKPOINTS.find(bp => scale >= bp.scale);
 		let contentHeightPx = match?.height ?? DEFAULT_HEIGHT;
 
@@ -232,14 +235,12 @@
 	}
 
 	function paginateContentForPrint(): () => void {
-		const contentHeightPx = getContentHeight();
-
-		console.log("--> contentHeightPx=" + contentHeightPx);
-
 		const letterContent = document.querySelector('.letter-content, [id^="letter-content-"]') as HTMLElement;
 		if (!letterContent) {
 			return () => {};
 		}
+
+		const contentHeightPx = getContentHeight();
 
 		document.querySelectorAll('.page-break').forEach((el) => el.remove());
 
