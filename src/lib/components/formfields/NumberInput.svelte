@@ -10,7 +10,8 @@
 	} from '$lib/utils/valueSync';
 	import './fields.css';
 	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
-	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
+	import { validateValue, rulesFromAttributes, parseNumericString } from '$lib/utils/validation';
+	import { filterInputByMaskType, normalizeDash } from '$lib/utils/mask';
 	import PrintRow from './common/PrintRow.svelte';
 
 	let { item, printing = false } = $props<{ item: Item; printing?: boolean }>();
@@ -27,9 +28,12 @@
 
 	let extAttrs = $state<Record<string, any>>({});
 
-	const rules = $derived.by(() =>
-		rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'number' })
-	);
+	const rules = $derived.by(() => {
+		const r = rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'number' });
+		// If maskType indicates integer, enforce integer rule
+		if (item?.attributes?.maskType === 'integer') r.isInteger = true;
+		return r;
+	});
 	const anyError = $derived.by(() => {
 		if (!touched) return '';
 		if (error) return error;
@@ -44,13 +48,58 @@
 
 	function handleInput(e: any) {
 		const raw = e?.detail?.value ?? e?.target?.value ?? '';
-		if (raw === '') {
+		const maskType = item?.attributes?.maskType;
+		// Normalize special unicode dashes
+		let inputStr = normalizeDash(String(raw));
+		// Filter input characters by maskType (if set)
+		if (maskType) {
+			inputStr = filterInputByMaskType(inputStr, maskType);
+		}
+
+		if (!inputStr) {
 			value = null;
 		} else {
-			const n = Number(raw);
-			if (!Number.isNaN(n)) value = n;
+			// Parse numeric from possibly-formatted string
+			const n = parseNumericString(inputStr);
+			// const n = Number(inputStr);
+			if (n === null) {
+				value = null;
+			} else {
+				value = n;
+			}
 		}
 		touched = true;
+	}
+
+	function handleKeyDown(e: KeyboardEvent) {
+		const maskType = item?.attributes?.maskType;
+		if (maskType === 'integer') {
+			// block decimal separator characters
+			if (e.key === '.' || e.key === ',') {
+				e.preventDefault();
+			}
+		}
+	}
+
+	function handlePaste(e: ClipboardEvent) {
+		const maskType = item?.attributes?.maskType;
+		if (maskType === 'integer') {
+			const paste = (e.clipboardData || (window as any).clipboardData)?.getData('text') ?? '';
+			if (paste.includes('.') || paste.includes(',')) {
+				e.preventDefault();
+				// insert filtered digits/minus only
+				const filtered = filterInputByMaskType(paste, 'integer');
+				const target = e.target as HTMLInputElement | null;
+				if (target) {
+					const start = target.selectionStart ?? 0;
+					const end = target.selectionEnd ?? 0;
+					const newVal = target.value.slice(0, start) + filtered + target.value.slice(end);
+					target.value = newVal;
+					// trigger input handling
+					handleInput({ target });
+				}
+			}
+		}
 	}
 
 	$effect(() => {
@@ -110,6 +159,8 @@
 			{...a11y.ariaProps}
 			onchange={handleInput}
 			onblur={handleInput}
+			on:keydown={handleKeyDown}
+			on:paste={handlePaste}
 			{...extAttrs as any}
 		>
 			<span slot="label" id={a11y.labelId} class:required={item.is_required}>{@html labelText}</span
