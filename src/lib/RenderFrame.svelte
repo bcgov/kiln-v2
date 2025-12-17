@@ -277,8 +277,8 @@
 			printFooter.style.visibility = originalFooterVisibility;
 			printFooter.style.position = originalFooterPosition;
 
-			// Add some padding for the footer
-			fakeFooterHeight += 10 * MM_TO_PX; // Extra 10mm padding above footer
+			// Add minimal padding above the footer
+			fakeFooterHeight += 3 * MM_TO_PX; // ~11px padding above footer
 		} else {
 			// Default fake footer height if not found (25mm as configured in CSS)
 			fakeFooterHeight = 25 * MM_TO_PX;
@@ -296,11 +296,11 @@
 			const headerRect = headerSection.getBoundingClientRect();
 			headerHeight = headerRect.height;
 
-			// Add spacing after header
-			headerHeight += 20; // Extra spacing below header
+			// Add minimal spacing after header
+			headerHeight += 8; // Small spacing below header
 		} else {
 			// Fallback header height estimate
-			headerHeight = 100;
+			headerHeight = 80;
 		}
 
 		// ============================================================
@@ -313,8 +313,8 @@
 		const firstPageContentHeight = baseContentHeight - headerHeight;
 		const subsequentPageContentHeight = baseContentHeight;
 
-		// Safety margin to prevent content from getting too close to footer
-		const SAFETY_MARGIN_PX = 15;
+		// Small safety margin to prevent content from getting too close to footer
+		const SAFETY_MARGIN_PX = 5;
 
 		// ============================================================
 		// PREPARE CONTENT FOR MEASUREMENT
