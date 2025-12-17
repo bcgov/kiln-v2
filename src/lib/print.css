@@ -297,18 +297,6 @@
     padding-bottom: 23mm !important;
   }
 
-  /* DEBUG: Uncomment to visualize page margins and content boundaries */
-  .letter-content,
-  [id^="letter-content-"] {
-    outline: 2px solid red !important;
-  }
-  .print-footer {
-    outline: 2px solid blue !important;
-  }
-  .header-section {
-    outline: 2px solid green !important;
-  }
-
   /* Force page breaks inserted by JavaScript pagination */
   .page-break {
     page-break-before: always !important;
