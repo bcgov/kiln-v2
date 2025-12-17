@@ -229,11 +229,9 @@
 
   /* Fixed footer styling is now in PrintFooter.svelte component */
 
-  /* Leave room for the fixed footer so content doesn't overlap.
-   * This accounts for: fake footer (~25mm) + page margin bottom (20mm) = ~43mm
-   */
+  /* Leave room for the fixed footer so content doesn't overlap */
   body {
-    padding-bottom: 43mm !important;
+    padding-bottom: 40mm !important;
   }
 
   /* === Kiln-v2: generic print guards to eliminate blank page 1 === */
@@ -314,7 +312,7 @@
   /* Letter content needs padding to avoid overlapping the fixed footer */
   .letter-content,
   [id^="letter-content-"] {
-    padding-bottom: 26mm !important; /* Space for fake footer */
+    padding-bottom: 23mm !important;
   }
 
   /* Force page breaks inserted by JavaScript pagination */

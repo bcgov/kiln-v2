@@ -262,8 +262,7 @@
 			printFooter.style.visibility = originalFooterVisibility;
 			printFooter.style.position = originalFooterPosition;
 
-			// Add minimal padding above the footer
-			fakeFooterHeight += 1 * MM_TO_PX; // ~4px padding above footer
+			// No extra padding - use actual measured height
 		} else {
 			// Default fake footer height if not found (25mm as configured in CSS)
 			fakeFooterHeight = 25 * MM_TO_PX;
@@ -278,8 +277,7 @@
 			const headerRect = headerSection.getBoundingClientRect();
 			headerHeight = headerRect.height;
 
-			// Add minimal spacing after header
-			headerHeight += 4; // Small spacing below header
+			// No extra spacing - use actual measured height
 		} else {
 			// Fallback header height estimate
 			headerHeight = 80;
@@ -293,8 +291,8 @@
 		const firstPageContentHeight = baseContentHeight - headerHeight;
 		const subsequentPageContentHeight = baseContentHeight;
 
-		// Small safety margin to prevent content from getting too close to footer
-		const SAFETY_MARGIN_PX = 2;
+		// No safety margin - maximize content per page
+		const SAFETY_MARGIN_PX = 0;
 
 		const originalStyles = {
 			display: letterContent.style.display,
