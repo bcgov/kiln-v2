@@ -286,7 +286,7 @@
   }
 
   /* Force page breaks inserted by JavaScript pagination */
-  .print-page-break {
+  .page-break {
     page-break-before: always !important;
     break-before: page !important;
     page-break-after: auto !important;
