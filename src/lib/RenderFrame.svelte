@@ -327,7 +327,6 @@
 		const breakableElements = letterContent.querySelectorAll(breakableSelector);
 
 		let accumulatedHeight = 0;
-		let currentPage = 1;
 		let maxHeightForPage = firstPageContentHeight - SAFETY_MARGIN_PX;
 
 		breakableElements.forEach((el) => {
@@ -356,7 +355,6 @@
 				// (prevents empty first page)
 				if (accumulatedHeight > 0) {
 					insertPageBreak(el);
-					currentPage++;
 					// Subsequent pages have more space (no header)
 					maxHeightForPage = subsequentPageContentHeight - SAFETY_MARGIN_PX;
 					accumulatedHeight = totalElementHeight;
