@@ -1,19 +1,4 @@
 /* Print-only styles consolidated for the entire form experience */
-/*
- * PAPER DIMENSIONS (Letter: 8.5" x 11")
- * At 96 DPI: 816px x 1056px
- *
- * MARGIN REFERENCE:
- * - Top: 5mm (~19px)
- * - Right: 15mm (~57px)
- * - Bottom: 20mm (~76px) - for page number footer
- * - Left: 15mm (~57px)
- *
- * FOOTER SPACE:
- * - Fake footer (ministry info): ~25mm (~95px)
- * - Page footer margin: 20mm (~76px)
- * - Total reserved: ~45mm (~170px)
- */
 @media print {
 
 
@@ -288,10 +273,7 @@
     padding-top: 0 !important;
   }
 
-  /* Content Footer - custom footer defined in form JSON
-   * This is the "fake footer" that appears above the page number footer.
-   * It contains ministry contact info and appears on every printed page.
-   */
+  /* Content Footer - custom footer defined in form JSON */
   .print-footer {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -313,6 +295,18 @@
   .letter-content,
   [id^="letter-content-"] {
     padding-bottom: 23mm !important;
+  }
+
+  /* DEBUG: Uncomment to visualize page margins and content boundaries */
+  .letter-content,
+  [id^="letter-content-"] {
+    outline: 2px solid red !important;
+  }
+  .print-footer {
+    outline: 2px solid blue !important;
+  }
+  .header-section {
+    outline: 2px solid green !important;
   }
 
   /* Force page breaks inserted by JavaScript pagination */
