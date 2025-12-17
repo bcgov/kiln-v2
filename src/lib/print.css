@@ -1,4 +1,19 @@
 /* Print-only styles consolidated for the entire form experience */
+/*
+ * PAPER DIMENSIONS (Letter: 8.5" x 11")
+ * At 96 DPI: 816px x 1056px
+ *
+ * MARGIN REFERENCE:
+ * - Top: 5mm (~19px)
+ * - Right: 15mm (~57px)
+ * - Bottom: 20mm (~76px) - for page number footer
+ * - Left: 15mm (~57px)
+ *
+ * FOOTER SPACE:
+ * - Fake footer (ministry info): ~25mm (~95px)
+ * - Page footer margin: 20mm (~76px)
+ * - Total reserved: ~45mm (~170px)
+ */
 @media print {
 
 
@@ -214,9 +229,11 @@
 
   /* Fixed footer styling is now in PrintFooter.svelte component */
 
-  /* Leave room for the footer so content doesn't overlap */
+  /* Leave room for the fixed footer so content doesn't overlap.
+   * This accounts for: fake footer (25mm) + page margin bottom (20mm) + safety (5mm) = 50mm
+   */
   body {
-    padding-bottom: 18mm !important;
+    padding-bottom: 50mm !important;
   }
 
   /* === Kiln-v2: generic print guards to eliminate blank page 1 === */
@@ -273,16 +290,31 @@
     padding-top: 0 !important;
   }
 
-  /* Content Footer - custom footer defined in form JSON */
+  /* Content Footer - custom footer defined in form JSON
+   * This is the "fake footer" that appears above the page number footer.
+   * It contains ministry contact info and appears on every printed page.
+   */
   .print-footer {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: white !important;
+    padding: 8px 0 0 0 !important;
+    font-size: 11px !important;
+    /* Height should be consistent - approximately 25mm */
+    max-height: 25mm !important;
+    overflow: hidden !important;
+    page-break-inside: avoid !important;
+    z-index: 1000 !important;
   }
 
-  /* Debug: red border around letter content */
+  /* Letter content needs padding to avoid overlapping the fixed footer */
   .letter-content,
   [id^="letter-content-"] {
-    padding-bottom: 0 !important;
+    padding-bottom: 30mm !important; /* Space for fake footer + safety margin */
   }
 
   /* Force page breaks inserted by JavaScript pagination */
