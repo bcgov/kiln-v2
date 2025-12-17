@@ -212,15 +212,6 @@
 		el.parentNode?.insertBefore(pageBreak, el);
 	}
 
-	/**
-	 * Paginates content for print by inserting page breaks at appropriate positions.
-	 * Uses Letter paper dimensions (8.5" x 11") with CSS at 96 DPI.
-	 *
-	 * This approach is resolution-independent because print rendering always uses
-	 * CSS pixels at 96 DPI regardless of screen resolution or zoom level.
-	 *
-	 * Letter paper: 8.5" x 11" = 816px x 1056px at 96 DPI
-	 */
 	function paginateContentForPrint(): () => void {
 		const letterContent = document.querySelector('.letter-content, [id^="letter-content-"]') as HTMLElement;
 		if (!letterContent) {
@@ -230,9 +221,7 @@
 		// Clean up any existing page breaks
 		document.querySelectorAll('.page-break').forEach((el) => el.remove());
 
-		// ============================================================
-		// PAPER AND MARGIN CONSTANTS (Letter paper at 96 DPI)
-		// ============================================================
+		// Paper and margin constants
 		const DPI = 96;
 		const MM_TO_PX = DPI / 25.4; // 1mm ≈ 3.78px
 		const INCH_TO_PX = DPI;      // 1in = 96px
@@ -243,7 +232,6 @@
 		const LETTER_WIDTH_PX = LETTER_WIDTH_INCHES * INCH_TO_PX;   // 816px
 		const LETTER_HEIGHT_PX = LETTER_HEIGHT_INCHES * INCH_TO_PX; // 1056px
 
-		// @page margins from print.css: margin: 5mm 15mm 20mm 15mm (Top Right Bottom Left)
 		const PAGE_MARGIN_TOP_MM = 5;
 		const PAGE_MARGIN_RIGHT_MM = 15;
 		const PAGE_MARGIN_BOTTOM_MM = 20;
@@ -252,10 +240,7 @@
 		const PAGE_MARGIN_TOP_PX = PAGE_MARGIN_TOP_MM * MM_TO_PX;       // ~19px
 		const PAGE_MARGIN_BOTTOM_PX = PAGE_MARGIN_BOTTOM_MM * MM_TO_PX; // ~76px
 
-		// ============================================================
-		// FOOTER HEIGHT DETECTION
-		// ============================================================
-		// Try to measure the actual .print-footer element if it exists
+		// Detect footer height
 		const printFooter = document.querySelector('.print-footer') as HTMLElement;
 		let fakeFooterHeight: number;
 
@@ -278,16 +263,13 @@
 			printFooter.style.position = originalFooterPosition;
 
 			// Add minimal padding above the footer
-			fakeFooterHeight += 3 * MM_TO_PX; // ~11px padding above footer
+			fakeFooterHeight += 1 * MM_TO_PX; // ~4px padding above footer
 		} else {
 			// Default fake footer height if not found (25mm as configured in CSS)
 			fakeFooterHeight = 25 * MM_TO_PX;
 		}
 
-		// ============================================================
-		// HEADER HEIGHT DETECTION (First page only)
-		// ============================================================
-		// The header section contains ministry logo and form title
+		// Detect header height
 		const headerSection = document.querySelector('.header-section') as HTMLElement;
 		let headerHeight = 0;
 
@@ -297,15 +279,13 @@
 			headerHeight = headerRect.height;
 
 			// Add minimal spacing after header
-			headerHeight += 8; // Small spacing below header
+			headerHeight += 4; // Small spacing below header
 		} else {
 			// Fallback header height estimate
 			headerHeight = 80;
 		}
 
-		// ============================================================
-		// CALCULATE AVAILABLE CONTENT HEIGHT
-		// ============================================================
+		// Calculate available content height
 		// Base content height = Letter height - top margin - bottom margin - footer space
 		const baseContentHeight = LETTER_HEIGHT_PX - PAGE_MARGIN_TOP_PX - PAGE_MARGIN_BOTTOM_PX - fakeFooterHeight;
 
@@ -314,11 +294,8 @@
 		const subsequentPageContentHeight = baseContentHeight;
 
 		// Small safety margin to prevent content from getting too close to footer
-		const SAFETY_MARGIN_PX = 5;
+		const SAFETY_MARGIN_PX = 2;
 
-		// ============================================================
-		// PREPARE CONTENT FOR MEASUREMENT
-		// ============================================================
 		const originalStyles = {
 			display: letterContent.style.display,
 			visibility: letterContent.style.visibility,
@@ -326,7 +303,7 @@
 			width: letterContent.style.width
 		};
 
-		// Make content visible for measurement with print-like width
+		// Make content visible for measurement:
 		const contentWidth = LETTER_WIDTH_PX - (PAGE_MARGIN_LEFT_MM + PAGE_MARGIN_RIGHT_MM) * MM_TO_PX;
 		letterContent.style.display = 'block';
 		letterContent.style.visibility = 'hidden';
@@ -334,15 +311,10 @@
 		letterContent.style.width = `${contentWidth}px`;
 		letterContent.offsetHeight; // Force reflow
 
-		// ============================================================
-		// FIND BREAKABLE ELEMENTS
-		// ============================================================
-		// Expanded selector to cover common content elements
 		const breakableSelector = [
 			'p',
 			'li',
 			'table',
-			'tr',
 			'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
 			'div.paragraph',
 			'div.text-block',
@@ -356,9 +328,6 @@
 
 		const breakableElements = letterContent.querySelectorAll(breakableSelector);
 
-		// ============================================================
-		// INSERT PAGE BREAKS
-		// ============================================================
 		let accumulatedHeight = 0;
 		let currentPage = 1;
 		let maxHeightForPage = firstPageContentHeight - SAFETY_MARGIN_PX;
@@ -402,15 +371,12 @@
 			}
 		});
 
-		// ============================================================
-		// RESTORE ORIGINAL STYLES
-		// ============================================================
+		// Return original styles:
 		letterContent.style.display = originalStyles.display;
 		letterContent.style.visibility = originalStyles.visibility;
 		letterContent.style.position = originalStyles.position;
 		letterContent.style.width = originalStyles.width;
 
-		// Return cleanup function
 		return () => {
 			document.querySelectorAll('.page-break').forEach((el) => el.remove());
 		};
