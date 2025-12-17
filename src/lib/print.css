@@ -214,9 +214,9 @@
 
   /* Fixed footer styling is now in PrintFooter.svelte component */
 
-  /* Leave room for the footer so content doesn't overlap */
+  /* Leave room for the fixed footer so content doesn't overlap */
   body {
-    padding-bottom: 18mm !important;
+    padding-bottom: 40mm !important;
   }
 
   /* === Kiln-v2: generic print guards to eliminate blank page 1 === */
@@ -277,12 +277,24 @@
   .print-footer {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: white !important;
+    padding: 8px 0 0 0 !important;
+    font-size: 11px !important;
+    /* Height should be consistent - approximately 25mm */
+    max-height: 25mm !important;
+    overflow: hidden !important;
+    page-break-inside: avoid !important;
+    z-index: 1000 !important;
   }
 
-  /* Debug: red border around letter content */
+  /* Letter content needs padding to avoid overlapping the fixed footer */
   .letter-content,
   [id^="letter-content-"] {
-    padding-bottom: 0 !important;
+    padding-bottom: 23mm !important;
   }
 
   /* Force page breaks inserted by JavaScript pagination */
