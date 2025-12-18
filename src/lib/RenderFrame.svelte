@@ -234,7 +234,7 @@
 
 		const PAGE_MARGIN_TOP_MM = 5;
 		const PAGE_MARGIN_RIGHT_MM = 15;
-		const PAGE_MARGIN_BOTTOM_MM = 12;
+		const PAGE_MARGIN_BOTTOM_MM = 18;
 		const PAGE_MARGIN_LEFT_MM = 15;
 
 		const PAGE_MARGIN_TOP_PX = PAGE_MARGIN_TOP_MM * MM_TO_PX;       // ~19px
