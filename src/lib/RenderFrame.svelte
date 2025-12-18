@@ -206,73 +206,175 @@
 		handleHTMLPrint();
 	}
 
-	function paginateContentForPrint(): () => void {
-		const AVAILABLE_HEIGHT_PX = 590;
+	function insertPageBreak(el: Element): void {
+		const pageBreak = document.createElement('div');
+		pageBreak.className = 'page-break';
+		el.parentNode?.insertBefore(pageBreak, el);
+	}
 
+	function paginateContentForPrint(): () => void {
 		const letterContent = document.querySelector('.letter-content, [id^="letter-content-"]') as HTMLElement;
 		if (!letterContent) {
 			return () => {};
 		}
 
-		const originalDisplay = letterContent.style.display;
-		const originalVisibility = letterContent.style.visibility;
-		const originalPosition = letterContent.style.position;
+		// Clean up any existing page breaks
+		document.querySelectorAll('.page-break').forEach((el) => el.remove());
 
+		// Paper and margin constants
+		const DPI = 96;
+		const MM_TO_PX = DPI / 25.4; // 1mm ≈ 3.78px
+		const INCH_TO_PX = DPI;      // 1in = 96px
+
+		// Letter paper dimensions
+		const LETTER_WIDTH_INCHES = 8.5;
+		const LETTER_HEIGHT_INCHES = 11;
+		const LETTER_WIDTH_PX = LETTER_WIDTH_INCHES * INCH_TO_PX;   // 816px
+		const LETTER_HEIGHT_PX = LETTER_HEIGHT_INCHES * INCH_TO_PX; // 1056px
+
+		const PAGE_MARGIN_TOP_MM = 5;
+		const PAGE_MARGIN_RIGHT_MM = 15;
+		const PAGE_MARGIN_BOTTOM_MM = 12;
+		const PAGE_MARGIN_LEFT_MM = 15;
+
+		const PAGE_MARGIN_TOP_PX = PAGE_MARGIN_TOP_MM * MM_TO_PX;       // ~19px
+		const PAGE_MARGIN_BOTTOM_PX = PAGE_MARGIN_BOTTOM_MM * MM_TO_PX; // ~76px
+
+		// Detect footer height
+		const printFooter = document.querySelector('.print-footer') as HTMLElement;
+		let fakeFooterHeight: number;
+
+		if (printFooter) {
+			// Make footer temporarily visible for measurement
+			const originalFooterDisplay = printFooter.style.display;
+			const originalFooterVisibility = printFooter.style.visibility;
+			const originalFooterPosition = printFooter.style.position;
+
+			printFooter.style.display = 'block';
+			printFooter.style.visibility = 'hidden';
+			printFooter.style.position = 'absolute';
+			printFooter.offsetHeight; // Force reflow
+
+			fakeFooterHeight = printFooter.getBoundingClientRect().height;
+
+			// Restore original styles
+			printFooter.style.display = originalFooterDisplay;
+			printFooter.style.visibility = originalFooterVisibility;
+			printFooter.style.position = originalFooterPosition;
+
+			// No extra padding - use actual measured height
+		} else {
+			// Default fake footer height if not found (25mm as configured in CSS)
+			fakeFooterHeight = 25 * MM_TO_PX;
+		}
+
+		// Detect header height
+		const headerSection = document.querySelector('.header-section') as HTMLElement;
+		let headerHeight = 0;
+
+		if (headerSection) {
+			// Measure actual header height
+			const headerRect = headerSection.getBoundingClientRect();
+			headerHeight = headerRect.height;
+
+			// No extra spacing - use actual measured height
+		} else {
+			// Fallback header height estimate
+			headerHeight = 80;
+		}
+
+		// Calculate available content height
+		// Base content height = Letter height - top margin - bottom margin - footer space
+		const baseContentHeight = LETTER_HEIGHT_PX - PAGE_MARGIN_TOP_PX - PAGE_MARGIN_BOTTOM_PX - fakeFooterHeight;
+
+		// First page has less space due to header
+		const firstPageContentHeight = baseContentHeight - headerHeight;
+		const subsequentPageContentHeight = baseContentHeight;
+
+		// No safety margin - maximize content per page
+		const SAFETY_MARGIN_PX = 0;
+
+		const originalStyles = {
+			display: letterContent.style.display,
+			visibility: letterContent.style.visibility,
+			position: letterContent.style.position,
+			width: letterContent.style.width
+		};
+
+		// Make content visible for measurement:
+		const contentWidth = LETTER_WIDTH_PX - (PAGE_MARGIN_LEFT_MM + PAGE_MARGIN_RIGHT_MM) * MM_TO_PX;
 		letterContent.style.display = 'block';
 		letterContent.style.visibility = 'hidden';
 		letterContent.style.position = 'absolute';
-		letterContent.offsetHeight;
+		letterContent.style.width = `${contentWidth}px`;
+		letterContent.offsetHeight; // Force reflow
 
-		const letterRect = letterContent.getBoundingClientRect();
-		const existingBreaks = letterContent.querySelectorAll('.page-break');
-		const breakableElements = letterContent.querySelectorAll('p, li');
-		const letterContentHeight = letterContent.scrollHeight;
+		const breakableSelector = [
+			'p',
+			'li',
+			'table',
+			'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+			'div.paragraph',
+			'div.text-block',
+			'div.header-row',
+			'blockquote',
+			'pre',
+			'.breakable',
+			'.sign-off',
+			'.enclosures'
+		].join(', ');
 
-		if (letterContentHeight === 0) {
-			letterContent.style.display = originalDisplay;
-			letterContent.style.visibility = originalVisibility;
-			letterContent.style.position = originalPosition;
-			return () => {};
-		}
+		const breakableElements = letterContent.querySelectorAll(breakableSelector);
 
-		const existingBreakPositions = Array.from(existingBreaks).map((el) => {
-			const rect = (el as HTMLElement).getBoundingClientRect();
-			return rect.top - letterRect.top;
-		});
+		let accumulatedHeight = 0;
+		let maxHeightForPage = firstPageContentHeight - SAFETY_MARGIN_PX;
 
-		const insertedBreaks: HTMLElement[] = [];
-		let pageStartOffset = 0;
-
-		const elements = Array.from(breakableElements) as HTMLElement[];
-		elements.forEach((el) => {
-			const elRect = el.getBoundingClientRect();
-			const relativeTop = elRect.top - letterRect.top;
-
-			const existingBreakBefore = existingBreakPositions.find(
-				(pos) => pos > pageStartOffset && pos <= relativeTop
-			);
-			if (existingBreakBefore !== undefined) {
-				pageStartOffset = existingBreakBefore;
+		breakableElements.forEach((el) => {
+			// Skip elements inside the footer (they shouldn't trigger page breaks)
+			if (el.closest('.print-footer')) {
+				return;
 			}
 
-			const positionOnCurrentPage = relativeTop - pageStartOffset;
+			const rect = el.getBoundingClientRect();
+			const elHeight = rect.height;
 
-			if (positionOnCurrentPage > AVAILABLE_HEIGHT_PX) {
-				const pageBreak = document.createElement('div');
-				pageBreak.className = 'print-page-break';
-				pageBreak.style.cssText = 'page-break-before: always; break-before: page;';
-				el.parentNode?.insertBefore(pageBreak, el);
-				insertedBreaks.push(pageBreak);
-				pageStartOffset = relativeTop;
+			// Include margins in height calculation
+			const computedStyle = window.getComputedStyle(el);
+			const marginTop = parseFloat(computedStyle.marginTop) || 0;
+			const marginBottom = parseFloat(computedStyle.marginBottom) || 0;
+			const totalElementHeight = elHeight + marginTop + marginBottom;
+
+			// Skip empty/hidden elements
+			if (totalElementHeight <= 0) {
+				return;
+			}
+
+			// Check if adding this element would exceed the page height
+			if (accumulatedHeight + totalElementHeight > maxHeightForPage) {
+				// Only insert page break if we have content on current page
+				// (prevents empty first page)
+				if (accumulatedHeight > 0) {
+					insertPageBreak(el);
+					// Subsequent pages have more space (no header)
+					maxHeightForPage = subsequentPageContentHeight - SAFETY_MARGIN_PX;
+					accumulatedHeight = totalElementHeight;
+				} else {
+					// Element is taller than page - just add it
+					accumulatedHeight = totalElementHeight;
+				}
+			} else {
+				accumulatedHeight += totalElementHeight;
 			}
 		});
 
-		letterContent.style.display = originalDisplay;
-		letterContent.style.visibility = originalVisibility;
-		letterContent.style.position = originalPosition;
+		// Return original styles:
+		letterContent.style.display = originalStyles.display;
+		letterContent.style.visibility = originalStyles.visibility;
+		letterContent.style.position = originalStyles.position;
+		letterContent.style.width = originalStyles.width;
 
 		return () => {
-			insertedBreaks.forEach(breakEl => breakEl.remove());
+			document.querySelectorAll('.page-break').forEach((el) => el.remove());
 		};
 	}
 

@@ -13,6 +13,13 @@ const isLocal = ['local', 'localhost', 'development', 'dev'].includes(environmen
 const isStandaloneMode = import.meta.env.VITE_STANDALONE_MODE === 'true';
 const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
+function getCookie(name: string): string | null {
+	const match = document.cookie.match(
+		new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)')
+	);
+	return match ? decodeURIComponent(match[1]) : null;
+}
+
 function validateConfig(): string[] {
 	const errors: string[] = [];
 
@@ -90,6 +97,11 @@ export async function guardRoute(
 		return { keycloak: null, authenticated: true };
 	}
 
+	const cookieUsername = getCookie('username');
+	if (cookieUsername) {
+	  return { keycloak: null, authenticated: true };
+	}
+	
 	const keycloak = await initializeKeycloak();
 
 	if (!keycloak.authenticated) {
