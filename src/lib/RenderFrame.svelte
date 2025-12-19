@@ -370,7 +370,7 @@
 				return;
 			}
 
-			// Skip paragraphs with breakable child elements
+			// Skip element with breakable child elements
 			if ( el.childElementCount > 0) {
 				for( const child of el.children){
 					if(breakableTags.includes(child.tagName.toLowerCase())){
