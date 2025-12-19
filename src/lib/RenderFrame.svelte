@@ -207,11 +207,9 @@
 	}
 
 	function insertPageBreak(el: Element): void {
-		console.log("Insert page break");
 		const pageBreak = document.createElement('div');
 		pageBreak.className = 'page-break';
 		el.parentNode?.insertBefore(pageBreak, el);
-		// pageBreak.style.border = '3px solid blue';
 	}
 
 	function paginateContentForPrint(): () => void {
@@ -247,50 +245,34 @@
 		let fakeFooterHeight: number;
 
 		if (printFooter) {
-			// Make footer temporarily visible for measurement
-			console.log("PRINT FOOTER COMPUTED STYLES",getComputedStyle(printFooter));
 			if (printFooter.parentElement != null){
 				const originalFooterDisplay = getComputedStyle(printFooter.parentElement).display;
 				const originalFooterVisibility =  getComputedStyle(printFooter.parentElement).visibility;
 				const originalFooterPosition =  getComputedStyle(printFooter.parentElement).position;
-				console.log("PRINT FOOTER COMPUTED parent originalFooterDisplay",originalFooterDisplay);
-				console.log("PRINT FOOTER COMPUTED parent originalFooterVisibility",originalFooterVisibility);
-				console.log("PRINT FOOTER COMPUTED parent originalFooterPosition",originalFooterPosition);
-				
-				console.log("Parent Bounding box:",printFooter.parentElement.getBoundingClientRect());
+
 				printFooter.parentElement.style.display = 'block';
 				printFooter.parentElement.style.visibility = 'visible';
 				printFooter.parentElement.style.position = 'static';
 				printFooter.parentElement.offsetHeight;
-				console.log("Parent Bounding box 1:",printFooter.parentElement.getBoundingClientRect());
 
 				fakeFooterHeight = Math.ceil(printFooter.parentElement.getBoundingClientRect().height);
 
 				printFooter.parentElement.style.display = originalFooterDisplay;
 				printFooter.parentElement.style.visibility = originalFooterVisibility;
-				printFooter.parentElement.style.position = originalFooterPosition;
-
+				printFooter.parentElement.style.position = originalFooterPosition
 			
 			}
 			else{
 				const originalFooterDisplay = getComputedStyle(printFooter).display;
 				const originalFooterVisibility =  getComputedStyle(printFooter).visibility;
 				const originalFooterPosition =  getComputedStyle(printFooter).position;
-				console.log("PRINT FOOTER COMPUTED originalFooterDisplay",originalFooterDisplay);
-				console.log("PRINT FOOTER COMPUTED originalFooterVisibility",originalFooterVisibility);
-				console.log("PRINT FOOTER COMPUTED originalFooterPosition",originalFooterPosition);
-				
-				console.log("Footer Bounding box 0:",printFooter.getBoundingClientRect());
 
 				printFooter.style.display = 'block';
 				printFooter.style.visibility = 'visible';
 				printFooter.style.position = 'absolute';
 				printFooter.offsetHeight; // Force reflow
-				console.log("Parent Bounding box:",printFooter.parentElement.getBoundingClientRect());
 
-				fakeFooterHeight = Math.ceil(printFooter.getBoundingClientRect().height)+20;
-				console.log("Client Footer height:",fakeFooterHeight);
-				console.log("Footer Bounding box 1:",printFooter.getBoundingClientRect());			
+				fakeFooterHeight = Math.ceil(printFooter.getBoundingClientRect().height);	
 
 				// Restore original styles
 				printFooter.style.display = originalFooterDisplay;
@@ -304,11 +286,10 @@
 		} else {
 			// Default fake footer height if not found (25mm as configured in CSS)
 			fakeFooterHeight = 25 * MM_TO_PX;
-			console.log("Calculated Footer height:",fakeFooterHeight);
 
 		}
 		
-		console.log("Footer height:",fakeFooterHeight);
+		// console.log("Footer height:",fakeFooterHeight);
 
 		// Detect header height
 		const headerSection = document.querySelector('.header-section') as HTMLElement;
@@ -318,7 +299,6 @@
 			// Measure actual header height
 			const headerRect = headerSection.getBoundingClientRect();
 			headerHeight = Math.ceil(headerRect.height);
-			console.log("Header height:",headerHeight);
 
 			// No extra spacing - use actual measured height
 		} else {
@@ -384,18 +364,7 @@
 			const computedStyle = window.getComputedStyle(el);
 			const marginTop = parseFloat(computedStyle.marginTop) || 0;
 			const marginBottom = parseFloat(computedStyle.marginBottom) || 0;
-			const totalElementHeight = elHeight + marginTop + marginBottom;
-			if(el.tagName === 'P' || el.tagName === 'LI' ){
-				console.log('Element text content:',el.textContent);
-				console.log('Element total height:',totalElementHeight);
-				console.log('Element height:',elHeight);
-				console.log('accumulatedHeight:',accumulatedHeight);
-				console.log('accumulatedHeight+Element height:',accumulatedHeight+totalElementHeight);
-				console.log('maxHeightForPage:',maxHeightForPage);
-				const element = el as HTMLElement;
-				element.style.border = '1px solid red';				
-			}
-
+			const totalElementHeight = elHeight + marginTop + marginBottom;	
 			// Skip empty/hidden elements
 			if (totalElementHeight <= 0) {
 				return;
@@ -403,12 +372,8 @@
 
 			// Skip paragraphs with breakable child elements
 			if ( el.childElementCount > 0) {
-				console.log('Element text content:',el.textContent);
-				console.log('childcount:',el.childElementCount);
 				for( const child of el.children){
-					console.log("child tag",child.tagName);
 					if(breakableTags.includes(child.tagName.toLowerCase())){
-						console.log("inside breakable selector");
 						return;
 					}
 				}
