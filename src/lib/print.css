@@ -215,9 +215,9 @@
   /* Fixed footer styling is now in PrintFooter.svelte component */
 
   /* Leave room for the fixed footer so content doesn't overlap */
-  body {
+  /* body {
     padding-bottom: 40mm !important;
-  }
+  } */
 
   /* === Kiln-v2: generic print guards to eliminate blank page 1 === */
   /* Don’t let stray margins/breaks create a phantom first page */

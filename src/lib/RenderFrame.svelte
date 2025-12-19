@@ -222,7 +222,7 @@
 		document.querySelectorAll('.page-break').forEach((el) => el.remove());
 
 		// Paper and margin constants
-		const DPI = 96;
+		const DPI = 96; 
 		const MM_TO_PX = DPI / 25.4; // 1mm ≈ 3.78px
 		const INCH_TO_PX = DPI;      // 1in = 96px
 
@@ -234,7 +234,7 @@
 
 		const PAGE_MARGIN_TOP_MM = 5;
 		const PAGE_MARGIN_RIGHT_MM = 15;
-		const PAGE_MARGIN_BOTTOM_MM = 18;
+		const PAGE_MARGIN_BOTTOM_MM = 20;
 		const PAGE_MARGIN_LEFT_MM = 15;
 
 		const PAGE_MARGIN_TOP_PX = PAGE_MARGIN_TOP_MM * MM_TO_PX;       // ~19px
@@ -245,28 +245,51 @@
 		let fakeFooterHeight: number;
 
 		if (printFooter) {
-			// Make footer temporarily visible for measurement
-			const originalFooterDisplay = printFooter.style.display;
-			const originalFooterVisibility = printFooter.style.visibility;
-			const originalFooterPosition = printFooter.style.position;
+			if (printFooter.parentElement != null){
+				const originalFooterDisplay = getComputedStyle(printFooter.parentElement).display;
+				const originalFooterVisibility =  getComputedStyle(printFooter.parentElement).visibility;
+				const originalFooterPosition =  getComputedStyle(printFooter.parentElement).position;
 
-			printFooter.style.display = 'block';
-			printFooter.style.visibility = 'hidden';
-			printFooter.style.position = 'absolute';
-			printFooter.offsetHeight; // Force reflow
+				printFooter.parentElement.style.display = 'block';
+				printFooter.parentElement.style.visibility = 'visible';
+				printFooter.parentElement.style.position = 'static';
+				printFooter.parentElement.offsetHeight;
 
-			fakeFooterHeight = printFooter.getBoundingClientRect().height;
+				fakeFooterHeight = Math.ceil(printFooter.parentElement.getBoundingClientRect().height);
 
-			// Restore original styles
-			printFooter.style.display = originalFooterDisplay;
-			printFooter.style.visibility = originalFooterVisibility;
-			printFooter.style.position = originalFooterPosition;
+				printFooter.parentElement.style.display = originalFooterDisplay;
+				printFooter.parentElement.style.visibility = originalFooterVisibility;
+				printFooter.parentElement.style.position = originalFooterPosition
+			
+			}
+			else{
+				const originalFooterDisplay = getComputedStyle(printFooter).display;
+				const originalFooterVisibility =  getComputedStyle(printFooter).visibility;
+				const originalFooterPosition =  getComputedStyle(printFooter).position;
+
+				printFooter.style.display = 'block';
+				printFooter.style.visibility = 'visible';
+				printFooter.style.position = 'absolute';
+				printFooter.offsetHeight; // Force reflow
+
+				fakeFooterHeight = Math.ceil(printFooter.getBoundingClientRect().height);	
+
+				// Restore original styles
+				printFooter.style.display = originalFooterDisplay;
+				printFooter.style.visibility = originalFooterVisibility;
+				printFooter.style.position = originalFooterPosition;
+
+			}
+
 
 			// No extra padding - use actual measured height
 		} else {
 			// Default fake footer height if not found (25mm as configured in CSS)
 			fakeFooterHeight = 25 * MM_TO_PX;
+
 		}
+		
+		// console.log("Footer height:",fakeFooterHeight);
 
 		// Detect header height
 		const headerSection = document.querySelector('.header-section') as HTMLElement;
@@ -275,20 +298,20 @@
 		if (headerSection) {
 			// Measure actual header height
 			const headerRect = headerSection.getBoundingClientRect();
-			headerHeight = headerRect.height;
+			headerHeight = Math.ceil(headerRect.height) + 5; //height being measured is the web header (print header is 5px taller)
 
 			// No extra spacing - use actual measured height
 		} else {
 			// Fallback header height estimate
-			headerHeight = 80;
+			headerHeight = 85;
 		}
 
 		// Calculate available content height
 		// Base content height = Letter height - top margin - bottom margin - footer space
-		const baseContentHeight = LETTER_HEIGHT_PX - PAGE_MARGIN_TOP_PX - PAGE_MARGIN_BOTTOM_PX - fakeFooterHeight;
+		const baseContentHeight =  Math.ceil(LETTER_HEIGHT_PX - PAGE_MARGIN_TOP_PX - PAGE_MARGIN_BOTTOM_PX - fakeFooterHeight);
 
 		// First page has less space due to header
-		const firstPageContentHeight = baseContentHeight - headerHeight;
+		const firstPageContentHeight =  Math.ceil(baseContentHeight - headerHeight);
 		const subsequentPageContentHeight = baseContentHeight;
 
 		// No safety margin - maximize content per page
@@ -309,7 +332,7 @@
 		letterContent.style.width = `${contentWidth}px`;
 		letterContent.offsetHeight; // Force reflow
 
-		const breakableSelector = [
+		const breakableTags =[
 			'p',
 			'li',
 			'table',
@@ -319,15 +342,14 @@
 			'div.header-row',
 			'blockquote',
 			'pre',
-			'.breakable',
-			'.sign-off',
-			'.enclosures'
-		].join(', ');
+			'div'
+		];
+		const breakableSelector = breakableTags.join(', ');
 
 		const breakableElements = letterContent.querySelectorAll(breakableSelector);
 
 		let accumulatedHeight = 0;
-		let maxHeightForPage = firstPageContentHeight - SAFETY_MARGIN_PX;
+		let maxHeightForPage = Math.ceil(firstPageContentHeight - SAFETY_MARGIN_PX);
 
 		breakableElements.forEach((el) => {
 			// Skip elements inside the footer (they shouldn't trigger page breaks)
@@ -336,17 +358,25 @@
 			}
 
 			const rect = el.getBoundingClientRect();
-			const elHeight = rect.height;
+			const elHeight = Math.ceil(rect.height);
 
 			// Include margins in height calculation
 			const computedStyle = window.getComputedStyle(el);
 			const marginTop = parseFloat(computedStyle.marginTop) || 0;
 			const marginBottom = parseFloat(computedStyle.marginBottom) || 0;
-			const totalElementHeight = elHeight + marginTop + marginBottom;
-
+			const totalElementHeight = elHeight + marginTop + marginBottom;	
 			// Skip empty/hidden elements
 			if (totalElementHeight <= 0) {
 				return;
+			}
+
+			// Skip element with breakable child elements
+			if ( el.childElementCount > 0) {
+				for( const child of el.children){
+					if(breakableTags.includes(child.tagName.toLowerCase())){
+						return;
+					}
+				}
 			}
 
 			// Check if adding this element would exceed the page height
@@ -356,7 +386,7 @@
 				if (accumulatedHeight > 0) {
 					insertPageBreak(el);
 					// Subsequent pages have more space (no header)
-					maxHeightForPage = subsequentPageContentHeight - SAFETY_MARGIN_PX;
+					maxHeightForPage = Math.ceil(subsequentPageContentHeight - SAFETY_MARGIN_PX);
 					accumulatedHeight = totalElementHeight;
 				} else {
 					// Element is taller than page - just add it
@@ -390,12 +420,14 @@
 			// Force reflow to ensure elements are measured correctly
 			document.body.offsetHeight;
 
-			// Paginate content to prevent footer overlap
-			const cleanupPagination = paginateContentForPrint();
 
 			// Prepare and set footer text via PrintFooter component
 			const footerText = buildPrintFooterText();
 			printFooter?.setFooterText(footerText);
+
+			
+			// Paginate content to prevent footer overlap
+			const cleanupPagination = paginateContentForPrint();
 
 			// Add print metadata to document head
 			const metaTags = createPrintMetadata();
