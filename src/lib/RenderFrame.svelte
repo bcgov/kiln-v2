@@ -222,7 +222,7 @@
 		document.querySelectorAll('.page-break').forEach((el) => el.remove());
 
 		// Paper and margin constants
-		const DPI = 96; //Calculate scale of current window -> window.devicePixelRatio
+		const DPI = 96; 
 		const MM_TO_PX = DPI / 25.4; // 1mm ≈ 3.78px
 		const INCH_TO_PX = DPI;      // 1in = 96px
 
@@ -298,12 +298,12 @@
 		if (headerSection) {
 			// Measure actual header height
 			const headerRect = headerSection.getBoundingClientRect();
-			headerHeight = Math.ceil(headerRect.height);
+			headerHeight = Math.ceil(headerRect.height) + 5; //height being measured is the web header (print header is 5px taller)
 
 			// No extra spacing - use actual measured height
 		} else {
 			// Fallback header height estimate
-			headerHeight = 80;
+			headerHeight = 85;
 		}
 
 		// Calculate available content height
