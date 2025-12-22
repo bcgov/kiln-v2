@@ -23,6 +23,7 @@
 	import type { ActionResultPayload } from '$lib/types/interfaces';
 	import { bindDataToForm } from './utils/databinder';
 	import { formatWithAppTokens } from '$lib/utils/dateFormats';
+	import OriginStyleOverride from './components/OriginStyleOverride.svelte';
 
 	let {
 		saveData = undefined,
@@ -660,6 +661,8 @@
 	{mode}
 />
 
+<OriginStyleOverride />
+
 {#if isLoading}
 	<Loading />
 {/if}
@@ -687,7 +690,7 @@
 
 <div class="full-frame">
 	<div class="fixed">
-		<div class="header-section">
+		<div class="header-section" id="formHeaderDiv">
 			<div class="header-image">
 				<div class="header-image-only">
 					{#if ministryLogoPath}
@@ -744,7 +747,7 @@
 		</div>
 	</div>
 
-	<div class="header-form-id no-print">
+	<div class="header-form-id no-print" id="formIdDiv">
 		<div class="form-id-section">
 			{formData?.form_id || ''}
 		</div>
