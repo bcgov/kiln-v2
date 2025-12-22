@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
+  import { getOriginalServerHeader } from '$lib/utils/helpers';
 
   type AppConfig = {
     [appName: string]: {
@@ -17,10 +18,13 @@
       console.error('[OriginStyleOverride] Invalid APP_CONFIG', e);
       return {};
     }
-  }
+  }  
 
   function resolveAppNameFromOrigin(): string | null {
-    const host = window.location.hostname.toLowerCase();
+    const originalServer = getOriginalServerHeader()?.['X-Original-Server'];
+    console.log("originalServer in OriginStyleOverride >",originalServer);
+    const host = originalServer ?? window.location.hostname.toLowerCase();
+    console.log("host in OriginStyleOverride>",host);    
     return host;
   }
 
