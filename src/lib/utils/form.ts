@@ -1,6 +1,7 @@
 import type { FormDefinition, Item, FieldValue, FormData, SavedData } from '../types/form';
 import { ensureFreshToken } from '$lib/utils/keycloak';
 
+
 function getCookie(name: string): string | null {
 	const match = document.cookie.match(
 		new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)')
@@ -257,11 +258,14 @@ function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
   walk((formDefinition.elements as Item[]) || []);
 }
 
-export async function saveFormData(action: 'save' | 'save_and_close'): Promise<string> {
+export async function saveFormData(action: 'save' | 'save_and_close' | 'generate'): Promise<string> {
   try {
     // @ts-ignore
     const { API } = await import('$lib/utils/api');
-    const saveFormDataEndpoint = API.saveFormData;
+    let saveFormDataEndpoint = API.saveFormData;
+    if (action === 'generate'){
+      saveFormDataEndpoint = API.saveFormDataGenerate;
+    }
 
     const win: any = typeof window !== 'undefined' ? window : undefined;
 
@@ -369,6 +373,7 @@ export async function unlockICMFinalFlags(): Promise<string> {
     // @ts-ignore dynamic import to avoid circular refs during SSR
     const { API } = await import('$lib/utils/api');
     const unlockICMFinalEndpoint = API.unlockICMData;
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
 
     // Build request body from session storage formParams
     let body: Record<string, any> = {};
@@ -377,31 +382,28 @@ export async function unlockICMFinalFlags(): Promise<string> {
       const params = state ? (JSON.parse(state) as Record<string, string>) : {};
       body = { ...params };
 
-      // Prefer keycloak token when available
-      const token = (window as any)?.keycloak?.token ?? null;
-      if (token) {
-        body.token = token;
-      } else {
-        try {
-          const usernameMatch = typeof document !== 'undefined'
-            ? document.cookie.match(/(?:^|;\s*)username=([^;]+)/)
-            : null;
-          const username = usernameMatch ? decodeURIComponent(usernameMatch[1]).trim() : null;
-          if (username && username.length > 0) {
-            body.username = username;
-          }
-        } catch {
-          console.error("Failed to parse username from cookies");
+      const username = getCookie("username");
+      if (username && username.trim() !== "") {
+        body.username = username.trim();
+      } 
+      else {
+        let token = (window as any)?.keycloak?.token ?? (getCookie("token") as string | null) ?? null;
+        if (!token) {
+          const freshToken = await ensureFreshToken(5);
+          token = freshToken ?? null; 
+        }
+        if (token) {
+          body.token = token;
+          headers.Authorization = `Bearer ${token}`;
         }
       }
     }
 
-    const { getAuthHeaders } = await import('./auth-headers');
-    const headers = await getAuthHeaders();
     const response = await fetch(unlockICMFinalEndpoint, {
       method: 'POST',
       headers,
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      keepalive: true
     });
     if (response.ok) {
       try {

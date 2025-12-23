@@ -35,6 +35,8 @@ try {
       setJsonContent(expectSaveData ? (mock as any)?.save_data : mock);
       return;
     }
+    console.log('(load Data) endpoint:', endpoint);
+    console.log('(load Data) params:', params);
 
     const body: Record<string, any> = { ...params };
 
@@ -54,7 +56,6 @@ try {
         }
       }
     }
-    
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -71,6 +72,8 @@ try {
       const originalServer = getCookie("originalServer");
       if (originalServer) headers["X-Original-Server"] = originalServer as string;
     }
+    console.log('(load Data) headers:', headers);
+    console.log('(load Data) body:', JSON.stringify(body));
 
     const response = await fetch(endpoint, {
       method: "POST",
