@@ -19,12 +19,14 @@ export function useFormLoader({
 	apiEndpoint,
 	expectSaveData = false,
 	parseErrorBody = true,
-	includeOriginalServer = true
+	includeOriginalServer = true,
+	transformParams
 }: UseFormLoaderOptions): UseFormLoaderReturn {
 	const isLoading = writable(true);
 	const error = writable<string | null>(null);
 	const formData = writable<object>({});
 	const saveData = writable<object>({});
+	const disablePrint = writable(true);
 
 	async function load() {
 		if (!browser) return;
@@ -55,7 +57,14 @@ export function useFormLoader({
 				const payload = expectSaveData ? (result?.save_data ?? result) : result;
 				formData.set(payload?.form_definition ?? payload ?? {});
 				saveData.set(result?.data ? { data: result.data } : {});
-			} else {
+				if (payload?.form_definition || payload?.save_data?.form_definition) {
+					disablePrint.set(false);
+				}
+			} else {				
+				const finalParams = transformParams ? transformParams(params) : params;
+				console.log('(Form Loader) endpoint:', apiEndpoint);
+				console.log('(Form Loader) params:', finalParams);
+
 				// Delegate fetch and error handling to loadFormData
 				let raw: any = undefined;
 				await loadFormData(
@@ -70,7 +79,7 @@ export function useFormLoader({
 					},
 					{
 						endpoint: apiEndpoint,
-						params,
+						params: finalParams,
 						setLoading: (v) => isLoading.set(v),
 						includeAuth: true,
 						includeOriginalServer,
@@ -81,12 +90,26 @@ export function useFormLoader({
 						onError: (msg) => error.set(msg)
 					}
 				);
-
+				console.log('(Form Loader) raw result:', raw);
 				// If raw is undefined, an error likely occurred and was set via onError
 				if (raw !== undefined) {
 					const payload = expectSaveData ? (raw?.save_data ?? raw) : raw;
 					formData.set(payload?.form_definition ?? payload?.save_data?.form_definition ?? payload ?? {});
 					saveData.set(raw?.data ? { data: raw.data } : payload?.save_data?.data ?? {});
+					if (payload?.form_definition || payload?.save_data?.form_definition) {
+						disablePrint.set(false);
+					}
+
+					// Merge params from loaded JSON into sessionStorage (for generate flow)
+					// The Communication-Layer stores params like attachmentId in formJson.params
+					if (raw?.params && typeof raw.params === "object") {
+						const existingParams = sessionStorage.getItem("formParams");
+						const merged = {
+							...(existingParams ? JSON.parse(existingParams) : {}),
+							...raw.params
+						};
+						sessionStorage.setItem("formParams", JSON.stringify(merged));
+					}
 				}
 			}
 		} catch (e) {
@@ -100,5 +123,5 @@ export function useFormLoader({
 	// Auto-load on initialization
 	load();
 
-	return { isLoading, error, formData, load, saveData };
+	return { isLoading, error, formData, load, saveData, disablePrint };
 }

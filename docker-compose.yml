@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  kiln-v2:
+    build:
+      context: .
+      dockerfile: Dockerfile.standalone
+    container_name: kiln-v2
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env    

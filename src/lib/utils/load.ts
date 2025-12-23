@@ -1,4 +1,5 @@
 import type { LoadDeps as Deps, LoadOptions } from '$lib/types/load';
+import { ensureFreshToken } from '$lib/utils/keycloak';
 
 /**
  * POST params to an endpoint and surface the parsed result via setJsonContent.
@@ -34,26 +35,45 @@ try {
       setJsonContent(expectSaveData ? (mock as any)?.save_data : mock);
       return;
     }
+    console.log('(load Data) endpoint:', endpoint);
+    console.log('(load Data) params:', params);
 
     const body: Record<string, any> = { ...params };
 
     if (includeAuth) {
-      const token = keycloak?.token ?? (getCookie("token") as string | null) ?? null;
-      if (token) {
-        body.token = token;
-      } else {
-        const username = getCookie("username");
-        if (username) body.username = username.trim();
+      const username = getCookie("username");
+      if (username && username.trim() !== "") {
+        body.username = username.trim();
+      } 
+      else {
+        let token = keycloak?.token ?? (getCookie("token") as string | null) ?? null;
+        if (!token) {
+          const freshToken = await ensureFreshToken(5);
+          token = freshToken ?? null; 
+        }
+        if(token) {
+          body.token = token;
+        }
       }
     }
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
+
+    if (includeAuth) {
+      const token = keycloak?.token ?? (getCookie("token") as string | null) ?? null;
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+    }
+
     if (includeOriginalServer) {
       const originalServer = getCookie("originalServer");
       if (originalServer) headers["X-Original-Server"] = originalServer as string;
     }
+    console.log('(load Data) headers:', headers);
+    console.log('(load Data) body:', JSON.stringify(body));
 
     const response = await fetch(endpoint, {
       method: "POST",

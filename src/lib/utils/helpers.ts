@@ -2,8 +2,8 @@
  * Resolve an API URL considering dev overrides and hosted path prefixes.
  */
 export function getApiUrl(path: string, envVar?: string): string {
-    const isDev = import.meta.env.DEV;
-    if (isDev && envVar) {
+
+    if (envVar) {
       return envVar;
     }
 
@@ -83,4 +83,10 @@ export function buildFieldAria(cfg: BuildFieldAriaConfig) {
 		describedBy: describedByIds || undefined,
 		ariaProps
 	};
+}
+
+import type { Item } from '$lib/types/form';
+
+export function getFieldLabel(item: Item): string {
+	return item.attributes?.labelText ?? item.attributes?.text ?? item.name ?? '';
 }

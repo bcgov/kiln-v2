@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { Button } from 'carbon-components-svelte';
 	import { Add, TrashCan } from 'carbon-icons-svelte';
-	import FormRenderer from '../FormRenderer.svelte';
+	import FieldRenderer from '../FieldRenderer.svelte';
 	import type { Item } from '$lib/types/form';
+	import { isFieldVisible } from '$lib/utils/form';
 
 	let {
 		item,
@@ -14,6 +15,18 @@
 		printing?: boolean;
 	} = $props();
 
+	// Fall back for crypto.randomUUID (not available in insecure contexts like host.docker.internal)
+	function generateUUID(): string {
+		if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+			return crypto.randomUUID();
+		}
+		return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+			const r = (Math.random() * 16) | 0;
+			const v = c === 'x' ? r : (r & 0x3) | 0x8;
+			return v.toString(16);
+		});
+	}
+
 	// Initialize groups based on existing data or create one empty group
 	let groups = $state(initializeGroups());
 
@@ -21,17 +34,18 @@
 		// Check for save data
 		if (item.repeaterData && Array.isArray(item.repeaterData) && item.repeaterData.length > 0) {
 			return item.repeaterData.map((data, index) => ({
-				id: crypto.randomUUID(),
+				id: generateUUID(),
 				data: data,
 				index: index
 			}));
 		}
-		return [{ id: crypto.randomUUID(), data: {}, index: 0 }];
+		return [{ id: generateUUID(), data: {}, index: 0 }];
 	}
 
 	let isRepeatable = $derived(item.attributes?.isRepeatable === true);
 	let legend = $derived(item.attributes?.legend ?? '');
 	let level = $derived(item.attributes?.level ?? 2);
+	let enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
 	let repeaterItemLabel = $derived(item.attributes?.repeaterItemLabel ?? null);
 	let children = $derived(item.children ?? []);
 	let groupCount = $derived(groups.length);
@@ -73,15 +87,17 @@
 		w.__kilnGroupState[item.uuid] = [];
 	}
 
-	// Keep registry fresh and clear stale state on mount and whenever group list changes
-	$effect(() => {
+	// Use $effect.pre() to prevent race condition where child fields initialize before seeing preloaded data
+	$effect.pre(() => {
 		syncActiveGroupsRegistry();
-		cleanupStaleFormState();
-		// NEW: sync initial data so validator sees preloaded values
 		syncInitialGroupDataToFormState();
 	});
 
-	// NEW: write initial group data into global form state under stable keys
+	$effect(() => {
+		cleanupStaleFormState();
+	});
+
+	// write initial group data into global form state under stable keys
 	function syncInitialGroupDataToFormState() {
 		const w = win();
 		if (!w) return;
@@ -102,7 +118,7 @@
 
 	function addGroup() {
 		const newGroup = {
-			id: crypto.randomUUID(),
+			id: generateUUID(),
 			data: {},
 			index: groups.length
 		};
@@ -127,13 +143,13 @@
 			// Generate stable and index-specific UUIDs for the child
 			// This allows the child to be uniquely identified within the group
 			// while maintaining a consistent key across renders
-			const stableKey = `${item.uuid}-${group.id}-${originalUuid}`;
+			const stableId = `${item.uuid}-${group.id}-${originalUuid}`;
 			const indexUuid = `${item.uuid}-${group.index}-${originalUuid}`;
 
 			const groupSpecificChild = {
 				...child,
 				originalUuid,
-				_stableKey: stableKey,
+				_stableKey: stableId,
 				_indexUuid: indexUuid
 			};
 
@@ -231,25 +247,19 @@
 					style="display: grid; grid-template-columns: repeat(1, 1fr);"
 				>
 					{#each getGroupSpecificChildren(group) as child (child._stableKey)}
-						<div style={applyWrapperStyles(child)} data-print-columns={child.visible_pdf || 1}>
-							<FormRenderer
-								formData={{
-									elements: [
-										{
-											...child,
-											uuid: child._stableKey,
-											attributes: {
-												...(child.attributes || {}),
-												id: child._indexUuid,
-												name: child._stableKey
-											}
-										}
-									]
-								}}
-								{mode}
-								{printing}
-							/>
-						</div>
+						{@const fieldItem = {
+							...child,
+							uuid: child._stableKey,
+							attributes: {
+								...(child.attributes || {}),
+								id: child._stableKey
+							}
+						}}
+						{#if isFieldVisible(fieldItem, printing ? 'pdf' : 'web')}
+							<div style={applyWrapperStyles(child)} data-print-columns={child.visible_pdf || 1}>
+								<FieldRenderer item={fieldItem} {mode} {printing} />
+							</div>
+						{/if}
 					{/each}
 				</div>
 			</div>
@@ -262,13 +272,14 @@
 	</fieldset>
 {:else}
 	<fieldset
+		id={item.uuid}
 		class="container-regular container-group {containerClass} {item.class}"
 		class:printing
 		style={containerStyle}
 		aria-labelledby={legend ? legendId : undefined}
 	>
 		{#if legend}
-			<legend id={legendId}>
+			<legend id={legendId} class:moustache={enableVarSub}>
 				{@html `<h${level}>${legend}</h${level}>`}
 			</legend>
 		{/if}
@@ -277,9 +288,11 @@
 			style="display: grid; grid-template-columns: repeat(1, 1fr);"
 		>
 			{#each children as child (child.uuid)}
-				<div style={applyWrapperStyles(child)} data-print-columns={child.visible_pdf || 1}>
-					<FormRenderer formData={{ elements: [child] }} {mode} {printing} />
-				</div>
+				{#if isFieldVisible(child, printing ? 'pdf' : 'web')}
+					<div style={applyWrapperStyles(child)} data-print-columns={child.visible_pdf || 1}>
+						<FieldRenderer item={child} {mode} {printing} />
+					</div>
+				{/if}
 			{/each}
 		</div>
 	</fieldset>
@@ -289,39 +302,7 @@
 	.container-group {
 		display: grid;
 		grid-template-columns: repeat(1, 1fr);
-		gap: 1rem;
 	}
-
-	/* Container type classes */
-	/* .container-section {
-		border: 2px solid #1976d2;
-		border-radius: 6px;
-		padding: 1.5rem;
-		background: #f5faff;
-	}
-	.container-fieldset {
-		border: 1px solid #ccc;
-		border-radius: 4px;
-		padding: 1rem;
-	}
-	.container-page {
-		border: none;
-		background: #f9f9f9;
-		padding: 2rem;
-	}
-
-	.container-header {
-		border-bottom: 2px solid #1976d2;
-		background: #e8f0fe;
-		font-weight: bold;
-		padding: 1rem 1rem 0.5rem 1rem;
-	}
-	.container-footer {
-		border-top: 1px solid #ccc;
-		background: #f1f1f1;
-		font-style: italic;
-		padding: 0.5rem 1rem 1rem 1rem;
-	} */
 
 	@media print {
 		/* Do not draw boxes around groups in print; just manage spacing */

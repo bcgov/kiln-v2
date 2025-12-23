@@ -1,48 +1,46 @@
-/* Toggle visibility between web inputs and print rows */
 .print-row,
 .web-input {
-	display: none;
+	display: none !important;
 }
 
-.print-row.visible,
 .web-input.visible {
-	display: block;
+	display: block !important;
 }
 
-/* Print row layout: label/value columns and row baseline */
-.print-row {
-	grid-template-columns: 200px 1fr;
-	align-items: center;
-	border-bottom: 1px solid #000;
-	font-size: 12px;
-	min-height: 32px;
+.print-row.visible {
+	display: flex !important;
+	flex-wrap: nowrap;
+	width: 100%;
+	align-items: stretch;
+	border-bottom: 1px solid #919191;
+	font-size: 13px;
+	min-height: 24px;
 	page-break-inside: avoid;
 }
 
-/* Ensure grid display when visible in print mode */
-.print-row.visible {
-	display: grid;
-}
-
-/* Label cell styling (background and right border) */
 .print-label {
 	background-color: #f4f4f4;
-	padding: 6px;
+	width: 30%;
+	max-width: 180px;
+	padding: 10px;
 	font-weight: 500;
-	border-right: 1px solid #000;
+	border-right: 1px solid #919191;
 }
 
-/* Value cell styling (padding and dividing left border) */
 .print-value {
 	display: flex;
 	align-items: flex-start;
 	flex-direction: column;
 	white-space: pre-wrap;
-	padding: 6px;
-	border-left: 1px solid #ccc;
+	min-width: 0;
+ 	overflow-wrap: anywhere;
+	width: 70%;
+	min-height: 24px;
+	padding: 2px 10px;
+	font-size: 13px;
+	font-weight: 300;
 }
 
-/* Static text info block reset to app defaults */
 .text-info-field {
 	padding: 10px 0px;
 	font: initial;
@@ -54,24 +52,21 @@
 	font-size: var(--default-font-size);
 }
 
-/* Only TextArea needs this extra style */
 .text-area-field .print-value {
 	white-space: pre-wrap;
+	min-width: 0;
+ 	overflow-wrap: anywhere;
 }
 
-
-/* Add red asterisk to required labels (print and web) */
 .print-label.required::after,
 .bx--label > .required::after {
   content: '*';
-  color: #da1e28;  /* Carbon red60 */
+  color: #b30000;
   margin-left: 2px;
 }
 
-/* Ensure shaded label backgrounds are preserved in printed output */
 @media print {
 	.print-label {
-		/* Force browsers to render background colors when printing */
 		-webkit-print-color-adjust: exact;
 		print-color-adjust: exact;
 		background-color: #f4f4f4 !important;

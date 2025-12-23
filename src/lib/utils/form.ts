@@ -1,4 +1,13 @@
 import type { FormDefinition, Item, FieldValue, FormData, SavedData } from '../types/form';
+import { ensureFreshToken } from '$lib/utils/keycloak';
+
+
+function getCookie(name: string): string | null {
+	const match = document.cookie.match(
+		new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)')
+	);
+	return match ? decodeURIComponent(match[1]) : null;
+}
 
 // --- Visibility ---
 export function isFieldVisible(
@@ -168,63 +177,203 @@ export function createSavedData(ctx?: {
   };
 }
 
-// --- ICM Save API Placeholder---
-export async function saveDataToICMApi(savedData: SavedData) {
+// helper
+function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  if (!formDefinition) return;
+
+  const w = window as any;
+
+  const formState: Record<string, FieldValue> =
+    (w.__kilnFormState as Record<string, FieldValue>) || (w.__kilnFormState = {});
+
+  const activeGroups: Record<string, string[]> =
+    (w.__kilnActiveGroups as Record<string, string[]>) || (w.__kilnActiveGroups = {});
+
+  const readElementValue = (id: string): string | undefined => {
+    const el = document.getElementById(id) as
+      | HTMLInputElement
+      | HTMLTextAreaElement
+      | HTMLSelectElement
+      | null;
+
+    if (!el) return undefined;
+
+    // for our use-case (text inputs, dates, etc...) .value is fine
+    const raw = (el as any).value;
+    if (raw == null) return undefined;
+
+    const s = String(raw);
+    // do not overwrite with blank string
+    if (s.trim() === '') return undefined;
+
+    return s;
+  };
+
+  const walk = (items: Item[]) => {
+    for (const item of items) {
+      // Containers
+      if (item.type === 'container' && Array.isArray(item.children) && item.children.length) {
+        const isRepeatable = item.attributes?.isRepeatable === true;
+
+        if (isRepeatable) {
+          // For repeaters, we rely on stableKey = `${containerUuid}-${groupId}-${childUuid}`
+          const groupIds = activeGroups[item.uuid] || [];
+          for (const child of item.children) {
+            const childUuid = child.uuid;
+            for (const groupId of groupIds) {
+              const stableKey = `${item.uuid}-${groupId}-${childUuid}`;
+
+              // Don’t clobber a value that’s already in formState
+              if (formState[stableKey] !== undefined) continue;
+
+              const v = readElementValue(stableKey);
+              if (v !== undefined) {
+                formState[stableKey] = v;
+              }
+            }
+          }
+        } else {
+          // Non-repeatable container – recurse into children
+          walk(item.children);
+        }
+
+        continue;
+      }
+
+      // Simple field (non-container)
+      const uuid = item.uuid;
+      if (!uuid) continue;
+
+      // Skip if we already have a value recorded (touched/dirty)
+      if (formState[uuid] !== undefined) continue;
+
+      const v = readElementValue(uuid);
+      if (v !== undefined) {
+        formState[uuid] = v;
+      }
+    }
+  };
+
+  walk((formDefinition.elements as Item[]) || []);
+}
+
+export async function saveFormData(action: 'save' | 'save_and_close' | 'generate'): Promise<string> {
   try {
-    // dynamically import to avoid SSR issues and missing symbol
     // @ts-ignore
     const { API } = await import('$lib/utils/api');
-    const saveDataICMEndpoint = API.saveICMData;
+    let saveFormDataEndpoint = API.saveFormData;
+    if (action === 'generate'){
+      saveFormDataEndpoint = API.saveFormDataGenerate;
+    }
+
+    const win: any = typeof window !== 'undefined' ? window : undefined;
+
+    // Get formDefinition first so we can hydrate from DOM
+    const formDefinition: FormDefinition =
+      (win?.__kilnFormDefinition as FormDefinition) ??
+      (win?.formData as FormDefinition);
+
+    // Ensure __kilnFormState has values for all visible fields
+    hydrateFormStateFromDOM(formDefinition);
+
+    // After hydration, read the updated formState + groupState
+    const formState: Record<string, FieldValue> =
+      (win?.__kilnFormState as Record<string, FieldValue>) ?? {};
+
+    const items: Item[] = ((formDefinition?.elements as Item[]) || []);
+
+    const groupState: Record<string, FieldValue[]> =
+      (win?.__kilnGroupState as Record<string, FieldValue[]>) ?? {};
 
     const state = sessionStorage.getItem("formParams");
-    const params = state ? (JSON.parse(state) as Record<string, string>) : {};
+    const sessionParams = state ? (JSON.parse(state) as Record<string, string>) : {};
     const token = (window as any)?.keycloak?.token ?? null;
 
-    const payload = savedData ?? createSavedData();
+    // Force-sync all date inputs into formState at save time
+    if (typeof document !== 'undefined') {
+      const dateInputs = document.querySelectorAll<HTMLInputElement>('input[data-kiln-date="true"]');
+      dateInputs.forEach((input) => {
+        const uuid = input.getAttribute('data-kiln-uuid');
+        if (!uuid) return;
 
-    const savedJson: Record<string, any> = {
-      attachmentId: params["attachmentId"],
-      OfficeName: params["OfficeName"],
-      savedForm: JSON.stringify(payload)
+        const v = input.value;
+        // Only write non-empty values; avoid clobbering with ""
+        if (v && v.trim() !== '') {
+          formState[uuid] = v;
+        }
+      });
+    }
+
+    const payload = {
+      action,
+      formState,
+      groupState,
+      formDefinition,
+      metadata: {
+        updated_date: new Date().toISOString()
+      },
+      items,
+      sessionParams
     };
 
-    if (token) {
-      savedJson.token = token;
-    } else {
-      const usernameMatch = document.cookie.match(/(?:^|;\s*)username=([^;]+)/);
-      const username = usernameMatch ? decodeURIComponent(usernameMatch[1]).trim() : null;
-      if (username && username.length > 0) {
-        savedJson.username = username;
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+
+    const username = getCookie("username");
+    if (username && username.trim() !== "") {
+      payload.sessionParams.username = username.trim();
+    } 
+    else {
+      let token = (window as any)?.keycloak?.token ?? (getCookie("token") as string | null) ?? null;
+      if (!token) {
+        const freshToken = await ensureFreshToken(5);
+        token = freshToken ?? null; 
+      }
+      if (token) {
+        payload.sessionParams.token = token;
+        headers.Authorization = `Bearer ${token}`;
       }
     }
 
-    const response = await fetch(saveDataICMEndpoint, {
+    const response = await fetch(saveFormDataEndpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(savedJson)
+      headers,
+      body: JSON.stringify(payload)
     });
 
     if (response.ok) {
       const result = await response.json();
-      console.log("Result ", result);
+      console.log("Save result:", result);
+
+      if (result.data?.action === 'save_and_close') {
+        const { saved, unlocked } = result.data;
+        if (saved && unlocked) {
+          return "success";
+        } else if (saved && !unlocked) {
+          return "Form saved successfully, but failed to unlock. You may need to close manually.";
+        } else {
+          return "Failed to save form.";
+        }
+      }
+
       return "success";
     } else {
       const errorData = await response.json();
-      console.error("Error:", errorData.error);
+      console.error("Save error:", errorData.error);
       return errorData?.error || "Error saving form. Please try again.";
     }
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Save error:", error);
     return "failed";
   }
-};
+}
 
-// --- ICM Unlock API Placeholder ---
 export async function unlockICMFinalFlags(): Promise<string> {
   try {
     // @ts-ignore dynamic import to avoid circular refs during SSR
     const { API } = await import('$lib/utils/api');
-    const unlockICMFinalEdpoint = API.unlockICMData;
+    const unlockICMFinalEndpoint = API.unlockICMData;
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
 
     // Build request body from session storage formParams
     let body: Record<string, any> = {};
@@ -233,31 +382,29 @@ export async function unlockICMFinalFlags(): Promise<string> {
       const params = state ? (JSON.parse(state) as Record<string, string>) : {};
       body = { ...params };
 
-      // Prefer keycloak token when available
-      const token = (window as any)?.keycloak?.token ?? null;
-      if (token) {
-        body.token = token;
-      } else {
-        try {
-          const usernameMatch = typeof document !== 'undefined'
-            ? document.cookie.match(/(?:^|;\s*)username=([^;]+)/)
-            : null;
-          const username = usernameMatch ? decodeURIComponent(usernameMatch[1]).trim() : null;
-          if (username && username.length > 0) {
-            body.username = username;
-          }
-        } catch {
-          console.error("Failed to parse username from cookies");
+      const username = getCookie("username");
+      if (username && username.trim() !== "") {
+        body.username = username.trim();
+      } 
+      else {
+        let token = (window as any)?.keycloak?.token ?? (getCookie("token") as string | null) ?? null;
+        if (!token) {
+          const freshToken = await ensureFreshToken(5);
+          token = freshToken ?? null; 
+        }
+        if (token) {
+          body.token = token;
+          headers.Authorization = `Bearer ${token}`;
         }
       }
     }
 
-    const response = await fetch(unlockICMFinalEdpoint, {
+    const response = await fetch(unlockICMFinalEndpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      headers,
+      body: JSON.stringify(body),
+      keepalive: true
     });
-
     if (response.ok) {
       try {
         const result = await response.json();
@@ -279,10 +426,13 @@ export async function unlockICMFinalFlags(): Promise<string> {
 export async function generatePDF(formData: FormDefinition, pdfId: string){
   const payload: Record<string, any> = {}
   		try {
+			const { getAuthHeaders } = await import('./auth-headers');
+			const headers = await getAuthHeaders();
+
 			const payload = {}
 			const response = await fetch(`/api/pdf-template/${pdfId}`, {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers,
 				body: JSON.stringify(payload)
 			});
 

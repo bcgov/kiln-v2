@@ -5,12 +5,13 @@
 		createValueSyncEffect,
 		parsers,
 		comparators,
-		publishToGlobalFormState,
-		createAttributeSyncEffect
+		createAttributeSyncEffect,
+		publishToGlobalFormState
 	} from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
-	import { filterAttributes, buildFieldAria } from '$lib/utils/helpers';
+	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
+	import { toFlatpickrFormat } from '$lib/utils/dateFormats';
 	import PrintRow from './common/PrintRow.svelte';
 
 	const { item, printing = false } = $props<{ item: Item; printing?: boolean }>();
@@ -19,22 +20,17 @@
 	);
 
 	let readOnly = $state(item.is_read_only ?? false);
-	let labelText = $state(item.attributes?.labelText ?? '');
+	let labelText = $state(getFieldLabel(item));
+	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let helperText = item.help_text ?? '';
 	let touched = $state(false);
 
 	let extAttrs = $state<Record<string, any>>({});
 
-	function toFlatpickrFormat(fmt: string | undefined): string {
-		if (!fmt) return 'Y/m/d';
-		return fmt
-			.replace(/YYYY|yyyy/g, 'Y')
-			.replace(/YY|yy/g, 'y')
-			.replace(/MM/g, 'm')
-			.replace(/\bM\b/g, 'n')
-			.replace(/DD/g, 'd')
-			.replace(/\bD\b/g, 'j');
+	function win(): any | undefined {
+		return typeof window === 'undefined' ? undefined : (window as any);
 	}
+
 	const dateFormat = $derived(
 		toFlatpickrFormat(
 			(item.attributes?.dateFormat || item.attributes?.displayFormat || item.attributes?.format) as
@@ -65,6 +61,20 @@
 		touched = true;
 	}
 
+	// On pre, seed __kilnFormState with initial date (from bindings/repeaterData) once
+	$effect.pre(() => {
+		const w = win();
+		if (!w) return;
+
+		const state: Record<string, any> = (w.__kilnFormState = w.__kilnFormState || {});
+		const key = item.uuid;
+		const v = value ?? '';
+
+		if (v !== '' && state[key] === undefined) {
+			state[key] = v;
+		}
+	});
+
 	$effect(() => {
 		return createValueSyncEffect({
 			item,
@@ -94,8 +104,27 @@
 		});
 	});
 
+	// try using custom publisher
 	$effect(() => {
 		publishToGlobalFormState({ item, value: value ?? '' });
+	});
+
+	// Custom publisher to __kilnFormState that does NOT clobber with empty unless user really cleared it
+	$effect(() => {
+		const w = win();
+		if (!w) return;
+
+		const state: Record<string, any> = (w.__kilnFormState = w.__kilnFormState || {});
+		const key = item.uuid;
+		const v = value ?? '';
+
+		// If we already have a non-empty value in formState and the component is currently blank and the user hasn't interacted, don't wipe it out.
+		if (!touched && v === '' && typeof state[key] === 'string' && state[key] !== '') {
+			return;
+		}
+
+		// Otherwise, reflect the current value into formState
+		state[key] = v;
 	});
 
 	const a11y = buildFieldAria({
@@ -110,7 +139,7 @@
 <div class="field-container date-picker-field">
 	<PrintRow {item} {printing} {labelText} value={value ?? ''} />
 
-	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
+	<div class="web-input" class:visible={!printing && item.visible_web !== false} class:moustache={enableVarSub}>
 		<DatePicker
 			{...filterAttributes(item.attributes)}
 			{...extAttrs as any}
@@ -129,6 +158,8 @@
 				{onblur}
 				{...a11y.ariaProps}
 				{...extAttrs as any}
+				data-kiln-date="true"
+				data-kiln-uuid={item.uuid}
 			>
 				<span slot="labelText" class:required={item.is_required}>{@html labelText}</span>
 			</DatePickerInput>

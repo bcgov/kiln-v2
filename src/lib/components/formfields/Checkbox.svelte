@@ -9,7 +9,7 @@
 		createAttributeSyncEffect
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { filterAttributes, buildFieldAria } from '$lib/utils/helpers';
+	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
 
@@ -19,9 +19,10 @@
 	}>();
 
 	let checked = $state(item?.value ?? item.attributes?.defaultChecked ?? false);
-	let labelText = $state(item.attributes?.labelText ?? '');
+	let labelText = $state(getFieldLabel(item));
 	let readonly = $state(item.is_read_only ?? false);
 	let helperText = item.help_text ?? '';
+	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let touched = $state(false);
 
 	let extAttrs = $state<Record<string, any>>({});
@@ -101,6 +102,7 @@
 		class="web-input"
 		class:visible={!printing && item.visible_web !== false}
 		class:read-only={readonly}
+		class:moustache={enableVarSub}
 	>
 		<Checkbox
 			{...filterAttributes(filteredAttributes)}

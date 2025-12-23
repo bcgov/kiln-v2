@@ -1,0 +1,122 @@
+name: Build, Lint, and Deploy for FormFoundry Integrated
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - test
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+  build_and_push:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.standalone
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+    outputs:
+      image_tag: ${{ github.sha }}
+
+  deploy:
+    needs: build_and_push
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'prod-formfoundry' || (github.ref == 'refs/heads/dev' && 'dev-formfoundry') || github.ref == 'refs/heads/test' && 'test-formfoundry' }}
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Install oc CLI
+        uses: redhat-actions/oc-installer@v1
+
+      - name: Authenticate with OpenShift
+        uses: redhat-actions/oc-login@v1
+        with:
+          openshift_server_url: ${{ vars.OPENSHIFT_SERVER }}
+          namespace: ${{ vars.OPENSHIFT_NAMESPACE }}
+          openshift_token: ${{ secrets.OPENSHIFT_TOKEN }}
+          insecure_skip_tls_verify: true
+
+      - name: Deploy with Helm
+        run: |
+          BRANCH="${GITHUB_REF##*/}"
+
+          if [[ "$BRANCH" == "dev" ]]; then
+            RELEASE_NAME="kiln-v2-dev"
+          elif [[ "$BRANCH" == "test" ]]; then
+            RELEASE_NAME="kiln-v2-test"
+          else
+            RELEASE_NAME="kiln-v2"
+          fi
+
+          DEPLOYMENT_NAME="$RELEASE_NAME"
+
+          helm upgrade --install "$RELEASE_NAME" ./helm \
+            --set image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} \
+            --set image.tag=${{ needs.build_and_push.outputs.image_tag }} \
+            --set fullnameOverride="$DEPLOYMENT_NAME"
+
+      - name: Trigger OpenShift Rollout
+        run: |
+          BRANCH="${GITHUB_REF##*/}"
+
+          if [[ "$BRANCH" == "dev" ]]; then
+            DEPLOYMENT_NAME="kiln-v2-dev"
+          elif [[ "$BRANCH" == "test" ]]; then
+            DEPLOYMENT_NAME="kiln-v2-test"
+          else
+            DEPLOYMENT_NAME="kiln-v2"
+          fi
+
+          oc rollout restart deployment/$DEPLOYMENT_NAME

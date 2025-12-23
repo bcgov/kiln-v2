@@ -3,14 +3,32 @@
 	import { InlineLoading, InlineNotification } from 'carbon-components-svelte';
 	import { API } from '$lib/utils/api';
 	import { useFormLoader } from '$lib/utils/useFormLoader';
+	import { usePortalFormLoader } from '$lib/utils/usePortalFormLoader';
 	import { FORM_MODE, FORM_DELIVERY_MODE } from '$lib/constants/formMode';
 	import PrivateRoute from '$lib/PrivateRoute.svelte';
 
 	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
-	const { isLoading, error, formData, saveData } = useFormLoader({
-		apiEndpoint: isPortalIntegrated ? API.loadPortalForm : API.loadICMData
+	// Keep your transformParams behavior. Add/keep isPortalIntegrated if you need it downstream.
+	const commonTransform = (params: any) => ({
+		...params,
+		isPortalIntegrated
 	});
+
+	const loader = isPortalIntegrated
+		? usePortalFormLoader({
+				apiEndpoint: API.loadPortalForm, // portal view uses portal form loader + interface session
+				transformParams: commonTransform
+			})
+		: useFormLoader({
+				apiEndpoint: API.loadBoundForm,
+				transformParams: commonTransform
+			});
+
+	let { isLoading, error, formData, saveData, disablePrint } = loader;
+
+	const activeMode = isPortalIntegrated ? FORM_MODE.portalView : FORM_MODE.view;
+	const delivery = isPortalIntegrated ? FORM_DELIVERY_MODE.portal : undefined;
 </script>
 
 <PrivateRoute>
@@ -22,8 +40,9 @@
 		<RenderFrame
 			formData={$formData}
 			saveData={$saveData}
-			mode={FORM_MODE.view}
-			formDelivery={isPortalIntegrated ? FORM_DELIVERY_MODE.portal : undefined}
+			mode={activeMode}
+			formDelivery={delivery}
+			disablePrint={$disablePrint}
 		/>
 	{/if}
 </PrivateRoute>

@@ -9,7 +9,7 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { filterAttributes, buildFieldAria } from '$lib/utils/helpers';
+	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
 
@@ -23,8 +23,9 @@
 	);
 	let error = $state(item.attributes?.error ?? '');
 	let readOnly = $state(item.is_read_only ?? false);
-	let labelText = $state(item.attributes?.labelText ?? '');
+	let labelText = $state(getFieldLabel(item));
 	let helperText = item.help_text ?? '';
+	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let options = item.options ?? [];
 	let touched = $state(false);
 
@@ -98,7 +99,7 @@
 <div class="field-container select-field">
 	<PrintRow {item} {printing} {labelText} value={selectedLabel || ''} />
 
-	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
+	<div class="web-input" class:visible={!printing && item.visible_web !== false} class:moustache={enableVarSub}>
 		<Select
 			{...filterAttributes(item?.attributes)}
 			id={item.uuid}

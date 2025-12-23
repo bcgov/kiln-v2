@@ -8,10 +8,45 @@ import type {
 let kc: KeycloakInstance | null = null;
 let initPromise: Promise<KeycloakInstance> | null = null;
 
+const environment = import.meta.env.VITE_ENVIRONMENT as string;
+const isLocal = ['local', 'localhost', 'development', 'dev'].includes(environment);
 const isStandaloneMode = import.meta.env.VITE_STANDALONE_MODE === 'true';
 const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
+function getCookie(name: string): string | null {
+	const match = document.cookie.match(
+		new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)')
+	);
+	return match ? decodeURIComponent(match[1]) : null;
+}
+
+function validateConfig(): string[] {
+	const errors: string[] = [];
+
+	if (!isStandaloneMode && !isPortalIntegrated) {
+		if (!import.meta.env.VITE_SSO_AUTH_SERVER_URL) {
+			errors.push('VITE_SSO_AUTH_SERVER_URL is required');
+		}
+		if (!import.meta.env.VITE_SSO_REALM) {
+			errors.push('VITE_SSO_REALM is required');
+		}
+		if (!import.meta.env.VITE_SSO_CLIENT_ID) {
+			errors.push('VITE_SSO_CLIENT_ID is required');
+		}
+	}
+
+	return errors;
+}
+
 function buildKeycloak(): KeycloakInstance {
+	if (!isStandaloneMode && !isPortalIntegrated) {
+		const errors = validateConfig();
+		if (errors.length > 0) {
+			console.error('Keycloak configuration errors:', errors);
+			throw new Error('Invalid Keycloak configuration: ' + errors.join(', '));
+		}
+	}
+
 	return new Keycloak({
 		url: import.meta.env.VITE_SSO_AUTH_SERVER_URL as string,
 		realm: import.meta.env.VITE_SSO_REALM as string,
@@ -26,7 +61,6 @@ export async function initializeKeycloak(): Promise<KeycloakInstance> {
 	initPromise = (async () => {
 		const instance = buildKeycloak();
 
-		// Refresh token shortly before expiry
 		instance.onTokenExpired = () => {
 			instance.updateToken(5).catch((err) => console.error('Failed to update token:', err));
 		};
@@ -59,11 +93,15 @@ export function getKeycloak(): KeycloakInstance | null {
 export async function guardRoute(
 	type: 'public' | 'private'
 ): Promise<{ keycloak: KeycloakInstance | null; authenticated: boolean }> {
-	// Standalone mode and portal integration bypass auth
 	if (isStandaloneMode || isPortalIntegrated || type === 'public') {
 		return { keycloak: null, authenticated: true };
 	}
 
+	const cookieUsername = getCookie('username');
+	if (cookieUsername) {
+	  return { keycloak: null, authenticated: true };
+	}
+	
 	const keycloak = await initializeKeycloak();
 
 	if (!keycloak.authenticated) {
@@ -90,6 +128,7 @@ export async function ensureFreshToken(minValiditySeconds = 5): Promise<string |
 		console.error('Failed to refresh token:', err);
 		return undefined;
 	}
+
 	return keycloak.token ?? undefined;
 }
 

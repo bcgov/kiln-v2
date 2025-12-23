@@ -1,14 +1,84 @@
+/* Noto Sans - Primary Font */
 @font-face {
-	font-family: 'BC Sans';
-	src: url('/fonts/BCSans-Regular.ttf') format('truetype');
-	font-weight: 400; 
-	 font-style: normal; 
+	font-family: 'Noto Sans';
+	src: url('/fonts/NotoSans-VariableFont_wdth,wght.ttf') format('truetype-variations');
+	font-weight: 100 900;
+	font-style: normal;
 	font-display: swap;
 }
 @font-face {
-	font-family: 'BC Sans';
-	src: url('/fonts/BCSans-Bold.ttf') format('truetype');
-	font-weight: 700;
+	font-family: 'Noto Sans';
+	src: url('/fonts/NotoSans-Italic-VariableFont_wdth,wght.ttf') format('truetype-variations');
+	font-weight: 100 900;
+	font-style: italic;
+	font-display: swap;
+}
+
+/* IBM Plex Mono - Monospace */
+@font-face {
+	font-family: 'IBM Plex Mono';
+	src: url('/fonts/IBMPlexMono-Light.woff2') format('woff2');
+	font-weight: 300;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'IBM Plex Mono';
+	src: url('/fonts/IBMPlexMono-Regular.woff2') format('woff2');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'IBM Plex Mono';
+	src: url('/fonts/IBMPlexMono-SemiBold.woff2') format('woff2');
+	font-weight: 600;
+	font-style: normal;
+	font-display: swap;
+}
+
+/* IBM Plex Sans - Sans Serif */
+@font-face {
+	font-family: 'IBM Plex Sans';
+	src: url('/fonts/IBMPlexSans-Light.woff2') format('woff2');
+	font-weight: 300;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'IBM Plex Sans';
+	src: url('/fonts/IBMPlexSans-Regular.woff2') format('woff2');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'IBM Plex Sans';
+	src: url('/fonts/IBMPlexSans-SemiBold.woff2') format('woff2');
+	font-weight: 600;
+	font-style: normal;
+	font-display: swap;
+}
+
+/* IBM Plex Serif - Serif */
+@font-face {
+	font-family: 'IBM Plex Serif';
+	src: url('/fonts/IBMPlexSerif-Light.woff2') format('woff2');
+	font-weight: 300;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'IBM Plex Serif';
+	src: url('/fonts/IBMPlexSerif-Regular.woff2') format('woff2');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'IBM Plex Serif';
+	src: url('/fonts/IBMPlexSerif-SemiBold.woff2') format('woff2');
+	font-weight: 600;
 	font-style: normal;
 	font-display: swap;
 }
@@ -20,7 +90,7 @@
   --box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   --z-index-top: 1000;
   --dark-red: #b30000;
-  --default-font-family: "BC Sans", sans-serif;
+  --default-font-family: "Noto Sans", sans-serif;
   --default-font-size: 16px;
   --default-font-color: #000;
   --outer-padding: 0px 60px;
@@ -31,6 +101,7 @@
 
 html, body {
   font-family: var(--default-font-family), sans-serif !important;
+  line-height: 150%; /* 24px at 16px base */
 }
 
 .group-container {
@@ -44,6 +115,7 @@ html, body {
   margin: 0px 0;
   border-radius: 5px;
 }
+.bx--row,
 .cds--row {
   display: grid !important;
   grid-template-columns: repeat(1, 1fr) !important;
@@ -59,23 +131,62 @@ html, body {
   border: var(--border-width) var(--border-color);
   margin-bottom: 20px;
   border-radius: 5px;
-  font-family: "BC Sans";
+  font-family: "Noto Sans";
   font-size: 30px;
   font-style: normal;
   font-weight: 700;
   line-height: 125%;
 }
 
-
-
 .group-header {
-  color: #000;
+  color: #2D2D2D;
   font-family: var(--default-font-family);
   font-size: 28px;
   font-style: normal;
   font-weight: 700;
   line-height: normal;
   margin-bottom: 15px;
+  padding: 12px 24px;
+}
+
+fieldset legend h2,
+.container-group legend h2{
+  font-weight: 700 !important;
+  font-size: 32px !important;
+  line-height: normal !important;
+  margin-bottom: 15px !important;
+}
+
+fieldset legend h3,
+.container-group legend h3 {
+  font-weight: 700 !important;
+  font-size: 28px !important;
+  line-height: normal !important;
+  margin-bottom: 15px !important;
+}
+
+fieldset legend h4,
+.container-group legend h4 {
+  font-weight: 700 !important;
+  font-size: 24px !important;
+  line-height: normal !important;
+  margin-bottom: 15px !important;
+}
+
+fieldset legend h5,
+.container-group legend h5 {
+  font-weight: 700 !important;
+  font-size: 20px !important;
+  line-height: normal !important;
+  margin-bottom: 15px !important;
+}
+
+fieldset legend h5,
+.container-group legend h5 {
+  font-weight: 700 !important;
+  font-size: 18px !important;
+  line-height: normal !important;
+  margin-bottom: 15px !important;
 }
 
 .group-item-header {
@@ -97,11 +208,32 @@ html, body {
 }
 
 .text-block h1 {
-  font-size: 32px;
+  font-size: 36px;
   font-weight: 700;
+  color: #2D2D2D;
 }
 .text-block h2 {
+  font-size: 32px;
+  color: #2D2D2D;
+}
+.text-block h3 {
   font-size: 28px;
+  color: #2D2D2D;
+}
+.text-block h4 {
+  font-size: 24px;
+  color: #2D2D2D;
+}
+.text-block h5 {
+  font-size: 20px;
+  color: #2D2D2D;
+}
+.text-block h6 {
+  font-size: 18px;
+  color: #2D2D2D;
+}
+h1, h2, h3, h4, h5, h6 {
+  color: #2D2D2D;
 }
 h1 {
   font-size: 36px;
@@ -112,27 +244,24 @@ h1 {
   margin-bottom: 20px !important;
 }
 
-
-
-
+.bx--form__helper-text,
 .cds--form__helper-text {
   color: #525252;
   font-size: 1rem;
 }
 
-.cds--label {
-  font-weight: var(--label-font-weight);
-  font-size: var(--label-font-size);
-  font-style: var(--label-font-style);
-}
-/* 
-.print-only {
-  display: hidden;
+.cds--label,
+.bx--label,
+label {
+  font-weight: var(--label-font-weight) !important;
+  font-size: var(--label-font-size) !important;
+  font-style: var(--label-font-style) !important;
+  font-family: var(--default-font-family) !important;
+  line-height: 150%;
 }
 
-.hidden-on-screen {
-  display: none;
-}
+/* Toggle and checkbox styles */
+.bx--toggle__label-text,
 .cds--toggle__label-text {
   padding: 10px 0px;
   font: initial;
@@ -142,24 +271,33 @@ h1 {
   color: #000;
 }
 
-.cds--text-input,
-.cds--dropdown,
-.cds--date-picker__input,
-.cds--text-area {
-  border: 1px solid #8D8D8D;
-  background: none;
+.bx--checkbox-label-text,
+.cds--checkbox-label-text {
+  font-size: 16px;
 }
 
+/* Radio button label text should not be bold and match legacy size */
+.bx--radio-button__label-text,
+.cds--radio-button__label-text,
+.bx--radio-button-wrapper .bx--radio-button__label .bx--radio-button__label-text,
+.cds--radio-button-wrapper .cds--radio-button__label .cds--radio-button__label-text,
+.bx--radio-button__label span,
+.cds--radio-button__label span {
+  font-weight: normal !important;
+  font-size: 14px !important;
+}
+
+/* Readonly field styles */
+.bx--text-input-wrapper--readonly .bx--text-input,
+.bx--date-picker__input[readonly],
+.bx--dropdown--readonly .bx--list-box__field,
+.bx--text-area__wrapper--readonly .bx--text-area,
 .cds--text-input-wrapper--readonly .cds--text-input,
 .cds--date-picker__input[readonly],
 .cds--dropdown--readonly .cds--list-box__field,
 .cds--text-area__wrapper--readonly .cds--text-area {
   background: #f4f4f4;
   border: none;
-}
-
-.cds--checkbox-label-text {
-  font-size: 16px;
 }
 .custom-modal-footer {
   display: flex;
@@ -206,83 +344,189 @@ h1 {
   display: flex;
   flex-wrap: wrap;
 }
-.print-only {
-  display: hidden;
+
+.button-base {
+  display: flex;
+  height: 40px;
+  padding: 6px 12px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
-.hidden-on-screen {
-  display: none;
-}
-.cds--toggle__label-text {
-  padding: 10px 0px;
-  font: initial;
-  font-weight: normal;
-  font-family: var(--default-font-family);
-  font-size: var(--default-font-size);
-  color: #000;
+.bx--btn,
+.cds--btn,
+button {
+  border-radius: 4px !important;
+  gap: 0 !important;
+  padding-right: 12px !important;
+  padding-left: 12px !important;
+  font-size: 16px !important;
+  font-family: var(--default-font-family) !important;
 }
 
+.bx--btn__icon,
+.cds--btn__icon {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Remove Carbon's default button padding that adds extra space */
+.bx--btn--ghost.bx--btn--icon-only .bx--btn__icon,
+.bx--btn--primary.bx--btn--icon-only .bx--btn__icon,
+.bx--btn--secondary.bx--btn--icon-only .bx--btn__icon,
+.bx--btn--tertiary.bx--btn--icon-only .bx--btn__icon,
+.cds--btn--ghost.cds--btn--icon-only .cds--btn__icon,
+.cds--btn--primary.cds--btn--icon-only .cds--btn__icon,
+.cds--btn--secondary.cds--btn--icon-only .cds--btn__icon,
+.cds--btn--tertiary.cds--btn--icon-only .cds--btn__icon {
+  margin: 0 !important;
+}
+
+.header-buttons-only .bx--btn,
+.header-buttons-only .cds--btn,
+.header-buttons-only button {
+  background: #fff;
+  border: 1px solid #2D2D2D;
+  color: #2D2D2D;
+  border-radius: 4px;
+}
+
+.header-buttons-only .bx--btn:hover,
+.header-buttons-only .cds--btn:hover,
+.header-buttons-only button:hover {
+  background: #f4f4f4;
+}
+
+.custom-buttons-only .bx--btn,
+.custom-buttons-only .cds--btn,
+.custom-buttons-only button {
+  background: transparent;
+  border: 1px solid #2D2D2D;
+  color: #2D2D2D;
+  border-radius: 4px;
+}
+
+.custom-buttons-only .bx--btn:hover,
+.custom-buttons-only .cds--btn:hover,
+.custom-buttons-only button:hover {
+  background: rgba(45, 45, 45, 0.1);
+}
+
+.custom-buttons-no-bg .bx--btn,
+.custom-buttons-no-bg .cds--btn,
+.custom-buttons-no-bg button {
+  background: transparent;
+  border: none;
+  color: #2D2D2D;
+  justify-content: flex-end;
+  border-radius: 4px;
+}
+
+.custom-buttons-no-bg .bx--btn:hover,
+.custom-buttons-no-bg .cds--btn:hover,
+.custom-buttons-no-bg button:hover {
+  text-decoration: underline;
+}
+
+/* Mobile Responsive Breakpoint - 768px */
+@media (max-width: 768px) {
+  .fixed {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .header-buttons-only,
+  .custom-buttons-only,
+  .custom-buttons-no-bg {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+[theme] .bx--text-input,
+[theme="white"] .bx--text-input,
+[theme="g10"] .bx--text-input,
+[theme="g80"] .bx--text-input,
+[theme="g90"] .bx--text-input,
+[theme="g100"] .bx--text-input,
+.bx--text-input,
+.bx--text-input__field-wrapper input,
+input.bx--text-input,
+[theme] .bx--text-area,
+[theme="white"] .bx--text-area,
+.bx--text-area,
+textarea.bx--text-area,
+.bx--text-area__wrapper textarea,
+[theme] .bx--date-picker__input,
+.bx--date-picker__input,
+.bx--number input,
+.bx--number__input-wrapper input,
+.bx--select-input,
+[theme] .cds--text-input,
+[theme="white"] .cds--text-input,
+[theme="g10"] .cds--text-input,
+[theme="g80"] .cds--text-input,
+[theme="g90"] .cds--text-input,
+[theme="g100"] .cds--text-input,
 .cds--text-input,
-.cds--dropdown,
+.cds--text-input__field-wrapper input,
+input.cds--text-input,
+[theme] .cds--text-area,
+[theme="white"] .cds--text-area,
+.cds--text-area,
+textarea.cds--text-area,
+.cds--text-area__wrapper textarea,
+[theme] .cds--date-picker__input,
 .cds--date-picker__input,
-.cds--text-area {
-  border: 1px solid #8D8D8D;
-  background: none;
+.cds--number input,
+.cds--number__input-wrapper input,
+.cds--select-input {
+  border: 1px solid #8D8D8D !important;
+  border-style: solid !important;
+  border-width: 1px !important;
+  border-color: #8D8D8D !important;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  background-image: none !important;
 }
 
+/* Force white background even when focused */
+.bx--text-input:focus,
+.bx--text-area:focus,
+.cds--text-input:focus,
+.cds--text-area:focus {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  border-color: #8D8D8D !important;
+}
+
+/* Dropdowns */
+[theme] .bx--dropdown,
+[theme] .bx--list-box,
+.bx--dropdown,
+.bx--list-box,
+[theme] .cds--dropdown,
+[theme] .cds--list-box,
+.cds--dropdown,
+.cds--list-box {
+  border: 1px solid #8D8D8D !important;
+  background-color: #ffffff !important;
+}
+
+/* Read-only state - gray background, no border */
+.bx--text-input-wrapper--readonly .bx--text-input,
+.bx--date-picker__input[readonly],
+.bx--dropdown--readonly .bx--list-box__field,
+.bx--text-area__wrapper--readonly .bx--text-area,
 .cds--text-input-wrapper--readonly .cds--text-input,
 .cds--date-picker__input[readonly],
 .cds--dropdown--readonly .cds--list-box__field,
 .cds--text-area__wrapper--readonly .cds--text-area {
-  background: #f4f4f4;
-  border: none;
+  background: #f4f4f4 !important;
+  border: none !important;
 }
-
-.cds--checkbox-label-text {
-  font-size: 16px;
-}
-.custom-modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding-top: 16px;
-}
-
-.loading-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(255, 255, 255, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  backdrop-filter: blur(8px);
-}
-
-.loading-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
-
-.loading-message {
-  font-size: 18px;
-  font-weight: bold;
-  text-align: center;
-}
-
-.custom-buttons-only {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.custom-buttons-no-bg {
-  display: flex;
-  flex-wrap: wrap;
-} */

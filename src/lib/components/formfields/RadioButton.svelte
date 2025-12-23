@@ -10,7 +10,7 @@
 	} from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
-	import { filterAttributes, buildFieldAria } from '$lib/utils/helpers';
+	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
 	import PrintRow from './common/PrintRow.svelte';
 
 	const { item, printing = false } = $props<{
@@ -23,7 +23,8 @@
 	);
 	let error = $state(item.attributes?.error ?? '');
 	let readonly = $state(item.is_read_only ?? false);
-	let labelText = $state(item.attributes?.labelText ?? '');
+	let labelText = $state(getFieldLabel(item));
+	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let helperText = item.help_text ?? '';
 	let options = item.options ?? [];
 	let touched = $state(false);
@@ -101,6 +102,7 @@
 		class="web-input"
 		style={readonly ? 'pointer-events: none;' : ''}
 		class:visible={!printing && item.visible_web !== false}
+		class:moustache={enableVarSub}
 	>
 		<RadioButtonGroup
 			{...filterAttributes(item?.attributes)}

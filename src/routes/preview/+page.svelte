@@ -1,7 +1,9 @@
 <script lang="ts">
-	import { TextArea, Form, Button, InlineNotification } from 'carbon-components-svelte';
+	import { TextArea, Form, Button, InlineNotification, InlineLoading } from 'carbon-components-svelte';
 	import RenderFrame from '$lib/RenderFrame.svelte';
 	import { FORM_DELIVERY_MODE, FORM_MODE } from '$lib/constants/formMode';
+	import { API } from '$lib/utils/api';
+	import { getAuthBody } from '$lib/utils/auth-headers';
 
 	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
@@ -10,36 +12,112 @@
 	let content = $state('');
 	let error = $state('');
 	let saveData = $state<{ data: any } | undefined>(undefined);
+	let isLoading = $state(false);
 
-	function handleSubmit(event: Event) {
-		event.preventDefault();
+	const trustedOrigins = [
+		import.meta.env.VITE_TEMPLATE_REPO_URL,
+		import.meta.env.VITE_KLAMM_URL,
+	];
+
+	$effect(() => {
+		const handleMessage = (event: MessageEvent) => {
+			if (!trustedOrigins.includes(event.origin)) {
+				console.warn('Received message from untrusted origin:', event.origin);
+				return;
+			}
+			if (event.data?.type === 'LOAD_JSON') {
+				content = event.data.data;
+				processJSON(event.data.data);
+			}
+		};
+
+		if (window.__kilnMessageBuffer?.length) {
+			window.__kilnMessageBuffer.forEach(handleMessage);
+			window.__kilnMessageBuffer.length = 0;
+		}
+
+		window.addEventListener('message', handleMessage);
+
+		const sendReady = () => {
+			if (window.opener && !window.opener.closed) {
+				window.opener.postMessage({ type: 'KILN_READY' }, import.meta.env.VITE_TEMPLATE_REPO_URL);
+			}
+		};
+
+		sendReady();
+		const interval = setInterval(sendReady, 100);
+		setTimeout(() => clearInterval(interval), 3000);
+
+		return () => window.removeEventListener('message', handleMessage);
+	});
+
+	async function processJSON(jsonString: string) {
 		error = '';
+		isLoading = true;
 
-		if (!content.trim()) {
+		if (!jsonString.trim()) {
 			error = 'Content cannot be empty. Please enter valid JSON.';
+			isLoading = false;
 			return;
 		}
 
 		try {
-			const parsedJSON = JSON.parse(content);
+			const parsedJSON = JSON.parse(jsonString);
+			let formData;
 
-			// If both data and form_definition exist, treat as form_with_data
 			if (parsedJSON.data && parsedJSON.form_definition) {
-				saveData = { data: parsedJSON.data };
-				jsonContent = parsedJSON.form_definition;
+				formData = {
+					data: parsedJSON.data,
+					form_definition: parsedJSON.form_definition,
+					metadata: parsedJSON.metadata || {}
+				};
 			} else if (parsedJSON.formversion) {
-				// If formversion exists, treat as example-form.json
-				jsonContent = parsedJSON.formversion;
-				saveData = undefined;
+				formData = {
+					data: {},
+					form_definition: parsedJSON.formversion,
+					metadata: {}
+				};
 			} else {
-				// fallback: treat as plain form definition
-				jsonContent = parsedJSON;
-				saveData = undefined;
+				formData = {
+					data: {},
+					form_definition: parsedJSON,
+					metadata: {}
+				};
 			}
+
+			// Call the API to bind the data
+
+			const authBody = getAuthBody();
+			const payload = { formData, ...authBody };
+
+			const response = await fetch(API.bindPreviewForm, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(payload)
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || 'Failed to bind form data');
+			}
+
+			const boundData = await response.json();
+
+			jsonContent = boundData.form_definition || {};
+			saveData = boundData.data ? { data: boundData.data } : undefined;
 			present = true;
 		} catch (e) {
-			error = 'Invalid JSON format. Please correct it.';
+			error = e instanceof Error ? e.message : 'Invalid JSON format or API error. Please correct it.';
+		} finally {
+			isLoading = false;
 		}
+	}
+
+	async function handleSubmit(event: Event) {
+		event.preventDefault();
+		await processJSON(content);
 	}
 
 	function handleGoBack() {
@@ -68,22 +146,26 @@
 			/>
 		{/if}
 
-		<Form onsubmit={handleSubmit}>
-			<TextArea
-				bind:value={content}
-				style="margin-bottom: 10px; padding: 10px; font-size: 16px;"
-				cols={50}
-				helperText="Please enter your json for the form definition"
-				id="jsonData"
-				invalid={!!error}
-				invalidText={error}
-				labelText="Form Template JSON"
-				placeholder="Enter your form json"
-				rows={15}
-			/>
-			<br />
+		{#if isLoading}
+			<InlineLoading description="Processing form data..." status="active" />
+		{:else}
+			<Form onsubmit={handleSubmit}>
+				<TextArea
+					bind:value={content}
+					style="margin-bottom: 10px; padding: 10px; font-size: 16px;"
+					cols={50}
+					helperText="Please enter your json for the form definition"
+					id="jsonData"
+					invalid={!!error}
+					invalidText={error}
+					labelText="Form Template JSON"
+					placeholder="Enter your form json"
+					rows={15}
+				/>
+				<br />
 
-			<Button kind="secondary" type="submit">Preview</Button>
-		</Form>
+				<Button kind="secondary" type="submit" disabled={isLoading}>Preview</Button>
+			</Form>
+		{/if}
 	</div>
 {/if}
