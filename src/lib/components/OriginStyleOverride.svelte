@@ -1,40 +1,10 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
-  import { getOriginalServerHeader } from '$lib/utils/helpers';
-
-  type AppConfig = {
-    [appName: string]: {
-      customCss?: string;
-    };
-  };
-
-  function getAppConfig(): AppConfig {
-    try {
-      const raw = import.meta.env.VITE_APP_CONFIG;
-      console.log("raw >",JSON.stringify(raw));
-      return raw ? JSON.parse(raw) : {};
-    } catch (e) {
-      console.error('[OriginStyleOverride] Invalid APP_CONFIG', e);
-      return {};
-    }
-  }  
-
-  function resolveAppNameFromOrigin(): string | null {
-    const originalServer = getOriginalServerHeader()?.['X-Original-Server'];
-    console.log("originalServer in OriginStyleOverride >",originalServer);
-    const host = originalServer ?? window.location.hostname.toLowerCase();
-    console.log("host in OriginStyleOverride>",host);    
-    return host;
-  }
+  import { getCustomCssForCurrentHost } from '$lib/utils/hostConfig';  
 
   function resolveCssHref(): string | null {
-    const appName = resolveAppNameFromOrigin();
-    if (!appName) return null;
-
-    const config = getAppConfig();
-    const css = config[appName]?.customCss;
-    if (!css) return null;
+    const css = getCustomCssForCurrentHost();
 
     return css.startsWith('/')
       ? css
