@@ -425,6 +425,9 @@
 			const footerText = buildPrintFooterText();
 			printFooter?.setFooterText(footerText);
 
+			// Set barcode value to form_id
+			printFooter?.setBarcodeValue(formData?.form_id || '');
+
 			
 			// Paginate content to prevent footer overlap
 			const cleanupPagination = paginateContentForPrint();
@@ -446,6 +449,9 @@
 
 					// Clear footer via PrintFooter component
 					printFooter?.clearFooterText();
+
+					// Clear barcode
+					printFooter?.clearBarcodeValue();
 
 					// Remove inserted page breaks
 					cleanupPagination();
