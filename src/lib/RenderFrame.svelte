@@ -30,7 +30,8 @@
 		goBack = undefined,
 		mode = 'preview',
 		formDelivery = undefined,
-		disablePrint = false
+		disablePrint = false,
+		barcodeValue = undefined
 	} = $props();
 
 	// Modal and loading state
@@ -425,8 +426,8 @@
 			const footerText = buildPrintFooterText();
 			printFooter?.setFooterText(footerText);
 
-			// Set barcode value to form_id
-			printFooter?.setBarcodeValue(formData?.form_id || '');
+			// Set barcode value from API response
+			printFooter?.setBarcodeValue(barcodeValue || '');
 
 			
 			// Paginate content to prevent footer overlap

@@ -5,7 +5,7 @@
 	import { useFormLoader } from '$lib/utils/useFormLoader';
 	import { FORM_MODE, FORM_DELIVERY_MODE } from '$lib/constants/formMode';
 
-	const { isLoading, error, formData, saveData, disablePrint } = useFormLoader({
+	const { isLoading, error, formData, saveData, disablePrint, barcodeValue } = useFormLoader({
 		apiEndpoint: API.loadSavedJson,
 		expectSaveData: false,
 		transformParams: (params) => ({
@@ -26,5 +26,6 @@
 		mode={FORM_MODE.view}
 		formDelivery={FORM_DELIVERY_MODE.generate}
 		disablePrint={$disablePrint}
+		barcodeValue={$barcodeValue}
 	/>
 {/if}

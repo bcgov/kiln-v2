@@ -26,7 +26,7 @@
 				transformParams: commonTransform
 			});
 
-	let { isLoading, error, formData, saveData, disablePrint } = loader;
+	let { isLoading, error, formData, saveData, disablePrint, barcodeValue } = loader;
 
 	const activeMode = isPortalIntegrated ? FORM_MODE.portalEdit : FORM_MODE.edit;
 	const delivery = isPortalIntegrated ? FORM_DELIVERY_MODE.portal : undefined;
@@ -44,6 +44,7 @@
 			mode={activeMode}
 			formDelivery={delivery}
 			disablePrint={$disablePrint}
+			barcodeValue={$barcodeValue}
 		/>
 	{/if}
 </PrivateRoute>

@@ -39,6 +39,7 @@ export interface UseFormLoaderReturn {
   saveData: Writable<object>;
   load: () => Promise<void>;
   disablePrint: Writable<boolean>;
+  barcodeValue: Writable<string | null>;
 }
 
 export interface UsePDFLoaderReturn {
