@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Barcode from 'svelte-barcode';
+	import JsBarcode from 'jsbarcode';
 
 	let { formId = '' } = $props();
 
@@ -24,15 +24,29 @@
 	export function clearBarcodeValue(): void {
 		barcodeValue = '';
 	}
+
+	export function setBarcodeIntoFooter(): void {
+		const barcodePlaceholder = document.getElementById("barcode-placeholder");
+		if (!barcodePlaceholder || !barcodeValue) {
+			return;
+		}
+
+        barcodePlaceholder.style.border = "1px solid red";
+
+		const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+		barcodePlaceholder.innerHTML = '';
+		barcodePlaceholder.appendChild(svg);
+
+		JsBarcode(svg, barcodeValue, {
+            width: 2,
+			height: 16,
+            margin: 0,
+			displayValue: false
+		});
+	}
 </script>
 
 <div class="paged-page" data-footer-text=""></div>
-
-<div class="print-barcode">
-	{#if barcodeValue}
-		<Barcode value={barcodeValue} options={{ height: 30, displayValue: false }} />
-	{/if}
-</div>
 
 <style>
 	.paged-page {

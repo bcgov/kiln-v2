@@ -282,15 +282,11 @@
 
 			}
 
-
 			// No extra padding - use actual measured height
 		} else {
 			// Default fake footer height if not found (25mm as configured in CSS)
 			fakeFooterHeight = 25 * MM_TO_PX;
-
 		}
-		
-		// console.log("Footer height:",fakeFooterHeight);
 
 		// Detect header height
 		const headerSection = document.querySelector('.header-section') as HTMLElement;
@@ -429,9 +425,10 @@
 			// Set barcode value from API response
 			printFooter?.setBarcodeValue(barcodeValue || '');
 
-			
 			// Paginate content to prevent footer overlap
 			const cleanupPagination = paginateContentForPrint();
+
+			printFooter?.setBarcodeIntoFooter();
 
 			// Add print metadata to document head
 			const metaTags = createPrintMetadata();
