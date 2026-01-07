@@ -20,7 +20,7 @@
 			});
 
 	// These are Svelte stores returned by your loader(s)
-	let { isLoading, error, formData, saveData, disablePrint, barcodeValue } = loader;
+	let { isLoading, error, formData, saveData, disablePrint } = loader;
 	// pick the correct mode/delivery without changing your non-portal UX
 	const activeMode = isPortalIntegrated ? FORM_MODE.portalNew : FORM_MODE.edit;
 	const delivery = isPortalIntegrated ? FORM_DELIVERY_MODE.portal : undefined;
@@ -38,7 +38,6 @@
 			mode={activeMode}
 			formDelivery={delivery}
 			disablePrint={$disablePrint}
-			barcodeValue={$barcodeValue}
 		/>
 	{/if}
 </PrivateRoute>

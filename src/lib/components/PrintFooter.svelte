@@ -1,8 +1,6 @@
 <script lang="ts">
 	import JsBarcode from 'jsbarcode';
 
-	let { formId = '' } = $props();
-
 	let barcodeValue = $state('');
 
 	export function setFooterText(text: string): void {

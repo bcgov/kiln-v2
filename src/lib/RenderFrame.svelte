@@ -30,8 +30,7 @@
 		goBack = undefined,
 		mode = 'preview',
 		formDelivery = undefined,
-		disablePrint = false,
-		barcodeValue = undefined
+		disablePrint = false
 	} = $props();
 
 	// Modal and loading state
