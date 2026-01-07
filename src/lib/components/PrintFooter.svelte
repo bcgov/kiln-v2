@@ -19,10 +19,20 @@
 
 	export function setBarcodeValue(value: string): void {
 		barcodeValue = value || '';
+		if (typeof document !== 'undefined') {
+			if (barcodeValue) {
+				document.documentElement.setAttribute('data-has-barcode', 'true');
+			} else {
+				document.documentElement.removeAttribute('data-has-barcode');
+			}
+		}
 	}
 
 	export function clearBarcodeValue(): void {
 		barcodeValue = '';
+		if (typeof document !== 'undefined') {
+			document.documentElement.removeAttribute('data-has-barcode');
+		}
 	}
 
 	export function setBarcodeIntoFooter(): void {

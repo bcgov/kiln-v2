@@ -274,6 +274,7 @@
   }
 
   /* Content Footer - custom footer defined in form JSON */
+  /* Default: no barcode - use smaller footer height */
   .print-footer {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -284,10 +285,16 @@
     background: white !important;
     padding: 8px 0 0 0 !important;
     font-size: 11px !important;
-    height: 35mm !important;
+    max-height: 25mm !important;
     overflow: hidden !important;
     page-break-inside: avoid !important;
     z-index: 1000 !important;
+  }
+
+  /* With barcode - use taller fixed footer height */
+  :root[data-has-barcode="true"] .print-footer {
+    max-height: none !important;
+    height: 35mm !important;
   }
 
   /* Letter content needs padding to avoid overlapping the fixed footer */
