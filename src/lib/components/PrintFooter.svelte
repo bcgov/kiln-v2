@@ -31,8 +31,6 @@
 			return;
 		}
 
-        barcodePlaceholder.style.border = "1px solid red";
-
 		const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 		barcodePlaceholder.innerHTML = '';
 		barcodePlaceholder.appendChild(svg);
