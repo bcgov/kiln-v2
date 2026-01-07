@@ -422,13 +422,11 @@
 			const footerText = buildPrintFooterText();
 			printFooter?.setFooterText(footerText);
 
-			// Set barcode value from API response
-			printFooter?.setBarcodeValue(barcodeValue || '');
+			// Process barcode from form template (replaces {{placeholders}} with values from formParams)
+			printFooter?.generateBarcode();
 
 			// Paginate content to prevent footer overlap
 			const cleanupPagination = paginateContentForPrint();
-
-			printFooter?.setBarcodeIntoFooter();
 
 			// Add print metadata to document head
 			const metaTags = createPrintMetadata();
@@ -449,7 +447,7 @@
 					printFooter?.clearFooterText();
 
 					// Clear barcode
-					printFooter?.clearBarcodeValue();
+					printFooter?.clearBarcodeFromTemplate();
 
 					// Remove inserted page breaks
 					cleanupPagination();
