@@ -112,9 +112,10 @@
 		barcodePlaceholder.appendChild(svg);
 
 		JsBarcode(svg, resolvedBarcodeValue, {
-			width: 2,
-			height: 16,
+			width: 1,
+			height: 20,
 			margin: 0,
+            format: 'CODE128A',
 			displayValue: false
 		});
 	}
