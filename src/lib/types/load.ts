@@ -28,6 +28,7 @@ export interface UseFormLoaderOptions {
   parseSaveData?: boolean;
   expectSaveData?: boolean;
   parseErrorBody?: boolean;
+  includeAuth?: boolean;
   includeOriginalServer?: boolean;
   transformParams?: (params: Record<string, string>) => Record<string, any>;
 }
