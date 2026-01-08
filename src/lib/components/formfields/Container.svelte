@@ -308,6 +308,7 @@
 	.container-fieldset {
 		border: 1px solid var(--border-color, #ccc);
 		padding: 15px;
+		margin-bottom: 20px;
 		border-radius: 5px;
 	}
 
