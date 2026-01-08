@@ -3,6 +3,8 @@
 	import { Button } from 'carbon-components-svelte';
 	import { validateAllFields } from '$lib/utils/validation';
 	import type { ActionResultPayload } from '$lib/types/interfaces';
+	import { getOriginalServerHeader } from '$lib/utils/helpers';
+	import { onMount } from 'svelte';
 
 	type InterfaceAction = {
 		label?: string;
@@ -185,30 +187,7 @@
 		const key = m[1];
 		const url = (API as any)?.[key];
 		return typeof url === 'string' ? url : null;
-	}
-
-	function getOriginalServerHeader(): Record<string, string> {
-		try {
-			// 1) URL ?originalServer=...
-			if (typeof window !== 'undefined') {
-				const params = new URLSearchParams(window.location.search);
-				const fromQs = params.get('originalServer');
-				if (fromQs && fromQs.trim()) return { 'X-Original-Server': fromQs.trim() };
-
-				// 2) local/session storage
-				const fromStore =
-					localStorage.getItem('originalServer') || sessionStorage.getItem('originalServer');
-				if (fromStore && fromStore.trim()) return { 'X-Original-Server': fromStore.trim() };
-
-				// 3) global set by host page (optional)
-				const g = (window as any).__kilnOriginalServer;
-				if (g && typeof g === 'string' && g.trim()) return { 'X-Original-Server': g.trim() };
-			}
-		} catch {
-			// ignore
-		}
-		return {};
-	}
+	}	
 
 	async function executeEndpointAction(action: any) {
 		try {
@@ -389,6 +368,44 @@
 			}, 800);
 		}
 	}
+
+	const clickButtonByText = (text: string) => {
+		const targetText = text.trim().toLowerCase();
+
+		const targetButton = Array.from(document.querySelectorAll("button")).find((b) =>
+			b.innerText.trim().toLowerCase() === targetText
+		);
+
+		targetButton?.click();
+	};
+
+	onMount(() => {
+		const handleMessage = (event: MessageEvent) => {
+			const eventHostname = new URL(event.origin).hostname;			
+			const originalServer =getOriginalServerHeader()?.['X-Original-Server'];
+			console.log("originalServer",originalServer);
+			console.log("event.origin",eventHostname);
+			if (originalServer) {
+				if (eventHostname !== originalServer) {
+					console.warn("Rejected message from untrusted origin:", event.origin);
+					return;
+				}
+			} else {
+				// No origin header → local dev → optionally allow localhost only
+				if (eventHostname !== window.location.hostname.toLowerCase()) {
+					console.warn("Rejected message in local mode:", event.origin);
+					return;
+				}
+			}
+			if (event.data?.type === "CLICK_BUTTON_BY_TEXT") {
+				console.log("Message recieved");				
+				clickButtonByText(event.data.text);
+			}
+		};
+
+		window.addEventListener("message", handleMessage);
+		return () => window.removeEventListener("message", handleMessage);
+	});
 </script>
 
 <div class="interfaces no-print" role="group" aria-label={ariaLabel}>

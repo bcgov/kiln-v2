@@ -5,7 +5,7 @@
 	import FormRenderer from './components/FormRenderer.svelte';
 	import ScriptStyleInjection from './components/ScriptStyleInjection.svelte';
 	import PrintFooter from './components/PrintFooter.svelte';
-	import { FORM_MODE } from './constants/formMode';
+	import { FORM_MODE } from './constants/formMode';	
 	import {
 		saveFormData,
 		unlockICMFinalFlags,
@@ -23,6 +23,7 @@
 	import type { ActionResultPayload } from '$lib/types/interfaces';
 	import { bindDataToForm } from './utils/databinder';
 	import { formatWithAppTokens } from '$lib/utils/dateFormats';
+	import OriginStyleOverride from './components/OriginStyleOverride.svelte';
 
 	let {
 		saveData = undefined,
@@ -702,6 +703,16 @@
 		window.parent.postMessage(JSON.stringify({ event: 'submit' }), '*');
 	};
 
+	const clickButtonByText = (text: string) => {
+		const targetText = text.trim().toLowerCase();
+
+		const targetButton = Array.from(document.querySelectorAll("button")).find((b) =>
+			b.innerText.trim().toLowerCase() === targetText
+		);
+
+		targetButton?.click();
+	};
+
 	$effect(() => {
 		if (mode !== FORM_MODE.preview && mode !== FORM_MODE.view &&  mode !== FORM_MODE.portalEdit &&  mode !== FORM_MODE.portalView && typeof window !== 'undefined') {
 			const handleClose = (event: BeforeUnloadEvent) => {
@@ -722,6 +733,7 @@
 			(window as any).__kilnFormState = (window as any).__kilnFormState || {};
 		}
 	});
+	
 
 	$effect(() => {
 		// Install the external-update bridge
@@ -765,6 +777,8 @@
 	{mode}
 />
 
+<OriginStyleOverride />
+
 {#if isLoading}
 	<Loading />
 {/if}
@@ -792,7 +806,7 @@
 
 <div class="full-frame">
 	<div class="fixed">
-		<div class="header-section">
+		<div class="header-section" id="formHeaderDiv">
 			<div class="header-image">
 				<div class="header-image-only">
 					{#if ministryLogoPath}
@@ -849,7 +863,7 @@
 		</div>
 	</div>
 
-	<div class="header-form-id no-print">
+	<div class="header-form-id no-print" id="formIdDiv">
 		<div class="form-id-section">
 			{formData?.form_id || ''}
 		</div>
