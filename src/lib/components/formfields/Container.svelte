@@ -304,6 +304,13 @@
 		grid-template-columns: repeat(1, 1fr);
 	}
 
+	/* Fieldset containers have a border to differentiate from section containers */
+	.container-fieldset {
+		border: 1px solid var(--border-color, #ccc);
+		padding: 15px;
+		border-radius: 5px;
+	}
+
 	@media print {
 		/* Do not draw boxes around groups in print; just manage spacing */
 		.container-group.printing {
