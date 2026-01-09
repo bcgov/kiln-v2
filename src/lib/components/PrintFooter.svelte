@@ -1,7 +1,7 @@
 <script lang="ts">
 	import JsBarcode from 'jsbarcode';
 
-	let {barcode}: {barcode: { content: string }} = $props();
+	let { barcode }: { barcode: { content: string } } = $props();
 
 	export function setFooterText(text: string): void {
 		if (typeof document !== 'undefined') {
@@ -48,31 +48,35 @@
 			document.documentElement.style.setProperty('--barcode', '');
 			return;
 		}
-        const templateText = barcode?.content.trim() || '';
-        const resolvedBarcodeValue = replacePlaceholders(templateText, getPlaceholderValues());
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+		const templateText = barcode?.content.trim() || '';
+		const resolvedBarcodeValue = replacePlaceholders(templateText, getPlaceholderValues());
+		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 		JsBarcode(svg, resolvedBarcodeValue, {
 			width: 1,
 			height: 20,
 			margin: 0,
-            format: 'CODE128A',
+			format: 'CODE128A',
 			displayValue: false
 		});
-        const serializer = new XMLSerializer();
-        const svgString = serializer.serializeToString(svg);
-        const encoded = `data:image/svg+xml,${encodeURIComponent(svgString)}`;
-        document.documentElement.style.setProperty('--barcode', `url('${encoded}')`);
-    })
+		const serializer = new XMLSerializer();
+		const svgString = serializer.serializeToString(svg);
+		const encoded = `data:image/svg+xml,${encodeURIComponent(svgString)}`;
+		document.documentElement.style.setProperty('--barcode', `url('${encoded}')`);
+	});
 </script>
 
 <style>
 	:root {
-        --barcode: '';
-    }
-    
-    @page {
-        @bottom-center {
-            content: var(--barcode);
-        }
-    }
+		--barcode: '';
+	}
+
+	@page {
+		@bottom-left {
+			line-height: 1.1;
+		}
+		@bottom-center {
+			content: var(--barcode);
+			margin: 0 0.5em;
+		}
+	}
 </style>
