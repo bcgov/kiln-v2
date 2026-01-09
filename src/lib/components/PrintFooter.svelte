@@ -1,7 +1,7 @@
 <script lang="ts">
 	import JsBarcode from 'jsbarcode';
 
-	let barcodeValue = $state('');
+	let {barcode}: {barcode: { content: string }} = $props();
 
 	export function setFooterText(text: string): void {
 		if (typeof document !== 'undefined') {
@@ -13,42 +13,6 @@
 		if (typeof document !== 'undefined') {
 			document.documentElement.removeAttribute('data-form-id');
 		}
-	}
-
-	export function setBarcodeValue(value: string): void {
-		barcodeValue = value || '';
-		if (typeof document !== 'undefined') {
-			if (barcodeValue) {
-				document.documentElement.setAttribute('data-has-barcode', 'true');
-			} else {
-				document.documentElement.removeAttribute('data-has-barcode');
-			}
-		}
-	}
-
-	export function clearBarcodeValue(): void {
-		barcodeValue = '';
-		if (typeof document !== 'undefined') {
-			document.documentElement.removeAttribute('data-has-barcode');
-		}
-	}
-
-	export function setBarcodeIntoFooter(): void {
-		const barcodePlaceholder = document.getElementById("barcode-placeholder");
-		if (!barcodePlaceholder || !barcodeValue) {
-			return;
-		}
-
-		const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-		barcodePlaceholder.innerHTML = '';
-		barcodePlaceholder.appendChild(svg);
-
-		JsBarcode(svg, barcodeValue, {
-            width: 2,
-			height: 16,
-            margin: 0,
-			displayValue: false
-		});
 	}
 
 	function getPlaceholderValues(): Record<string, string> {
@@ -79,38 +43,14 @@
 			return '';
 		});
 	}
-
-	export function generateBarcode(): void {
-		if (typeof document === 'undefined') return;
-
-		const barcodePlaceholder = document.getElementById('barcode-placeholder');
-		if (!barcodePlaceholder) {
-			document.documentElement.removeAttribute('data-has-barcode');
+	$effect(() => {
+		if (!barcode) {
+			document.documentElement.style.setProperty('--barcode', '');
 			return;
 		}
-
-		const templateText = barcodePlaceholder.textContent?.trim() || '';
-		if (!templateText) {
-			document.documentElement.removeAttribute('data-has-barcode');
-			return;
-		}
-
-        console.log("barcodeTemplateText", templateText);
-
-		const resolvedBarcodeValue = replacePlaceholders(templateText, getPlaceholderValues());
-		if (!resolvedBarcodeValue) {
-			document.documentElement.removeAttribute('data-has-barcode');
-			return;
-		}
-
-        console.log("resolvedBarcodeValue", resolvedBarcodeValue);
-
-		document.documentElement.setAttribute('data-has-barcode', 'true');
-
-		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-		barcodePlaceholder.innerHTML = '';
-		barcodePlaceholder.appendChild(svg);
-
+        const templateText = barcode?.content.trim() || '';
+        const resolvedBarcodeValue = replacePlaceholders(templateText, getPlaceholderValues());
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 		JsBarcode(svg, resolvedBarcodeValue, {
 			width: 1,
 			height: 20,
@@ -118,34 +58,21 @@
             format: 'CODE128A',
 			displayValue: false
 		});
-	}
-
-	export function clearBarcodeFromTemplate(): void {
-		barcodeValue = '';
-		if (typeof document === 'undefined') return;
-		document.documentElement.removeAttribute('data-has-barcode');
-	}
+        const serializer = new XMLSerializer();
+        const svgString = serializer.serializeToString(svg);
+        const encoded = `data:image/svg+xml,${encodeURIComponent(svgString)}`;
+        document.documentElement.style.setProperty('--barcode', `url('${encoded}')`);
+    })
 </script>
 
-<div class="paged-page" data-footer-text=""></div>
-
 <style>
-	.paged-page {
-		display: none;
-	}
-
-	.print-barcode {
-		display: none;
-	}
-
-	@media print {
-		.print-barcode {
-			display: block;
-			position: fixed;
-			bottom: 25mm;
-			left: 50%;
-			transform: translateX(-50%);
-			z-index: 1001;
-		}
-	}
+	:root {
+        --barcode: '';
+    }
+    
+    @page {
+        @bottom-center {
+            content: var(--barcode);
+        }
+    }
 </style>

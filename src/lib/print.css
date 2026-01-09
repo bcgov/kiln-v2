@@ -291,12 +291,6 @@
     z-index: 1000 !important;
   }
 
-  /* With barcode - use taller fixed footer height */
-  :root[data-has-barcode="true"] .print-footer {
-    max-height: none !important;
-    height: 35mm !important;
-  }
-
   /* Letter content needs padding to avoid overlapping the fixed footer */
   .letter-content,
   [id^="letter-content-"] {

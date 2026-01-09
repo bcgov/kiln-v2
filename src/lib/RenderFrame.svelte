@@ -30,7 +30,8 @@
 		goBack = undefined,
 		mode = 'preview',
 		formDelivery = undefined,
-		disablePrint = false
+		disablePrint = false,
+		barcode = undefined
 	} = $props();
 
 	// Modal and loading state
@@ -421,9 +422,6 @@
 			const footerText = buildPrintFooterText();
 			printFooter?.setFooterText(footerText);
 
-			// Process barcode from form template (replaces {{placeholders}} with values from formParams)
-			printFooter?.generateBarcode();
-
 			// Paginate content to prevent footer overlap
 			const cleanupPagination = paginateContentForPrint();
 
@@ -444,9 +442,6 @@
 
 					// Clear footer via PrintFooter component
 					printFooter?.clearFooterText();
-
-					// Clear barcode
-					printFooter?.clearBarcodeFromTemplate();
 
 					// Remove inserted page breaks
 					cleanupPagination();
@@ -881,6 +876,5 @@
 			{/if}
 		</div>
 	</div>
-
-	<PrintFooter bind:this={printFooter} />
+	<PrintFooter bind:this={printFooter} {barcode} />
 </div>
