@@ -388,13 +388,14 @@
 			if (originalServer) {
 				if (eventHostname !== originalServer) {
 					console.warn("Rejected message from untrusted origin:", event.origin);
-					return;
+					//return;
 				}
 			} else {
 				// No origin header → local dev → optionally allow localhost only
+				console.log("window.location.hostname.toLowerCase()",window.location.hostname.toLowerCase());
 				if (eventHostname !== window.location.hostname.toLowerCase()) {
 					console.warn("Rejected message in local mode:", event.origin);
-					return;
+					//return;
 				}
 			}
 			if (event.data?.type === "CLICK_BUTTON_BY_TEXT") {
