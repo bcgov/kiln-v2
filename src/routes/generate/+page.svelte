@@ -8,6 +8,7 @@
 	const { isLoading, error, formData, saveData, disablePrint } = useFormLoader({
 		apiEndpoint: API.loadSavedJson,
 		expectSaveData: false,
+		includeAuth: false,
 		transformParams: (params) => ({
 			...params,
 			isPortalIntegrated: false
@@ -23,7 +24,7 @@
 	<RenderFrame
 		formData={$formData}
 		saveData={$saveData}
-		mode={FORM_MODE.view}
+		mode={FORM_MODE.generate}
 		formDelivery={FORM_DELIVERY_MODE.generate}
 		disablePrint={$disablePrint}
 	/>
