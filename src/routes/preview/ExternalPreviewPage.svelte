@@ -284,6 +284,7 @@
 		<div class={`content-padding ${isDraft ? 'content-padding--draft' : ''}`}>
 			<RenderFrame
 				formData={formData?.form_template?.formversion}
+				barcode={formData?.metadata?.barcode}
 				mode={FORM_MODE.preview}
 				{goBack}
 			/>

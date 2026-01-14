@@ -31,7 +31,8 @@
 		goBack = undefined,
 		mode = 'preview',
 		formDelivery = undefined,
-		disablePrint = false
+		disablePrint = false,
+		barcode = undefined
 	} = $props();
 
 	// Modal and loading state
@@ -282,15 +283,11 @@
 
 			}
 
-
 			// No extra padding - use actual measured height
 		} else {
 			// Default fake footer height if not found (25mm as configured in CSS)
 			fakeFooterHeight = 25 * MM_TO_PX;
-
 		}
-		
-		// console.log("Footer height:",fakeFooterHeight);
 
 		// Detect header height
 		const headerSection = document.querySelector('.header-section') as HTMLElement;
@@ -426,7 +423,6 @@
 			const footerText = buildPrintFooterText();
 			printFooter?.setFooterText(footerText);
 
-			
 			// Paginate content to prevent footer overlap
 			const cleanupPagination = paginateContentForPrint();
 
@@ -894,6 +890,5 @@
 			{/if}
 		</div>
 	</div>
-
-	<PrintFooter bind:this={printFooter} />
+	<PrintFooter bind:this={printFooter} {barcode} />
 </div>
