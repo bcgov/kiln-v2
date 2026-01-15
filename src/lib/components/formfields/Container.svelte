@@ -304,9 +304,17 @@
 		grid-template-columns: repeat(1, 1fr);
 	}
 
-	/* Fieldset containers have a border to differentiate from section containers */
+	/* Fieldset containers with visible border */
 	.container-fieldset {
 		border: 1px solid var(--border-color, #ccc);
+		padding: 15px;
+		margin-bottom: 20px;
+		border-radius: 5px;
+	}
+
+	/* Fieldset container without visible border */
+	.container-fieldset-borderless {
+		border: none;
 		padding: 15px;
 		margin-bottom: 20px;
 		border-radius: 5px;
