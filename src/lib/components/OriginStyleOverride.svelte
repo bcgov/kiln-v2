@@ -5,7 +5,7 @@
 
   function resolveCssHref(): string | null {
     const css = getCustomCssForCurrentHost();
-
+    if (!css) return null;
     return css.startsWith('/')
       ? css
       : `/customStyles/${css}`;
