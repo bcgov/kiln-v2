@@ -1,5 +1,6 @@
 import { isFieldVisible } from './form';
 import type { FormDefinition, Item, FieldValue } from '../types/form';
+import { isClassSpecMask } from '$lib/utils/mask';
 
 export type ValueType = 'string' | 'number' | 'date' | 'boolean';
 
@@ -12,6 +13,7 @@ export type ValidationRules = {
   length?: number;
   step?: number;
   pattern?: RegExp | string;
+  mask?: string;
   isInteger?: boolean;
   isEmail?: boolean;
   isUrl?: boolean;
@@ -34,16 +36,6 @@ function escapeRe(s: string) {
 const DASH_RX = /[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g;
 function normalizeMask(mask: string) {
   return mask?.normalize('NFKC').replace(DASH_RX, "-");
-}
-
-// Is this a simple "allowed characters" spec (not a formatting mask)?
-function isClassSpecMask(m: unknown): m is string {
-  if (typeof m !== 'string') return false;
-  const s = normalizeMask(m).trim();
-  return (
-    /^(?:a-z|A-Z|a-zA-Z|0-9|a-z0-9|A-Z0-9|a-zA-Z0-9)$/i.test(s) ||
-    /^\[[^\]]+\]$/.test(s)
-  );
 }
 
 // Convert allowed-class spec to a permissive regex that allows partial typing
@@ -80,9 +72,9 @@ export function compileMaskToRegex(mask: string): RegExp {
   const m = normalizeMask(mask);
   const pattern = Array.from(m)
     .map((ch) =>
-      ch === "9" ? "\\d"
-        : ch === "a" ? "[A-Za-z]"
-          : ch === "*" ? "[A-Za-z0-9]"
+      (ch === "9" || ch === "#" || ch === "N") ? "\\d"
+        : (ch === "a" || ch === "A" || ch === "@") ? "[A-Za-z]"
+          : (ch === "*" || ch === "X") ? "[A-Za-z0-9]"
             : escapeRe(ch)
     )
     .join("");
@@ -98,6 +90,78 @@ function nearInteger(n: number, step: number, base = 0): boolean {
   const eps = 1e-9;
   const q = (n - base) / step;
   return Math.abs(q - Math.round(q)) < eps;
+}
+
+/**
+ * Parse a numeric string that may contain currency symbols, commas, or spaces.
+ * Examples: "$1,234.56", "1,234.56", "1234.56" all become 1234.56
+ */
+export function parseNumericString(s: string): number | null {
+  if (!s || typeof s !== 'string') return null;
+  // Remove currency symbols, commas, spaces; keep only digits, decimal, and minus
+  const cleaned = s.replace(/[^\d.-]/g, '').trim();
+  if (!cleaned) return null;
+  const n = Number(cleaned);
+  return Number.isNaN(n) ? null : n;
+}
+
+/**
+ * Validate values that are entered as masked/formatted strings (currency, phone, email).
+ * Returns an error message string when invalid, or `null` when valid or not applicable.
+ */
+export function validateMaskedValue(
+  value: any,
+  attrs: Record<string, any> = {},
+  opts: { fieldLabel?: string; isRequired?: boolean } = {}
+): string | null {
+  const label = opts.fieldLabel ?? 'This field';
+  const isRequired = !!opts.isRequired;
+  const maskType = attrs?.maskType;
+  const mask = attrs?.mask;
+
+  const isEmpty = !value || String(value).trim() === '';
+
+  // Handle required check using standard message
+  if (isEmpty && isRequired) {
+    return buildErrorMessage('required', {}, label);
+  }
+
+  // If not required and empty, skip validation
+  if (isEmpty) {
+    return null;
+  }
+
+  // Phone: require at least 10 digits
+  if (maskType === 'phone') {
+    const digits = String(value).replace(/\D/g, '');
+    if (digits.length < 10) {
+      return buildErrorMessage('ten_digit_phone', {}, label);
+    }
+    return null;
+  }
+
+  // Email: validate format
+  if (maskType === 'email') {
+    // If a custom mask/pattern is provided, use it; otherwise use standard
+    let emailRx: RegExp;
+    if (typeof mask === 'string') {
+      try {
+        emailRx = new RegExp(mask);
+        console.log("mask", mask, emailRx)
+      } catch {
+        emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      }
+    } else {
+      emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    }
+    if (!emailRx.test(String(value))) {
+      return buildErrorMessage('email', {}, label);
+    }
+    return null;
+  }
+
+  // Unknown maskType — treat as valid
+  return null;
 }
 
 function buildErrorMessage(key: string, params: Record<string, any>, label: string): string {
@@ -123,7 +187,7 @@ function buildErrorMessage(key: string, params: Record<string, any>, label: stri
     case 'maxLength':
       return `${label} must be at most ${params.maxLength} characters.`;
     case 'pattern':
-      return `${label} doesn't match the required format.`;
+      return `${label} doesn't match the required format of ${params.mask}.`;
     case 'step':
       return `${label} must align to steps of ${params.step}${params.base !== undefined ? ` starting at ${params.base}` : ''}.`;
     case 'email':
@@ -134,6 +198,8 @@ function buildErrorMessage(key: string, params: Record<string, any>, label: stri
       return `${label} must be on or after ${params.after}.`;
     case 'before':
       return `${label} must be on or before ${params.before}.`;
+    case 'ten_digit_phone':
+      return `${label} must have 10 digits.`;
     default:
       return `${label} is invalid.`;
   }
@@ -218,7 +284,7 @@ export function validateValue(
   }
   const rx = toRegExp(rules.pattern);
   if (rx && !rx.test(s)) {
-    errors.push(buildErrorMessage('pattern', {}, label));
+    errors.push(buildErrorMessage('pattern', { mask: rules.mask}, label));
   }
   if (rules.isEmail) {
     const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -267,6 +333,8 @@ export function rulesFromAttributes(
   if (attrs.length != null) rules.length = Number(attrs.length);
   if (attrs.pattern != null) {
     const pRaw = normalizeMask(String(attrs.pattern).trim());
+    // Preserve the original pattern string for error messages
+    rules.mask = pRaw;
     if (isClassSpecMask(pRaw)) {
       const re = classSpecToRegex(pRaw); // -> ^[...]*$
       if (re) rules.pattern = re;
@@ -276,9 +344,11 @@ export function rulesFromAttributes(
     }
   }
 
-  // input-mask -> pattern
-  if (!rules.pattern && typeof attrs.mask === "string" && attrs.mask.trim()) {
+  // input-mask -> pattern (skip for number inputs; they validate numeric value, not formatted string)
+  if (!rules.pattern && typeof attrs.mask === "string" && attrs.mask.trim() && item?.type !== 'number') {
     const raw = normalizeMask(attrs.mask.trim());
+    // Preserve the original mask string for error messages and diagnostics
+    rules.mask = raw;
 
     if (isClassSpecMask(raw)) {
       // Allowed-character spec => permissive regex (allows partial typing)
