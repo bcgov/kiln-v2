@@ -304,6 +304,22 @@
 		grid-template-columns: repeat(1, 1fr);
 	}
 
+	/* Fieldset containers with visible border */
+	.container-fieldset {
+		border: 1px solid var(--border-color, #ccc);
+		padding: 15px;
+		margin-bottom: 20px;
+		border-radius: 5px;
+	}
+
+	/* Fieldset container without visible border */
+	.container-fieldset-borderless {
+		border: none;
+		padding: 15px;
+		margin-bottom: 20px;
+		border-radius: 5px;
+	}
+
 	@media print {
 		/* Do not draw boxes around groups in print; just manage spacing */
 		.container-group.printing {
