@@ -304,20 +304,18 @@
 		grid-template-columns: repeat(1, 1fr);
 	}
 
-	/* Fieldset containers with visible border */
+	/* Outer fieldset container - no visible border or padding */
 	.container-fieldset {
-		border: 1px solid var(--border-color, #ccc);
-		padding: 15px;
+		border: none;
+		padding: 0;
 		margin-bottom: 20px;
 		border-radius: 5px;
 	}
 
-	/* Fieldset container without visible border */
-	.container-fieldset-borderless {
-		border: none;
+	/* Nested fieldset inside another container - with visible border and padding only if has legend */
+	.container-group :global(.container-fieldset:has(legend)) {
+		border: 1px solid var(--border-color, #ccc);
 		padding: 15px;
-		margin-bottom: 20px;
-		border-radius: 5px;
 	}
 
 	@media print {
