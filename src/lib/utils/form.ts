@@ -13,10 +13,13 @@ function getCookie(name: string): string | null {
 export function isFieldVisible(
   item: Item,
   mode: 'web' | 'pdf' = 'web',
-  formState?: Record<string, FieldValue>
+  formState?: Record<string, FieldValue>,
+  includeDOMCheck = false
 ): boolean {
   // Use visible_web or visible_pdf
   let visible = mode === 'pdf' ? item.visible_pdf !== false : item.visible_web !== false;
+  console.log("isFieldVisible >",item.uuid);
+  console.log(formState?formState[item.uuid]:"");
   // Evaluate custom_visibility if present
   if (item.custom_visibility && typeof item.custom_visibility === 'string') {
     try {
@@ -28,7 +31,35 @@ export function isFieldVisible(
       // fallback to previous visible value
     }
   }
+  console.log("includeDOMCheck ", includeDOMCheck);
+  // Final gate: DOM visibility
+  if (includeDOMCheck && mode === 'web') {
+    try {
+      visible = visible && isActuallyVisibleInDOM(item.uuid);
+    } catch (e) {
+      // fallback to previous visible value
+    }
+  }
+  console.log("visible >",visible);
   return visible;
+}
+
+function isActuallyVisibleInDOM(id: string): boolean {
+  const el = document.getElementById(id);
+  console.log("isActuallyVisibleInDOM >",id);
+  if (!el) return false;
+
+  const wrapper =
+    (el.closest('.field-container, .container-group') as HTMLElement | null)
+    || el;
+
+  if (!(wrapper instanceof HTMLElement)) return false;
+
+  return (
+    wrapper.offsetParent !== null &&
+    getComputedStyle(wrapper).display !== 'none' &&
+    getComputedStyle(wrapper).visibility !== 'hidden'
+  );
 }
 
 // --- Save logic ---
