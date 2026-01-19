@@ -99,6 +99,7 @@
 
 			// confirmation modal helper
 			confirmModal,
+			handleValidation,
 
 			// route/query params
 			params
@@ -509,57 +510,8 @@
 	async function handleSave() {
 		isLoading = true;
 		modalOpen = false;
-
 		try {
-			const { isValid, errorList, errors } = validateAllFields();
-
-			if (!isValid) {
-				try {
-					window.dispatchEvent(
-						new CustomEvent('kiln2:validate-all', {
-							detail: { errors }
-						})
-					);
-				} catch (e) {
-					console.log('validation-all event error:', e);
-				}
-
-				requestAnimationFrame(() => {
-					const selectors = (id: string) =>
-						[
-							`[data-attr-id="${id}"]`,
-							`[data-field-id="${id}"]`,
-							`#${CSS && CSS.escape ? CSS.escape(id) : id}`,
-							`[name="${CSS && CSS.escape ? CSS.escape(id) : id}"]`
-						].join(',');
-
-					Object.keys(errors || {}).forEach((id) => {
-						const root = document.querySelector<HTMLElement>(selectors(id));
-						if (!root) return;
-
-						const focusable =
-							(root.matches?.('input,select,textarea')
-								? root
-								: root.querySelector('input,select,textarea')) || root;
-
-						try {
-							focusable.dispatchEvent(new Event('focus', { bubbles: true }));
-						} catch (e) {
-							console.log('focus dispatch error:', e);
-						}
-
-						try {
-							focusable.dispatchEvent(new Event('blur', { bubbles: true }));
-						} catch (e) {
-							console.log('blur dispatch error:', e);
-						}
-					});
-				});
-
-				showModal('validation', undefined, errorList);
-				return;
-			}
-
+			const { isValid, errorList} = handleValidation();
 			if (isValid) {
 				const returnMessage = await saveFormData('save');
 				if (returnMessage === 'success') {
@@ -583,8 +535,34 @@
 		modalOpen = false;
 
 		try {
-			const { isValid, errorList, errors } = validateAllFields();
+			const { isValid, errorList} = handleValidation();
+			if (isValid) {
+				const returnMessage = await saveFormData('save_and_close');
+				if (returnMessage === 'success') {
+					isFormCleared = true;
+					window.opener = null;
+					window.open('', '_self');
+					window.close();
+				} else {
+					showModal('error', returnMessage);
+				}
+			} else {
+				showModal('validation', undefined, errorList);				
+			}
+		} catch (error) {
+			console.error('Save and close error:', error);
+			showModal('error');
+		} finally {
+			isLoading = false;
+		}
+	}
 
+	//this function validates all fields and set the error message at field level
+	function handleValidation(): {isValid: boolean;	errorList: string[];}
+	{
+		
+		try {
+			const { isValid, errorList, errors } = validateAllFields();
 			if (!isValid) {
 				try {
 					window.dispatchEvent(
@@ -626,31 +604,17 @@
 							console.log('blur dispatch error:', e);
 						}
 					});
-				});
-
-				showModal('validation', undefined, errorList);
-				return;
+				});			
+				
 			}
-
-			if (isValid) {
-				const returnMessage = await saveFormData('save_and_close');
-				if (returnMessage === 'success') {
-					isFormCleared = true;
-					window.opener = null;
-					window.open('', '_self');
-					window.close();
-				} else {
-					showModal('error', returnMessage);
-				}
-			} else {
-				showModal('validation', undefined, errorList);
-			}
+			return { isValid, errorList };			
 		} catch (error) {
-			console.error('Save and close error:', error);
-			showModal('error');
-		} finally {
-			isLoading = false;
-		}
+			console.error('Save error:', error);	
+			return {
+				isValid: false,
+				errorList: ['Unexpected validation error']
+				};		
+		} 
 	}
 
 	async function handleGenerate() {
