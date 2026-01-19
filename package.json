@@ -39,6 +39,7 @@
 		"keycloak-js": "^26.2.0",
 		"laravel-echo": "^2.1.7",
 		"maska": "^3.2.0",
-		"pusher-js": "^8.4.0"
+		"pusher-js": "^8.4.0",
+		"jsbarcode": "^3.11.6"
 	}
 }
