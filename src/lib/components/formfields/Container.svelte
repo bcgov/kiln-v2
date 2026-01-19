@@ -312,8 +312,8 @@
 		border-radius: 5px;
 	}
 
-	/* Nested fieldset inside another container - with visible border and padding */
-	.container-group :global(.container-fieldset) {
+	/* Nested fieldset inside another container - with visible border and padding only if has legend */
+	.container-group :global(.container-fieldset:has(legend)) {
 		border: 1px solid var(--border-color, #ccc);
 		padding: 15px;
 	}
