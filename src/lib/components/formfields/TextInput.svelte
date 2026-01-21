@@ -157,6 +157,7 @@
 		<TextInput
 			{...filterAttributes(item?.attributes)}
 			id={item.uuid}
+			data-kiln-uuid={item.uuid}
 			class={item.class}
 			{placeholder}
 			bind:value

@@ -1,6 +1,203 @@
 import type { FormDefinition, Item, FieldValue, FormData, SavedData } from '../types/form';
 import { ensureFreshToken } from '$lib/utils/keycloak';
 
+// helper
+function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  if (!formDefinition) return;
+
+  const w = window as any;
+
+  const formState: Record<string, FieldValue> =
+    (w.__kilnFormState as Record<string, FieldValue>) || (w.__kilnFormState = {});
+
+  const activeGroups: Record<string, string[]> =
+    (w.__kilnActiveGroups as Record<string, string[]>) || (w.__kilnActiveGroups = {});
+
+  const readElementValue = (id: string): string | undefined => {
+    const el = document.getElementById(id) as
+      | HTMLInputElement
+      | HTMLTextAreaElement
+      | HTMLSelectElement
+      | null;
+
+    if (!el) return undefined;
+
+    // for our use-case (text inputs, dates, etc...) .value is fine
+    const raw = (el as any).value;
+    if (raw == null) return undefined;
+
+    const s = String(raw);
+    // do not overwrite with blank string
+    if (s.trim() === '') return undefined;
+
+    return s;
+  };
+
+  const walk = (items: Item[]) => {
+    for (const item of items) {
+      // Containers
+      if (item.type === 'container' && Array.isArray(item.children) && item.children.length) {
+        const isRepeatable = item.attributes?.isRepeatable === true;
+
+        if (isRepeatable) {
+          // For repeaters, we rely on stableKey = `${containerUuid}-${groupId}-${childUuid}`
+          const groupIds = activeGroups[item.uuid] || [];
+          for (const child of item.children) {
+            const childUuid = child.uuid;
+            for (const groupId of groupIds) {
+              const stableKey = `${item.uuid}-${groupId}-${childUuid}`;
+              // Always take the current DOM value if present and different
+              const v = readElementValue(stableKey);
+              if (v !== undefined && formState[stableKey] !== v) {
+                formState[stableKey] = v;
+              }
+            }
+          }
+        } else {
+          // Non-repeatable container – recurse into children
+          walk(item.children);
+        }
+
+        continue;
+      }
+
+      // Simple field (non-container)
+      const uuid = item.uuid;
+      if (!uuid) continue;
+      const v = readElementValue(uuid);
+      if (v !== undefined  && formState[uuid] !== v) {
+        formState[uuid] = v;
+      }
+    }
+  };
+
+  walk((formDefinition.elements as Item[]) || []);
+}
+
+function buildSavedJson(formDefinition: FormDefinition) {
+  const win: any = (typeof window !== 'undefined') ? window : undefined;
+
+  hydrateFormStateFromDOM(formDefinition);
+
+  // Read state
+  const formState: Record<string, FieldValue> =
+    (win?.__kilnFormState as Record<string, FieldValue>) ?? {};
+  const items: Item[] = ((formDefinition?.elements as Item[]) || []);
+  const groupState: Record<string, FieldValue[]> =
+    (win?.__kilnGroupState as Record<string, FieldValue[]>) ?? {};
+  const activeGroups: Record<string, string[]> =
+    (win?.__kilnActiveGroups as Record<string, string[]>) || {};
+
+  // Date sweep (same behavior as in saveFormData)
+  if (typeof document !== 'undefined') {
+    const dateInputs = document.querySelectorAll<HTMLInputElement>('input[data-kiln-date="true"]');
+    dateInputs.forEach((input) => {
+      const uuid = input.getAttribute('data-kiln-uuid');
+      if (!uuid) return;
+      const v = input.value;
+      if (v && v.trim() !== '') formState[uuid] = v;
+    });
+  }
+
+     // ---- NORMALIZE groupState (handles nested repeaters and preserves visual order) ----
+
+    const normalizeGroupStateTree = (list: Item[]) => {
+      if (!Array.isArray(list)) return;
+
+      for (const it of list) {
+        if (!it) continue;
+
+        if (it.type === 'container' && it.attributes?.isRepeatable === true) {
+          const containerUuid = it.uuid;
+          const gs = groupState[containerUuid] as any;
+
+          if (Array.isArray(gs) && gs.length > 0) {
+            const first = gs[0];
+            const looksLikeRowObject =
+              typeof first === 'object' && first !== null && !Array.isArray(first);
+
+            if (!looksLikeRowObject) {
+              // Case: ID array -> build row objects IN THAT ORDER from formState
+              const idArray: string[] = gs as string[];
+              const rows: Record<string, FieldValue>[] = idArray.map((gid) => {
+                const row: Record<string, FieldValue> = {};
+                for (const child of (it.children || [])) {
+                  const childUuid = (child as Item).uuid;
+                  const stableKey = `${containerUuid}-${gid}-${childUuid}`;
+                  const v = formState[stableKey];
+                  if (v !== undefined) row[childUuid] = v;
+                }
+                return row;
+              });
+              groupState[containerUuid] = rows as unknown as FieldValue[];
+            }
+          } else {
+            // Case: empty/missing -> infer rows; try to preserve order via __kilnActiveGroups
+            const active = activeGroups[containerUuid] || [];
+
+            // discover group ids present in formState for this container
+            const present = new Set<string>();
+            Object.keys(formState).forEach((k) => {
+              if (!k.startsWith(containerUuid + '-')) return;
+              const rest = k.slice(containerUuid.length + 1);
+              const gid = rest.split('-')[0];
+              present.add(gid);
+            });
+
+            const orderedIds = active.length
+              ? active.filter((gid) => present.has(gid))
+              : Array.from(present.values());
+
+            const rows: Record<string, FieldValue>[] = orderedIds.map((gid) => {
+              const row: Record<string, FieldValue> = {};
+              for (const child of (it.children || [])) {
+                const childUuid = (child as Item).uuid;
+                const stableKey = `${containerUuid}-${gid}-${childUuid}`;
+                const v = formState[stableKey];
+                if (v !== undefined) row[childUuid] = v;
+              }
+              return row;
+            });
+
+            groupState[containerUuid] = rows as unknown as FieldValue[];
+          }
+        }
+
+        // Recurse – normalize nested containers too
+        if (it.type === 'container' && Array.isArray(it.children) && it.children.length) {
+          normalizeGroupStateTree(it.children as Item[]);
+        }
+      }
+    };
+
+    normalizeGroupStateTree(items);
+    // ---- END NORMALIZE ----
+
+  // Return the saved JSON
+  const template: any = {
+    ...formDefinition,
+    id: (formDefinition as any).id ?? '',
+    version: (formDefinition as any).version ?? '',
+    status: (formDefinition as any).status ?? '',
+    data: (formDefinition as any).data ?? {},
+    created_by: (formDefinition as any).created_by ?? '',
+    created_date: (formDefinition as any).created_date ?? '',
+    updated_by: (formDefinition as any).updated_by ?? '',
+    updated_date: (formDefinition as any).updated_date ?? '',
+  };
+
+  return {
+    formState,
+    groupState,
+    formDefinition,
+    items,
+    metadata: { updated_date: new Date().toISOString() },
+    // legacy/portal compact shape fields:
+    data: undefined,                 // filled by createSavedData()
+    form_definition: template        // for portal consumers
+  };
+}
 
 function getCookie(name: string): string | null {
 	const match = document.cookie.match(
@@ -53,18 +250,20 @@ export function createSavedData(ctx?: {
 }): SavedData {
   const win: any = typeof window !== 'undefined' ? window : undefined;
 
-  const formState: Record<string, FieldValue> =
-    ctx?.formState ?? (win?.__kilnFormState as Record<string, FieldValue>) ?? {};
-
   const formDefinition: FormDefinition =
     ctx?.formDefinition ??
     (win?.__kilnFormDefinition as FormDefinition) ??
     (win?.formData as FormDefinition);
 
-  const items: Item[] = ctx?.items ?? ((formDefinition?.elements as Item[]) || []);
+  // Shared builder
+  const built = buildSavedJson(formDefinition);  
 
+  // Apply built formState, groupState, items and preserve ctx overrides if needed
+  const formState: Record<string, FieldValue> =
+    ctx?.formState ?? built.formState;
+  const items: Item[] = ctx?.items ?? built.items;
   const groupState: Record<string, FieldValue[]> =
-    ctx?.groupState ?? (win?.__kilnGroupState as Record<string, FieldValue[]>) ?? {};
+    ctx?.groupState ?? built.groupState;
 
   const saveFieldData: Record<string, FieldValue> = {};
 
@@ -177,82 +376,6 @@ export function createSavedData(ctx?: {
   };
 }
 
-// helper
-function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
-  if (!formDefinition) return;
-
-  const w = window as any;
-
-  const formState: Record<string, FieldValue> =
-    (w.__kilnFormState as Record<string, FieldValue>) || (w.__kilnFormState = {});
-
-  const activeGroups: Record<string, string[]> =
-    (w.__kilnActiveGroups as Record<string, string[]>) || (w.__kilnActiveGroups = {});
-
-  const readElementValue = (id: string): string | undefined => {
-    const el = document.getElementById(id) as
-      | HTMLInputElement
-      | HTMLTextAreaElement
-      | HTMLSelectElement
-      | null;
-
-    if (!el) return undefined;
-
-    // for our use-case (text inputs, dates, etc...) .value is fine
-    const raw = (el as any).value;
-    if (raw == null) return undefined;
-
-    const s = String(raw);
-    // do not overwrite with blank string
-    if (s.trim() === '') return undefined;
-
-    return s;
-  };
-
-  const walk = (items: Item[]) => {
-    for (const item of items) {
-      // Containers
-      if (item.type === 'container' && Array.isArray(item.children) && item.children.length) {
-        const isRepeatable = item.attributes?.isRepeatable === true;
-
-        if (isRepeatable) {
-          // For repeaters, we rely on stableKey = `${containerUuid}-${groupId}-${childUuid}`
-          const groupIds = activeGroups[item.uuid] || [];
-          for (const child of item.children) {
-            const childUuid = child.uuid;
-            for (const groupId of groupIds) {
-              const stableKey = `${item.uuid}-${groupId}-${childUuid}`;
-
-              // Always take the current DOM value if present and different
-              const v = readElementValue(stableKey);
-              if (v !== undefined && formState[stableKey] !== v) {
-                formState[stableKey] = v;
-              }
-            }
-          }
-        } else {
-          // Non-repeatable container – recurse into children
-          walk(item.children);
-        }
-        continue;
-      }
-
-      // Simple field (non-container)
-      const uuid = item.uuid;
-      if (!uuid) continue;
-
-      const v = readElementValue(uuid);
-      if (v !== undefined && formState[uuid] !== v) {
-        formState[uuid] = v;
-      }
-    }
-  };
-
-  walk((formDefinition.elements as Item[]) || []);
-}
-
-
 export async function saveFormData(action: 'save' | 'save_and_close' | 'generate'): Promise<string> {
   try {
     // @ts-ignore
@@ -269,118 +392,26 @@ export async function saveFormData(action: 'save' | 'save_and_close' | 'generate
       (win?.__kilnFormDefinition as FormDefinition) ??
       (win?.formData as FormDefinition);
 
+    // Shared builder
+    const built = buildSavedJson(formDefinition);
+
     // Ensure __kilnFormState has values for all visible fields
     hydrateFormStateFromDOM(formDefinition);
 
-    // After hydration, read the updated formState + groupState
-    const formState: Record<string, FieldValue> =
-      (win?.__kilnFormState as Record<string, FieldValue>) ?? {};
-
-    const items: Item[] = ((formDefinition?.elements as Item[]) || []);
-
-    const groupState: Record<string, FieldValue[]> =
-      (win?.__kilnGroupState as Record<string, FieldValue[]>) ?? {};
+    // Apply built formState, groupState, tiems
+    const formState: Record<string, FieldValue> = built.formState;
+    const items: Item[] = built.items;
+    const groupState: Record<string, FieldValue[]> = built.groupState;
 
     const state = sessionStorage.getItem("formParams");
     const sessionParams = state ? (JSON.parse(state) as Record<string, string>) : {};
     const token = (window as any)?.keycloak?.token ?? null;
 
-    // Force-sync all date inputs into formState at save time
-    if (typeof document !== 'undefined') {
-      const dateInputs = document.querySelectorAll<HTMLInputElement>('input[data-kiln-date="true"]');
-      dateInputs.forEach((input) => {
-        const uuid = input.getAttribute('data-kiln-uuid');
-        if (!uuid) return;
-
-        const v = input.value;
-        // Only write non-empty values; avoid clobbering with ""
-        if (v && v.trim() !== '') {
-          formState[uuid] = v;
-        }
-      });
-    }
-
-    // ---- NORMALIZE groupState (handles nested repeaters and preserves visual order) ----
-    const activeGroups: Record<string, string[]> =
-      (win?.__kilnActiveGroups as Record<string, string[]>) || {};
-
-    const normalizeGroupStateTree = (list: Item[]) => {
-      if (!Array.isArray(list)) return;
-
-      for (const it of list) {
-        if (!it) continue;
-
-        if (it.type === 'container' && it.attributes?.isRepeatable === true) {
-          const containerUuid = it.uuid;
-          const gs = groupState[containerUuid] as any;
-
-          if (Array.isArray(gs) && gs.length > 0) {
-            const first = gs[0];
-            const looksLikeRowObject =
-              typeof first === 'object' && first !== null && !Array.isArray(first);
-
-            if (!looksLikeRowObject) {
-              // Case: ID array -> build row objects IN THAT ORDER from formState
-              const idArray: string[] = gs as string[];
-              const rows: Record<string, FieldValue>[] = idArray.map((gid) => {
-                const row: Record<string, FieldValue> = {};
-                for (const child of (it.children || [])) {
-                  const childUuid = (child as Item).uuid;
-                  const stableKey = `${containerUuid}-${gid}-${childUuid}`;
-                  const v = formState[stableKey];
-                  if (v !== undefined) row[childUuid] = v;
-                }
-                return row;
-              });
-              groupState[containerUuid] = rows as unknown as FieldValue[];
-            }
-          } else {
-            // Case: empty/missing -> infer rows; try to preserve order via __kilnActiveGroups
-            const active = activeGroups[containerUuid] || [];
-
-            // discover group ids present in formState for this container
-            const present = new Set<string>();
-            Object.keys(formState).forEach((k) => {
-              if (!k.startsWith(containerUuid + '-')) return;
-              const rest = k.slice(containerUuid.length + 1);
-              const gid = rest.split('-')[0];
-              present.add(gid);
-            });
-
-            const orderedIds = active.length
-              ? active.filter((gid) => present.has(gid))
-              : Array.from(present.values());
-
-            const rows: Record<string, FieldValue>[] = orderedIds.map((gid) => {
-              const row: Record<string, FieldValue> = {};
-              for (const child of (it.children || [])) {
-                const childUuid = (child as Item).uuid;
-                const stableKey = `${containerUuid}-${gid}-${childUuid}`;
-                const v = formState[stableKey];
-                if (v !== undefined) row[childUuid] = v;
-              }
-              return row;
-            });
-
-            groupState[containerUuid] = rows as unknown as FieldValue[];
-          }
-        }
-
-        // Recurse – normalize nested containers too
-        if (it.type === 'container' && Array.isArray(it.children) && it.children.length) {
-          normalizeGroupStateTree(it.children as Item[]);
-        }
-      }
-    };
-
-    normalizeGroupStateTree(items);
-    // ---- END NORMALIZE ----
-
     const payload = {
       action,
       formState,
       groupState,
-      formDefinition,
+      formDefinition: built.formDefinition,
       metadata: {
         updated_date: new Date().toISOString()
       },
@@ -393,12 +424,12 @@ export async function saveFormData(action: 'save' | 'save_and_close' | 'generate
     const username = getCookie("username");
     if (username && username.trim() !== "") {
       payload.sessionParams.username = username.trim();
-    } 
+    }
     else {
       let token = (window as any)?.keycloak?.token ?? (getCookie("token") as string | null) ?? null;
       if (!token) {
         const freshToken = await ensureFreshToken(5);
-        token = freshToken ?? null; 
+        token = freshToken ?? null;
       }
       if (token) {
         payload.sessionParams.token = token;
