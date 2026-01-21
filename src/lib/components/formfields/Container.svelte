@@ -58,25 +58,34 @@
 		return groups.map((g) => g.id);
 	}
 
+	function containerKey(): string {
+		return (item as any)._containerInstanceKey ?? item.uuid;
+	}
+
 	function syncActiveGroupsRegistry() {
 		const w = win();
 		if (!w) return;
 		w.__kilnActiveGroups = w.__kilnActiveGroups || {};
-		w.__kilnActiveGroups[item.uuid] = activeGroupIds();
+		const registryKey = (item as any)._containerInstanceKey ?? item.uuid;
+  		w.__kilnActiveGroups[registryKey] = activeGroupIds();
 	}
 
 	function cleanupStaleFormState() {
 		const w = win();
 		if (!w) return;
 		const state: Record<string, any> = (w.__kilnFormState = w.__kilnFormState || {});
-		const prefix = `${item.uuid}-`;
+		const prefix = `${containerKey()}-`;
 		const active = new Set(activeGroupIds());
 
+		const childUuids = new Set((item.children || []).map((c) => c.uuid));
 		for (const key of Object.keys(state)) {
 			if (!key.startsWith(prefix)) continue;
 			// key format for repeatable children is: <containerUuid>-<groupId>-<childUuid>
 			const rest = key.slice(prefix.length);
-			const groupId = rest.split('-')[0];
+			const matchedChildUuid = [...childUuids].find((cu) => key.endsWith(`-${cu}`));
+    		if (!matchedChildUuid) continue;
+			const suffix = `-${matchedChildUuid}`;
+			const groupId = rest.slice(0, rest.length - suffix.length);
 			if (!active.has(groupId)) {
 				delete state[key];
 			}
@@ -107,7 +116,7 @@
 				const originalUuid = child.uuid;
 				const v = group?.data?.[originalUuid];
 				if (v !== undefined) {
-					const stableKey = `${item.uuid}-${group.id}-${originalUuid}`;
+					const stableKey = `${containerKey()}-${group.id}-${originalUuid}`;
 					if (state[stableKey] === undefined) {
 						state[stableKey] = v;
 					}
@@ -138,13 +147,39 @@
 	}
 
 	function getGroupSpecificChildren(group: { id: string; data: any; index: number }) {
+
+		const isContainer = (item: any) => item?.type === 'container' && Array.isArray(item?.children);
+		const isRepeatableContainer = (item: any) => isContainer(item) && item?.attributes?.isRepeatable === true;
+		const parentKey = containerKey();
+		
+		function attachNestedRepeaterData(item: any): any {
+			const copy = { ...item };
+
+			if (isRepeatableContainer(copy) && Array.isArray(group.data[copy.uuid])) {
+				copy._containerInstanceKey = `${parentKey}-${group.id}-${copy.uuid}`;
+
+
+				if (Array.isArray(group.data[copy.uuid])) {
+				copy.repeaterData = group.data[copy.uuid];
+				}
+
+				return copy;
+			}
+
+			if (Array.isArray(copy.children)) {
+				copy.children = copy.children.map(attachNestedRepeaterData);
+			}
+
+			return copy;
+		}
+
 		return children.map((child) => {
 			const originalUuid = child.uuid;
 			// Generate stable and index-specific UUIDs for the child
 			// This allows the child to be uniquely identified within the group
 			// while maintaining a consistent key across renders
-			const stableId = `${item.uuid}-${group.id}-${originalUuid}`;
-			const indexUuid = `${item.uuid}-${group.index}-${originalUuid}`;
+			const stableId = `${containerKey()}-${group.id}-${originalUuid}`;
+			const indexUuid = `${containerKey()}-${group.index}-${originalUuid}`;
 
 			const groupSpecificChild = {
 				...child,
@@ -153,7 +188,21 @@
 				_indexUuid: indexUuid
 			};
 
-			if (group.data && group.data[originalUuid] !== undefined) {
+		//direct nested repeater container
+		if (isRepeatableContainer(child) && Array.isArray(group.data[originalUuid])) {
+				groupSpecificChild.repeaterData = group.data[originalUuid];
+				(groupSpecificChild as any)._containerInstanceKey = `${containerKey()}-${group.id}-${originalUuid}`;
+				return groupSpecificChild;
+		}
+
+		//non-repeatable container: bind nested repeaters inside it
+		if (isContainer(child) && !isRepeatableContainer(child)) {
+			return attachNestedRepeaterData(groupSpecificChild);
+		}
+
+
+		//Regular field value
+		if (group.data && group.data[originalUuid] !== undefined) {
 				groupSpecificChild.value = group.data[originalUuid];
 				if (groupSpecificChild.attributes) {
 					groupSpecificChild.attributes = {
@@ -247,14 +296,18 @@
 					style="display: grid; grid-template-columns: repeat(1, 1fr);"
 				>
 					{#each getGroupSpecificChildren(group) as child (child._stableKey)}
-						{@const fieldItem = {
-							...child,
-							uuid: child._stableKey,
-							attributes: {
+					{@const fieldItem =
+						child.type === 'container'
+						  ? child
+						  : {
+							  ...child,
+							  uuid: child._stableKey,
+							  attributes: {
 								...(child.attributes || {}),
 								id: child._stableKey
+							  }
 							}
-						}}
+					  }
 						{#if isFieldVisible(fieldItem, printing ? 'pdf' : 'web')}
 							<div style={applyWrapperStyles(child)} data-print-columns={child.visible_pdf || 1}>
 								<FieldRenderer item={fieldItem} {mode} {printing} />
