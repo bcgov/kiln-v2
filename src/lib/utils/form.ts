@@ -99,26 +99,56 @@ function buildSavedJson(formDefinition: FormDefinition) {
     });
   }
 
-  // Normalize repeaters (IDs → row objects; empty → infer in active order) across the full tree
-  const normalizeTree = (list: Item[]) => {
-    if (!Array.isArray(list)) return;
+     // ---- NORMALIZE groupState (handles nested repeaters and preserves visual order) ----
 
-    for (const it of list) {
-      if (!it) continue;
+    const normalizeGroupStateTree = (list: Item[]) => {
+      if (!Array.isArray(list)) return;
 
-      if (it.type === 'container' && it.attributes?.isRepeatable === true) {
-        const containerUuid = it.uuid;
-        const gs = groupState[containerUuid] as any;
+      for (const it of list) {
+        if (!it) continue;
 
-        if (Array.isArray(gs) && gs.length > 0) {
-          const first = gs[0];
-          const looksLikeRowObject =
-            typeof first === 'object' && first !== null && !Array.isArray(first);
+        if (it.type === 'container' && it.attributes?.isRepeatable === true) {
+          const containerUuid = it.uuid;
+          const gs = groupState[containerUuid] as any;
 
-          if (!looksLikeRowObject) {
-            // ID array → ordered row objects using stable keys
-            const ids: string[] = gs as string[];
-            groupState[containerUuid] = ids.map((gid) => {
+          if (Array.isArray(gs) && gs.length > 0) {
+            const first = gs[0];
+            const looksLikeRowObject =
+              typeof first === 'object' && first !== null && !Array.isArray(first);
+
+            if (!looksLikeRowObject) {
+              // Case: ID array -> build row objects IN THAT ORDER from formState
+              const idArray: string[] = gs as string[];
+              const rows: Record<string, FieldValue>[] = idArray.map((gid) => {
+                const row: Record<string, FieldValue> = {};
+                for (const child of (it.children || [])) {
+                  const childUuid = (child as Item).uuid;
+                  const stableKey = `${containerUuid}-${gid}-${childUuid}`;
+                  const v = formState[stableKey];
+                  if (v !== undefined) row[childUuid] = v;
+                }
+                return row;
+              });
+              groupState[containerUuid] = rows as unknown as FieldValue[];
+            }
+          } else {
+            // Case: empty/missing -> infer rows; try to preserve order via __kilnActiveGroups
+            const active = activeGroups[containerUuid] || [];
+
+            // discover group ids present in formState for this container
+            const present = new Set<string>();
+            Object.keys(formState).forEach((k) => {
+              if (!k.startsWith(containerUuid + '-')) return;
+              const rest = k.slice(containerUuid.length + 1);
+              const gid = rest.split('-')[0];
+              present.add(gid);
+            });
+
+            const orderedIds = active.length
+              ? active.filter((gid) => present.has(gid))
+              : Array.from(present.values());
+
+            const rows: Record<string, FieldValue>[] = orderedIds.map((gid) => {
               const row: Record<string, FieldValue> = {};
               for (const child of (it.children || [])) {
                 const childUuid = (child as Item).uuid;
@@ -127,43 +157,21 @@ function buildSavedJson(formDefinition: FormDefinition) {
                 if (v !== undefined) row[childUuid] = v;
               }
               return row;
-            }) as unknown as FieldValue[];
+            });
+
+            groupState[containerUuid] = rows as unknown as FieldValue[];
           }
-        } else {
-          // empty → infer rows; keep visual order via __kilnActiveGroups
-          const active = activeGroups[containerUuid] || [];
-          const present = new Set<string>();
-          Object.keys(formState).forEach((k) => {
-            if (!k.startsWith(containerUuid + '-')) return;
-            const rest = k.slice(containerUuid.length + 1);
-            const gid = rest.split('-')[0];
-            present.add(gid);
-          });
+        }
 
-          const orderedIds = active.length
-            ? active.filter((gid) => present.has(gid))
-            : Array.from(present.values());
-
-          groupState[containerUuid] = orderedIds.map((gid) => {
-            const row: Record<string, FieldValue> = {};
-            for (const child of (it.children || [])) {
-              const childUuid = (child as Item).uuid;
-              const stableKey = `${containerUuid}-${gid}-${childUuid}`;
-              const v = formState[stableKey];
-              if (v !== undefined) row[childUuid] = v;
-            }
-            return row;
-          }) as unknown as FieldValue[];
+        // Recurse – normalize nested containers too
+        if (it.type === 'container' && Array.isArray(it.children) && it.children.length) {
+          normalizeGroupStateTree(it.children as Item[]);
         }
       }
+    };
 
-      if (it.type === 'container' && Array.isArray(it.children) && it.children.length) {
-        normalizeTree(it.children as Item[]);
-      }
-    }
-  };
-
-  normalizeTree(items);
+    normalizeGroupStateTree(items);
+    // ---- END NORMALIZE ----
 
   // Return the saved JSON
   const template: any = {
