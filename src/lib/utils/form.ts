@@ -47,6 +47,7 @@ function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
             const childUuid = child.uuid;
             for (const groupId of groupIds) {
               const stableKey = `${item.uuid}-${groupId}-${childUuid}`;
+              // Always take the current DOM value if present and different
               const v = readElementValue(stableKey);
               if (v !== undefined && formState[stableKey] !== v) {
                 formState[stableKey] = v;
@@ -65,7 +66,7 @@ function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
       const uuid = item.uuid;
       if (!uuid) continue;
       const v = readElementValue(uuid);
-      if (v !== undefined) {
+      if (v !== undefined  && formState[uuid] !== v) {
         formState[uuid] = v;
       }
     }
