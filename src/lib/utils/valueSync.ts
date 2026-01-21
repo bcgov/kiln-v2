@@ -78,33 +78,14 @@ export function createValueSyncEffect<T = any>(options: ValueSyncOptions<T>) {
  *  - item.uuid (always)
  *  - item.attributes.id (when present; used for repeaters' index-specific IDs)
  */
-export function publishToGlobalFormState<T>({
-	item,
-	value,
-}: {
-	item: Item;
-	value: T;
-}) {
-	// canonical key: the stable uuid passed in by the renderer (for repeaters it's "<container>-<groupId>-<childUuid>")
-	const key =
-		(item && item.uuid) ||
-		(item?.attributes as any)?.id ||
-		undefined;
-
-	if (!key) return;
-
-	// normalize undefined/null -> '', keep other primitives as-is
-	const v =
-		value === undefined || value === null
-			? ('' as any)
-			: (value as any);
-
-	const w = typeof window === 'undefined' ? undefined : (window as any);
-	if (!w) return;
-
-	w.__kilnFormState = w.__kilnFormState || {};
-	// write-through on each change so the save routine can read the freshest value
-	w.__kilnFormState[key] = v;
+export function publishToGlobalFormState<T>({ item, value }: { item: Item; value: T }) {
+	if (typeof window === 'undefined') return;
+	const win: any = window;
+	win.__kilnFormState = win.__kilnFormState || {};
+	const k1 = item?.uuid;
+	const k2 = (item as any)?.attributes?.id;
+	if (k1) win.__kilnFormState[k1] = value;
+	if (k2) win.__kilnFormState[k2] = value;
 }
 
 
