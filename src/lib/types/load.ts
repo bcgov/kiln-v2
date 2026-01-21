@@ -28,6 +28,7 @@ export interface UseFormLoaderOptions {
   parseSaveData?: boolean;
   expectSaveData?: boolean;
   parseErrorBody?: boolean;
+  includeAuth?: boolean;
   includeOriginalServer?: boolean;
   transformParams?: (params: Record<string, string>) => Record<string, any>;
 }
@@ -39,6 +40,7 @@ export interface UseFormLoaderReturn {
   saveData: Writable<object>;
   load: () => Promise<void>;
   disablePrint: Writable<boolean>;
+  barcodeValue: Writable<string | null>;
 }
 
 export interface UsePDFLoaderReturn {

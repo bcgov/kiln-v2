@@ -19,6 +19,7 @@ export function useFormLoader({
 	apiEndpoint,
 	expectSaveData = false,
 	parseErrorBody = true,
+	includeAuth,
 	includeOriginalServer = true,
 	transformParams
 }: UseFormLoaderOptions): UseFormLoaderReturn {
@@ -27,6 +28,7 @@ export function useFormLoader({
 	const formData = writable<object>({});
 	const saveData = writable<object>({});
 	const disablePrint = writable(true);
+	const barcodeValue = writable<string | null>(null);
 
 	async function load() {
 		if (!browser) return;
@@ -81,7 +83,7 @@ export function useFormLoader({
 						endpoint: apiEndpoint,
 						params: finalParams,
 						setLoading: (v) => isLoading.set(v),
-						includeAuth: true,
+						includeAuth: includeAuth ?? true,
 						includeOriginalServer,
 						// Always ask for raw result here; we map expectSaveData locally
 						expectSaveData: false,
@@ -96,6 +98,7 @@ export function useFormLoader({
 					const payload = expectSaveData ? (raw?.save_data ?? raw) : raw;
 					formData.set(payload?.form_definition ?? payload?.save_data?.form_definition ?? payload ?? {});
 					saveData.set(raw?.data ? { data: raw.data } : payload?.save_data?.data ?? {});
+					barcodeValue.set(raw?.barcodeValue ?? null);
 					if (payload?.form_definition || payload?.save_data?.form_definition) {
 						disablePrint.set(false);
 					}
@@ -123,5 +126,5 @@ export function useFormLoader({
 	// Auto-load on initialization
 	load();
 
-	return { isLoading, error, formData, load, saveData, disablePrint };
+	return { isLoading, error, formData, load, saveData, disablePrint, barcodeValue };
 }

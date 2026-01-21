@@ -5,7 +5,7 @@
 	import FormRenderer from './components/FormRenderer.svelte';
 	import ScriptStyleInjection from './components/ScriptStyleInjection.svelte';
 	import PrintFooter from './components/PrintFooter.svelte';
-	import { FORM_MODE } from './constants/formMode';
+	import { FORM_MODE } from './constants/formMode';	
 	import {
 		saveFormData,
 		unlockICMFinalFlags,
@@ -23,6 +23,7 @@
 	import type { ActionResultPayload } from '$lib/types/interfaces';
 	import { bindDataToForm } from './utils/databinder';
 	import { formatWithAppTokens } from '$lib/utils/dateFormats';
+	import OriginStyleOverride from './components/OriginStyleOverride.svelte';
 
 	let {
 		saveData = undefined,
@@ -30,7 +31,8 @@
 		goBack = undefined,
 		mode = 'preview',
 		formDelivery = undefined,
-		disablePrint = false
+		disablePrint = false,
+		barcode = undefined
 	} = $props();
 
 	// Modal and loading state
@@ -98,6 +100,7 @@
 
 			// confirmation modal helper
 			confirmModal,
+			handleValidation,
 
 			// route/query params
 			params
@@ -206,81 +209,201 @@
 		handleHTMLPrint();
 	}
 
-	function paginateContentForPrint(): () => void {
-		let contentHeightPx = 820;
-		let defaultFooterHeightPx = 191;
+	function insertPageBreak(el: Element): void {
+		const pageBreak = document.createElement('div');
+		pageBreak.className = 'page-break';
+		el.parentNode?.insertBefore(pageBreak, el);
+	}
 
+	function paginateContentForPrint(): () => void {
 		const letterContent = document.querySelector('.letter-content, [id^="letter-content-"]') as HTMLElement;
 		if (!letterContent) {
 			return () => {};
 		}
 
-        const footer = document.querySelector(".print-footer") as HTMLElement | null;
-
-        if (footer) {
-            const footerRect = footer.getBoundingClientRect();
-
-            const footerHeight = Math.ceil(footerRect.height);
-
-			if (footerHeight > defaultFooterHeightPx) {
-				contentHeightPx -= footerHeight;
-			}
-			else {
-				contentHeightPx -= defaultFooterHeightPx;
-			}
-        }
-
+		// Clean up any existing page breaks
 		document.querySelectorAll('.page-break').forEach((el) => el.remove());
 
-		const existingBreaks = Array.from(letterContent.querySelectorAll('.page-break')) as HTMLElement[];
-		existingBreaks.forEach((el) => el.style.display = 'none');
+		// Paper and margin constants
+		const DPI = 96; 
+		const MM_TO_PX = DPI / 25.4; // 1mm ≈ 3.78px
+		const INCH_TO_PX = DPI;      // 1in = 96px
 
-		const originalDisplay = letterContent.style.display;
-		const originalVisibility = letterContent.style.visibility;
-		const originalPosition = letterContent.style.position;
+		// Letter paper dimensions
+		const LETTER_WIDTH_INCHES = 8.5;
+		const LETTER_HEIGHT_INCHES = 11;
+		const LETTER_WIDTH_PX = LETTER_WIDTH_INCHES * INCH_TO_PX;   // 816px
+		const LETTER_HEIGHT_PX = LETTER_HEIGHT_INCHES * INCH_TO_PX; // 1056px
 
+		const PAGE_MARGIN_TOP_MM = 5;
+		const PAGE_MARGIN_RIGHT_MM = 15;
+		const PAGE_MARGIN_BOTTOM_MM = 20;
+		const PAGE_MARGIN_LEFT_MM = 15;
+
+		const PAGE_MARGIN_TOP_PX = PAGE_MARGIN_TOP_MM * MM_TO_PX;       // ~19px
+		const PAGE_MARGIN_BOTTOM_PX = PAGE_MARGIN_BOTTOM_MM * MM_TO_PX; // ~76px
+
+		// Detect footer height
+		const printFooter = document.querySelector('.print-footer') as HTMLElement;
+		let fakeFooterHeight: number;
+
+		if (printFooter) {
+			if (printFooter.parentElement != null){
+				const originalFooterDisplay = getComputedStyle(printFooter.parentElement).display;
+				const originalFooterVisibility =  getComputedStyle(printFooter.parentElement).visibility;
+				const originalFooterPosition =  getComputedStyle(printFooter.parentElement).position;
+
+				printFooter.parentElement.style.display = 'block';
+				printFooter.parentElement.style.visibility = 'visible';
+				printFooter.parentElement.style.position = 'static';
+				printFooter.parentElement.offsetHeight;
+
+				fakeFooterHeight = Math.ceil(printFooter.parentElement.getBoundingClientRect().height);
+
+				printFooter.parentElement.style.display = originalFooterDisplay;
+				printFooter.parentElement.style.visibility = originalFooterVisibility;
+				printFooter.parentElement.style.position = originalFooterPosition
+			
+			}
+			else{
+				const originalFooterDisplay = getComputedStyle(printFooter).display;
+				const originalFooterVisibility =  getComputedStyle(printFooter).visibility;
+				const originalFooterPosition =  getComputedStyle(printFooter).position;
+
+				printFooter.style.display = 'block';
+				printFooter.style.visibility = 'visible';
+				printFooter.style.position = 'absolute';
+				printFooter.offsetHeight; // Force reflow
+
+				fakeFooterHeight = Math.ceil(printFooter.getBoundingClientRect().height);	
+
+				// Restore original styles
+				printFooter.style.display = originalFooterDisplay;
+				printFooter.style.visibility = originalFooterVisibility;
+				printFooter.style.position = originalFooterPosition;
+
+			}
+
+			// No extra padding - use actual measured height
+		} else {
+			// Default fake footer height if not found (25mm as configured in CSS)
+			fakeFooterHeight = 25 * MM_TO_PX;
+		}
+
+		// Detect header height
+		const headerSection = document.querySelector('.header-section') as HTMLElement;
+		let headerHeight = 0;
+
+		if (headerSection) {
+			// Measure actual header height
+			const headerRect = headerSection.getBoundingClientRect();
+			headerHeight = Math.ceil(headerRect.height) + 5; //height being measured is the web header (print header is 5px taller)
+
+			// No extra spacing - use actual measured height
+		} else {
+			// Fallback header height estimate
+			headerHeight = 85;
+		}
+
+		// Calculate available content height
+		// Base content height = Letter height - top margin - bottom margin - footer space
+		const baseContentHeight =  Math.ceil(LETTER_HEIGHT_PX - PAGE_MARGIN_TOP_PX - PAGE_MARGIN_BOTTOM_PX - fakeFooterHeight);
+
+		// First page has less space due to header
+		const firstPageContentHeight =  Math.ceil(baseContentHeight - headerHeight);
+		const subsequentPageContentHeight = baseContentHeight;
+
+		// No safety margin - maximize content per page
+		const SAFETY_MARGIN_PX = 0;
+
+		const originalStyles = {
+			display: letterContent.style.display,
+			visibility: letterContent.style.visibility,
+			position: letterContent.style.position,
+			width: letterContent.style.width
+		};
+
+		// Make content visible for measurement:
+		const contentWidth = LETTER_WIDTH_PX - (PAGE_MARGIN_LEFT_MM + PAGE_MARGIN_RIGHT_MM) * MM_TO_PX;
 		letterContent.style.display = 'block';
 		letterContent.style.visibility = 'hidden';
 		letterContent.style.position = 'absolute';
-		letterContent.offsetHeight;
+		letterContent.style.width = `${contentWidth}px`;
+		letterContent.offsetHeight; // Force reflow
 
-		const letterRect = letterContent.getBoundingClientRect();
-		const breakableElements = letterContent.querySelectorAll('p, li, table');
-		const letterContentHeight = letterContent.scrollHeight;
+		const breakableTags =[
+			'p',
+			'li',
+			'table',
+			'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+			'div.paragraph',
+			'div.text-block',
+			'div.header-row',
+			'blockquote',
+			'pre',
+			'div'
+		];
+		const breakableSelector = breakableTags.join(', ');
 
-		if (letterContentHeight === 0) {
-			letterContent.style.display = originalDisplay;
-			letterContent.style.visibility = originalVisibility;
-			letterContent.style.position = originalPosition;
-			existingBreaks.forEach((el) => el.style.display = '');
-			return () => {};
-		}
+		const breakableElements = letterContent.querySelectorAll(breakableSelector);
 
-		const insertedBreaks: HTMLElement[] = [];
-		let pageStartOffset = 0;
+		let accumulatedHeight = 0;
+		let maxHeightForPage = Math.ceil(firstPageContentHeight - SAFETY_MARGIN_PX);
 
-		const elements = Array.from(breakableElements) as HTMLElement[];
-		elements.forEach((el) => {
-			const elRect = el.getBoundingClientRect();
-			const relativeTop = elRect.top - letterRect.top;
-			const positionOnCurrentPage = relativeTop - pageStartOffset;
+		breakableElements.forEach((el) => {
+			// Skip elements inside the footer (they shouldn't trigger page breaks)
+			if (el.closest('.print-footer')) {
+				return;
+			}
 
-			if (positionOnCurrentPage > contentHeightPx) {
-				// Add Page Break:
-				const pageBreak = document.createElement('div');
-				pageBreak.className = 'page-break';
-				el.parentNode?.insertBefore(pageBreak, el);
-				pageStartOffset = relativeTop;
+			const rect = el.getBoundingClientRect();
+			const elHeight = Math.ceil(rect.height);
+
+			// Include margins in height calculation
+			const computedStyle = window.getComputedStyle(el);
+			const marginTop = parseFloat(computedStyle.marginTop) || 0;
+			const marginBottom = parseFloat(computedStyle.marginBottom) || 0;
+			const totalElementHeight = elHeight + marginTop + marginBottom;	
+			// Skip empty/hidden elements
+			if (totalElementHeight <= 0) {
+				return;
+			}
+
+			// Skip element with breakable child elements
+			if ( el.childElementCount > 0) {
+				for( const child of el.children){
+					if(breakableTags.includes(child.tagName.toLowerCase())){
+						return;
+					}
+				}
+			}
+
+			// Check if adding this element would exceed the page height
+			if (accumulatedHeight + totalElementHeight > maxHeightForPage) {
+				// Only insert page break if we have content on current page
+				// (prevents empty first page)
+				if (accumulatedHeight > 0) {
+					insertPageBreak(el);
+					// Subsequent pages have more space (no header)
+					maxHeightForPage = Math.ceil(subsequentPageContentHeight - SAFETY_MARGIN_PX);
+					accumulatedHeight = totalElementHeight;
+				} else {
+					// Element is taller than page - just add it
+					accumulatedHeight = totalElementHeight;
+				}
+			} else {
+				accumulatedHeight += totalElementHeight;
 			}
 		});
 
-		letterContent.style.display = originalDisplay;
-		letterContent.style.visibility = originalVisibility;
-		letterContent.style.position = originalPosition;
+		// Return original styles:
+		letterContent.style.display = originalStyles.display;
+		letterContent.style.visibility = originalStyles.visibility;
+		letterContent.style.position = originalStyles.position;
+		letterContent.style.width = originalStyles.width;
 
 		return () => {
-			insertedBreaks.forEach((el) => el.remove());
-			existingBreaks.forEach((el) => el.style.display = '');
+			document.querySelectorAll('.page-break').forEach((el) => el.remove());
 		};
 	}
 
@@ -296,12 +419,13 @@
 			// Force reflow to ensure elements are measured correctly
 			document.body.offsetHeight;
 
-			// Paginate content to prevent footer overlap
-			const cleanupPagination = paginateContentForPrint();
 
 			// Prepare and set footer text via PrintFooter component
 			const footerText = buildPrintFooterText();
 			printFooter?.setFooterText(footerText);
+
+			// Paginate content to prevent footer overlap
+			const cleanupPagination = paginateContentForPrint();
 
 			// Add print metadata to document head
 			const metaTags = createPrintMetadata();
@@ -382,57 +506,8 @@
 	async function handleSave() {
 		isLoading = true;
 		modalOpen = false;
-
 		try {
-			const { isValid, errorList, errors } = validateAllFields();
-
-			if (!isValid) {
-				try {
-					window.dispatchEvent(
-						new CustomEvent('kiln2:validate-all', {
-							detail: { errors }
-						})
-					);
-				} catch (e) {
-					console.log('validation-all event error:', e);
-				}
-
-				requestAnimationFrame(() => {
-					const selectors = (id: string) =>
-						[
-							`[data-attr-id="${id}"]`,
-							`[data-field-id="${id}"]`,
-							`#${CSS && CSS.escape ? CSS.escape(id) : id}`,
-							`[name="${CSS && CSS.escape ? CSS.escape(id) : id}"]`
-						].join(',');
-
-					Object.keys(errors || {}).forEach((id) => {
-						const root = document.querySelector<HTMLElement>(selectors(id));
-						if (!root) return;
-
-						const focusable =
-							(root.matches?.('input,select,textarea')
-								? root
-								: root.querySelector('input,select,textarea')) || root;
-
-						try {
-							focusable.dispatchEvent(new Event('focus', { bubbles: true }));
-						} catch (e) {
-							console.log('focus dispatch error:', e);
-						}
-
-						try {
-							focusable.dispatchEvent(new Event('blur', { bubbles: true }));
-						} catch (e) {
-							console.log('blur dispatch error:', e);
-						}
-					});
-				});
-
-				showModal('validation', undefined, errorList);
-				return;
-			}
-
+			const { isValid, errorList} = handleValidation();
 			if (isValid) {
 				const returnMessage = await saveFormData('save');
 				if (returnMessage === 'success') {
@@ -456,8 +531,34 @@
 		modalOpen = false;
 
 		try {
-			const { isValid, errorList, errors } = validateAllFields();
+			const { isValid, errorList} = handleValidation();
+			if (isValid) {
+				const returnMessage = await saveFormData('save_and_close');
+				if (returnMessage === 'success') {
+					isFormCleared = true;
+					window.opener = null;
+					window.open('', '_self');
+					window.close();
+				} else {
+					showModal('error', returnMessage);
+				}
+			} else {
+				showModal('validation', undefined, errorList);				
+			}
+		} catch (error) {
+			console.error('Save and close error:', error);
+			showModal('error');
+		} finally {
+			isLoading = false;
+		}
+	}
 
+	//this function validates all fields and set the error message at field level
+	function handleValidation(): {isValid: boolean;	errorList: string[];}
+	{
+		
+		try {
+			const { isValid, errorList, errors } = validateAllFields();
 			if (!isValid) {
 				try {
 					window.dispatchEvent(
@@ -499,31 +600,17 @@
 							console.log('blur dispatch error:', e);
 						}
 					});
-				});
-
-				showModal('validation', undefined, errorList);
-				return;
+				});			
+				
 			}
-
-			if (isValid) {
-				const returnMessage = await saveFormData('save_and_close');
-				if (returnMessage === 'success') {
-					isFormCleared = true;
-					window.opener = null;
-					window.open('', '_self');
-					window.close();
-				} else {
-					showModal('error', returnMessage);
-				}
-			} else {
-				showModal('validation', undefined, errorList);
-			}
+			return { isValid, errorList };			
 		} catch (error) {
-			console.error('Save and close error:', error);
-			showModal('error');
-		} finally {
-			isLoading = false;
-		}
+			console.error('Save error:', error);	
+			return {
+				isValid: false,
+				errorList: ['Unexpected validation error']
+				};		
+		} 
 	}
 
 	async function handleGenerate() {
@@ -576,6 +663,16 @@
 		window.parent.postMessage(JSON.stringify({ event: 'submit' }), '*');
 	};
 
+	const clickButtonByText = (text: string) => {
+		const targetText = text.trim().toLowerCase();
+
+		const targetButton = Array.from(document.querySelectorAll("button")).find((b) =>
+			b.innerText.trim().toLowerCase() === targetText
+		);
+
+		targetButton?.click();
+	};
+
 	$effect(() => {
 		if (mode !== FORM_MODE.preview && mode !== FORM_MODE.view &&  mode !== FORM_MODE.portalEdit &&  mode !== FORM_MODE.portalView && typeof window !== 'undefined') {
 			const handleClose = (event: BeforeUnloadEvent) => {
@@ -596,6 +693,7 @@
 			(window as any).__kilnFormState = (window as any).__kilnFormState || {};
 		}
 	});
+	
 
 	$effect(() => {
 		// Install the external-update bridge
@@ -639,6 +737,8 @@
 	{mode}
 />
 
+<OriginStyleOverride />
+
 {#if isLoading}
 	<Loading />
 {/if}
@@ -666,7 +766,7 @@
 
 <div class="full-frame">
 	<div class="fixed">
-		<div class="header-section">
+		<div class="header-section" id="formHeaderDiv">
 			<div class="header-image">
 				<div class="header-image-only">
 					{#if ministryLogoPath}
@@ -723,7 +823,7 @@
 		</div>
 	</div>
 
-	<div class="header-form-id no-print">
+	<div class="header-form-id no-print" id="formIdDiv">
 		<div class="form-id-section">
 			{formData?.form_id || ''}
 		</div>
@@ -754,6 +854,5 @@
 			{/if}
 		</div>
 	</div>
-
-	<PrintFooter bind:this={printFooter} />
+	<PrintFooter bind:this={printFooter} {barcode} />
 </div>
