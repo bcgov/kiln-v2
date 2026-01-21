@@ -208,7 +208,7 @@
 
 	const containerTypeStyleMap = {
 		section: '',
-		fieldset: '',
+		fieldset: 'border: 1px solid var(--border-color, #ccc); padding: 15px; border-radius: 5px;',
 		page: 'padding: 2rem; background: #f9f9f9;',
 		header: 'background: #e8f0fe; font-weight: bold;',
 		footer: 'background: #f1f1f1; font-style: italic;'
@@ -217,9 +217,9 @@
 	type ContainerType = keyof typeof containerTypeClassMap;
 
 	let containerType: ContainerType = $derived(
-		(item.attributes?.container_type as ContainerType) ?? 'fieldset'
+		(item.attributes?.containerType as ContainerType) ?? 'section'
 	);
-	let containerClass = $derived(containerTypeClassMap[containerType] ?? 'container-fieldset');
+	let containerClass = $derived(containerTypeClassMap[containerType] ?? 'container-section');
 	let containerStyle = $derived(containerTypeStyleMap[containerType] ?? '');
 
 	const legendId = `${item.uuid}-legend`;
@@ -328,6 +328,18 @@
 	.container-group {
 		display: grid;
 		grid-template-columns: repeat(1, 1fr);
+	}
+
+	/* Fieldset container - border styling handled by containerTypeStyleMap */
+	.container-fieldset {
+		margin-bottom: 20px;
+	}
+
+	/* Section container - no border, just spacing */
+	.container-section {
+		border: none;
+		padding: 0;
+		margin-bottom: 20px;
 	}
 
 	@media print {

@@ -1,0 +1,16 @@
+[id='formIdDiv'] 
+{
+    display: none!important;
+}
+[id='formHeaderDiv']
+ {
+    display: none;
+}
+.header-section
+{
+ max-width: 1200px
+}
+.content-wrapper
+{
+    max-width: 1200px
+}

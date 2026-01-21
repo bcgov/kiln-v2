@@ -5,7 +5,7 @@
 	import FormRenderer from './components/FormRenderer.svelte';
 	import ScriptStyleInjection from './components/ScriptStyleInjection.svelte';
 	import PrintFooter from './components/PrintFooter.svelte';
-	import { FORM_MODE } from './constants/formMode';
+	import { FORM_MODE } from './constants/formMode';	
 	import {
 		saveFormData,
 		unlockICMFinalFlags,
@@ -23,6 +23,7 @@
 	import type { ActionResultPayload } from '$lib/types/interfaces';
 	import { bindDataToForm } from './utils/databinder';
 	import { formatWithAppTokens } from '$lib/utils/dateFormats';
+	import OriginStyleOverride from './components/OriginStyleOverride.svelte';
 
 	let {
 		saveData = undefined,
@@ -30,7 +31,8 @@
 		goBack = undefined,
 		mode = 'preview',
 		formDelivery = undefined,
-		disablePrint = false
+		disablePrint = false,
+		barcode = undefined
 	} = $props();
 
 	// Modal and loading state
@@ -98,6 +100,7 @@
 
 			// confirmation modal helper
 			confirmModal,
+			handleValidation,
 
 			// route/query params
 			params
@@ -222,7 +225,7 @@
 		document.querySelectorAll('.page-break').forEach((el) => el.remove());
 
 		// Paper and margin constants
-		const DPI = 96;
+		const DPI = 96; 
 		const MM_TO_PX = DPI / 25.4; // 1mm ≈ 3.78px
 		const INCH_TO_PX = DPI;      // 1in = 96px
 
@@ -234,7 +237,7 @@
 
 		const PAGE_MARGIN_TOP_MM = 5;
 		const PAGE_MARGIN_RIGHT_MM = 15;
-		const PAGE_MARGIN_BOTTOM_MM = 12;
+		const PAGE_MARGIN_BOTTOM_MM = 20;
 		const PAGE_MARGIN_LEFT_MM = 15;
 
 		const PAGE_MARGIN_TOP_PX = PAGE_MARGIN_TOP_MM * MM_TO_PX;       // ~19px
@@ -245,22 +248,41 @@
 		let fakeFooterHeight: number;
 
 		if (printFooter) {
-			// Make footer temporarily visible for measurement
-			const originalFooterDisplay = printFooter.style.display;
-			const originalFooterVisibility = printFooter.style.visibility;
-			const originalFooterPosition = printFooter.style.position;
+			if (printFooter.parentElement != null){
+				const originalFooterDisplay = getComputedStyle(printFooter.parentElement).display;
+				const originalFooterVisibility =  getComputedStyle(printFooter.parentElement).visibility;
+				const originalFooterPosition =  getComputedStyle(printFooter.parentElement).position;
 
-			printFooter.style.display = 'block';
-			printFooter.style.visibility = 'hidden';
-			printFooter.style.position = 'absolute';
-			printFooter.offsetHeight; // Force reflow
+				printFooter.parentElement.style.display = 'block';
+				printFooter.parentElement.style.visibility = 'visible';
+				printFooter.parentElement.style.position = 'static';
+				printFooter.parentElement.offsetHeight;
 
-			fakeFooterHeight = printFooter.getBoundingClientRect().height;
+				fakeFooterHeight = Math.ceil(printFooter.parentElement.getBoundingClientRect().height);
 
-			// Restore original styles
-			printFooter.style.display = originalFooterDisplay;
-			printFooter.style.visibility = originalFooterVisibility;
-			printFooter.style.position = originalFooterPosition;
+				printFooter.parentElement.style.display = originalFooterDisplay;
+				printFooter.parentElement.style.visibility = originalFooterVisibility;
+				printFooter.parentElement.style.position = originalFooterPosition
+			
+			}
+			else{
+				const originalFooterDisplay = getComputedStyle(printFooter).display;
+				const originalFooterVisibility =  getComputedStyle(printFooter).visibility;
+				const originalFooterPosition =  getComputedStyle(printFooter).position;
+
+				printFooter.style.display = 'block';
+				printFooter.style.visibility = 'visible';
+				printFooter.style.position = 'absolute';
+				printFooter.offsetHeight; // Force reflow
+
+				fakeFooterHeight = Math.ceil(printFooter.getBoundingClientRect().height);	
+
+				// Restore original styles
+				printFooter.style.display = originalFooterDisplay;
+				printFooter.style.visibility = originalFooterVisibility;
+				printFooter.style.position = originalFooterPosition;
+
+			}
 
 			// No extra padding - use actual measured height
 		} else {
@@ -275,20 +297,20 @@
 		if (headerSection) {
 			// Measure actual header height
 			const headerRect = headerSection.getBoundingClientRect();
-			headerHeight = headerRect.height;
+			headerHeight = Math.ceil(headerRect.height) + 5; //height being measured is the web header (print header is 5px taller)
 
 			// No extra spacing - use actual measured height
 		} else {
 			// Fallback header height estimate
-			headerHeight = 80;
+			headerHeight = 85;
 		}
 
 		// Calculate available content height
 		// Base content height = Letter height - top margin - bottom margin - footer space
-		const baseContentHeight = LETTER_HEIGHT_PX - PAGE_MARGIN_TOP_PX - PAGE_MARGIN_BOTTOM_PX - fakeFooterHeight;
+		const baseContentHeight =  Math.ceil(LETTER_HEIGHT_PX - PAGE_MARGIN_TOP_PX - PAGE_MARGIN_BOTTOM_PX - fakeFooterHeight);
 
 		// First page has less space due to header
-		const firstPageContentHeight = baseContentHeight - headerHeight;
+		const firstPageContentHeight =  Math.ceil(baseContentHeight - headerHeight);
 		const subsequentPageContentHeight = baseContentHeight;
 
 		// No safety margin - maximize content per page
@@ -309,7 +331,7 @@
 		letterContent.style.width = `${contentWidth}px`;
 		letterContent.offsetHeight; // Force reflow
 
-		const breakableSelector = [
+		const breakableTags =[
 			'p',
 			'li',
 			'table',
@@ -319,15 +341,14 @@
 			'div.header-row',
 			'blockquote',
 			'pre',
-			'.breakable',
-			'.sign-off',
-			'.enclosures'
-		].join(', ');
+			'div'
+		];
+		const breakableSelector = breakableTags.join(', ');
 
 		const breakableElements = letterContent.querySelectorAll(breakableSelector);
 
 		let accumulatedHeight = 0;
-		let maxHeightForPage = firstPageContentHeight - SAFETY_MARGIN_PX;
+		let maxHeightForPage = Math.ceil(firstPageContentHeight - SAFETY_MARGIN_PX);
 
 		breakableElements.forEach((el) => {
 			// Skip elements inside the footer (they shouldn't trigger page breaks)
@@ -336,17 +357,25 @@
 			}
 
 			const rect = el.getBoundingClientRect();
-			const elHeight = rect.height;
+			const elHeight = Math.ceil(rect.height);
 
 			// Include margins in height calculation
 			const computedStyle = window.getComputedStyle(el);
 			const marginTop = parseFloat(computedStyle.marginTop) || 0;
 			const marginBottom = parseFloat(computedStyle.marginBottom) || 0;
-			const totalElementHeight = elHeight + marginTop + marginBottom;
-
+			const totalElementHeight = elHeight + marginTop + marginBottom;	
 			// Skip empty/hidden elements
 			if (totalElementHeight <= 0) {
 				return;
+			}
+
+			// Skip element with breakable child elements
+			if ( el.childElementCount > 0) {
+				for( const child of el.children){
+					if(breakableTags.includes(child.tagName.toLowerCase())){
+						return;
+					}
+				}
 			}
 
 			// Check if adding this element would exceed the page height
@@ -356,7 +385,7 @@
 				if (accumulatedHeight > 0) {
 					insertPageBreak(el);
 					// Subsequent pages have more space (no header)
-					maxHeightForPage = subsequentPageContentHeight - SAFETY_MARGIN_PX;
+					maxHeightForPage = Math.ceil(subsequentPageContentHeight - SAFETY_MARGIN_PX);
 					accumulatedHeight = totalElementHeight;
 				} else {
 					// Element is taller than page - just add it
@@ -390,12 +419,13 @@
 			// Force reflow to ensure elements are measured correctly
 			document.body.offsetHeight;
 
-			// Paginate content to prevent footer overlap
-			const cleanupPagination = paginateContentForPrint();
 
 			// Prepare and set footer text via PrintFooter component
 			const footerText = buildPrintFooterText();
 			printFooter?.setFooterText(footerText);
+
+			// Paginate content to prevent footer overlap
+			const cleanupPagination = paginateContentForPrint();
 
 			// Add print metadata to document head
 			const metaTags = createPrintMetadata();
@@ -476,57 +506,8 @@
 	async function handleSave() {
 		isLoading = true;
 		modalOpen = false;
-
 		try {
-			const { isValid, errorList, errors } = validateAllFields();
-
-			if (!isValid) {
-				try {
-					window.dispatchEvent(
-						new CustomEvent('kiln2:validate-all', {
-							detail: { errors }
-						})
-					);
-				} catch (e) {
-					console.log('validation-all event error:', e);
-				}
-
-				requestAnimationFrame(() => {
-					const selectors = (id: string) =>
-						[
-							`[data-attr-id="${id}"]`,
-							`[data-field-id="${id}"]`,
-							`#${CSS && CSS.escape ? CSS.escape(id) : id}`,
-							`[name="${CSS && CSS.escape ? CSS.escape(id) : id}"]`
-						].join(',');
-
-					Object.keys(errors || {}).forEach((id) => {
-						const root = document.querySelector<HTMLElement>(selectors(id));
-						if (!root) return;
-
-						const focusable =
-							(root.matches?.('input,select,textarea')
-								? root
-								: root.querySelector('input,select,textarea')) || root;
-
-						try {
-							focusable.dispatchEvent(new Event('focus', { bubbles: true }));
-						} catch (e) {
-							console.log('focus dispatch error:', e);
-						}
-
-						try {
-							focusable.dispatchEvent(new Event('blur', { bubbles: true }));
-						} catch (e) {
-							console.log('blur dispatch error:', e);
-						}
-					});
-				});
-
-				showModal('validation', undefined, errorList);
-				return;
-			}
-
+			const { isValid, errorList} = handleValidation();
 			if (isValid) {
 				const returnMessage = await saveFormData('save');
 				if (returnMessage === 'success') {
@@ -550,8 +531,34 @@
 		modalOpen = false;
 
 		try {
-			const { isValid, errorList, errors } = validateAllFields();
+			const { isValid, errorList} = handleValidation();
+			if (isValid) {
+				const returnMessage = await saveFormData('save_and_close');
+				if (returnMessage === 'success') {
+					isFormCleared = true;
+					window.opener = null;
+					window.open('', '_self');
+					window.close();
+				} else {
+					showModal('error', returnMessage);
+				}
+			} else {
+				showModal('validation', undefined, errorList);				
+			}
+		} catch (error) {
+			console.error('Save and close error:', error);
+			showModal('error');
+		} finally {
+			isLoading = false;
+		}
+	}
 
+	//this function validates all fields and set the error message at field level
+	function handleValidation(): {isValid: boolean;	errorList: string[];}
+	{
+		
+		try {
+			const { isValid, errorList, errors } = validateAllFields();
 			if (!isValid) {
 				try {
 					window.dispatchEvent(
@@ -593,31 +600,17 @@
 							console.log('blur dispatch error:', e);
 						}
 					});
-				});
-
-				showModal('validation', undefined, errorList);
-				return;
+				});			
+				
 			}
-
-			if (isValid) {
-				const returnMessage = await saveFormData('save_and_close');
-				if (returnMessage === 'success') {
-					isFormCleared = true;
-					window.opener = null;
-					window.open('', '_self');
-					window.close();
-				} else {
-					showModal('error', returnMessage);
-				}
-			} else {
-				showModal('validation', undefined, errorList);
-			}
+			return { isValid, errorList };			
 		} catch (error) {
-			console.error('Save and close error:', error);
-			showModal('error');
-		} finally {
-			isLoading = false;
-		}
+			console.error('Save error:', error);	
+			return {
+				isValid: false,
+				errorList: ['Unexpected validation error']
+				};		
+		} 
 	}
 
 	async function handleGenerate() {
@@ -670,6 +663,16 @@
 		window.parent.postMessage(JSON.stringify({ event: 'submit' }), '*');
 	};
 
+	const clickButtonByText = (text: string) => {
+		const targetText = text.trim().toLowerCase();
+
+		const targetButton = Array.from(document.querySelectorAll("button")).find((b) =>
+			b.innerText.trim().toLowerCase() === targetText
+		);
+
+		targetButton?.click();
+	};
+
 	$effect(() => {
 		if (mode !== FORM_MODE.preview && mode !== FORM_MODE.view &&  mode !== FORM_MODE.portalEdit &&  mode !== FORM_MODE.portalView && typeof window !== 'undefined') {
 			const handleClose = (event: BeforeUnloadEvent) => {
@@ -690,6 +693,7 @@
 			(window as any).__kilnFormState = (window as any).__kilnFormState || {};
 		}
 	});
+	
 
 	$effect(() => {
 		// Install the external-update bridge
@@ -733,6 +737,8 @@
 	{mode}
 />
 
+<OriginStyleOverride />
+
 {#if isLoading}
 	<Loading />
 {/if}
@@ -760,7 +766,7 @@
 
 <div class="full-frame">
 	<div class="fixed">
-		<div class="header-section">
+		<div class="header-section" id="formHeaderDiv">
 			<div class="header-image">
 				<div class="header-image-only">
 					{#if ministryLogoPath}
@@ -817,7 +823,7 @@
 		</div>
 	</div>
 
-	<div class="header-form-id no-print">
+	<div class="header-form-id no-print" id="formIdDiv">
 		<div class="form-id-section">
 			{formData?.form_id || ''}
 		</div>
@@ -848,6 +854,5 @@
 			{/if}
 		</div>
 	</div>
-
-	<PrintFooter bind:this={printFooter} />
+	<PrintFooter bind:this={printFooter} {barcode} />
 </div>
