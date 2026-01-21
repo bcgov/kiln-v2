@@ -1,4 +1,4 @@
-import { isFieldVisible } from './form';
+import { isFieldVisible,hydrateFormStateFromDOM } from './form';
 import type { FormDefinition, Item, FieldValue } from '../types/form';
 
 export type ValueType = 'string' | 'number' | 'date' | 'boolean';
@@ -321,20 +321,23 @@ export function validateAllFields(
   errorList: string[];
   consolidatedMessage: string;
 } {
-  const win: any = typeof window !== 'undefined' ? window : undefined;
-
-  const effectiveFormState: Record<string, FieldValue> =
-    formState ?? (win?.__kilnFormState as Record<string, FieldValue>) ?? {};
+  const win: any = typeof window !== 'undefined' ? window : undefined;  
 
   const formDefinition: FormDefinition =
     (win?.__kilnFormDefinition as FormDefinition) ??
     (win?.formData as FormDefinition);
+
+  hydrateFormStateFromDOM(formDefinition);
+  const effectiveFormState: Record<string, FieldValue> =
+    formState ?? (win?.__kilnFormState as Record<string, FieldValue>) ?? {};  
 
   const effectiveItems: Item[] =
     items ?? ((formDefinition?.elements as Item[]) || []);
 
   const effectiveGroupState: Record<string, FieldValue[]> =
     groupState ?? (win?.__kilnGroupState as Record<string, FieldValue[]>) ?? {};
+
+    console.log("effectiveGroupState >>",effectiveGroupState);
 
   const getType = (item: Item): ValueType => {
     switch (item.type) {
@@ -368,16 +371,22 @@ export function validateAllFields(
     const childUuids = new Set((container.children || []).map((c) => c.uuid));
     const prefix = `${container.uuid}-`;
 
+    console.log("prefix",prefix);
+
     // NEW: respect active group IDs if provided by Container.svelte
     const activeList: string[] | undefined = win?.__kilnActiveGroups?.[container.uuid];
     const active = Array.isArray(activeList) && activeList.length ? new Set(activeList) : undefined;
+    console.log("activeList",activeList);
+    console.log("active",active);
 
     const byGroupId = new Map<string, Record<string, FieldValue>>();
 
     for (const key of Object.keys(state)) {
+      console.log("key > ",key);
       if (!key.startsWith(prefix)) continue;
       const matchedChildUuid = [...childUuids].find((cu) => key.endsWith(`-${cu}`));
       if (!matchedChildUuid) continue;
+      console.log("matchedChildUuid ",matchedChildUuid);
 
       const rest = key.slice(prefix.length); // "<groupId>-<childUuid>"
       const suffix = `-${matchedChildUuid}`;
@@ -387,6 +396,7 @@ export function validateAllFields(
       if (active && !active.has(groupId)) continue;
 
       const groupObj = byGroupId.get(groupId) ?? {};
+      console.log("groupObj >",groupObj);
       groupObj[matchedChildUuid] = state[key];
       byGroupId.set(groupId, groupObj);
     }
@@ -398,12 +408,20 @@ export function validateAllFields(
   }
 
   function validateItem(item: Item, state: Record<string, FieldValue>, ctx?: { container?: Item; rowIndex?: number }) {
+    console.log("ctx >>",ctx);
+    console.log("item.uuid >>",item.uuid);
     if (item.type === 'container' && item.children && isFieldVisible(item, 'web', state,true) ) {
       const isRepeatable = item.attributes?.isRepeatable === true;
 
       if (isRepeatable) {
         // Prefer explicit groupState rows when provided
         const explicitRows = effectiveGroupState[item.uuid];
+        console.log(
+          'explicitRows:',
+          item.uuid, 
+          '>>',         
+          explicitRows
+        ); 
         const rows = Array.isArray(explicitRows) && explicitRows.length > 0
           ? explicitRows
           : inferRowsFromState(item, effectiveFormState);
@@ -425,7 +443,7 @@ export function validateAllFields(
                 rowState &&
                 typeof rowState === 'object' &&
                 !Array.isArray(rowState) &&
-                isFieldVisible(child, 'web', rowState as Record<string, FieldValue>,true)
+                isFieldVisible(child, 'web', rowState as Record<string, FieldValue>,false)
               ) {
                 runValidation(child, rowState as Record<string, FieldValue>, {
                   container: item,
@@ -442,6 +460,7 @@ export function validateAllFields(
             validateItem(child, effectiveFormState, { container: item });
           } else {
             if (isFieldVisible(child, 'web', effectiveFormState,true)) {
+              console.log("inside element of container")
               runValidation(child, effectiveFormState, { container: item });
             }
           }

@@ -209,7 +209,7 @@ export function createSavedData(ctx?: {
 }
 
 // helper
-function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
+export function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
   if (!formDefinition) return;
 
