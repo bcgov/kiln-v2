@@ -1,6 +1,10 @@
 import type { FormDefinition, Item, FieldValue, FormData, SavedData } from '../types/form';
 import { ensureFreshToken } from '$lib/utils/keycloak';
 
+function getContainerKey(item: Item): string {
+  return (item as any)._containerInstanceKey ?? item.uuid;
+}
+
 // helper
 function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
@@ -42,11 +46,12 @@ function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
 
         if (isRepeatable) {
           // For repeaters, we rely on stableKey = `${containerUuid}-${groupId}-${childUuid}`
-          const groupIds = activeGroups[item.uuid] || [];
+          const containerKey = getContainerKey(item);
+          const groupIds = activeGroups[containerKey] || [];
           for (const child of item.children) {
             const childUuid = child.uuid;
             for (const groupId of groupIds) {
-              const stableKey = `${item.uuid}-${groupId}-${childUuid}`;
+              const stableKey = `${containerKey}-${groupId}-${childUuid}`;
               // Always take the current DOM value if present and different
               const v = readElementValue(stableKey);
               if (v !== undefined && formState[stableKey] !== v) {
@@ -387,83 +392,6 @@ export function createSavedData(ctx?: {
     metadata: updatedMetadata
   };
 }
-
-// helper
-function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
-  if (!formDefinition) return;
-
-  const w = window as any;
-
-  const formState: Record<string, FieldValue> =
-    (w.__kilnFormState as Record<string, FieldValue>) || (w.__kilnFormState = {});
-
-  const activeGroups: Record<string, string[]> =
-    (w.__kilnActiveGroups as Record<string, string[]>) || (w.__kilnActiveGroups = {});
-
-  const readElementValue = (id: string): string | undefined => {
-    const el = document.getElementById(id) as
-      | HTMLInputElement
-      | HTMLTextAreaElement
-      | HTMLSelectElement
-      | null;
-
-    if (!el) return undefined;
-
-    // for our use-case (text inputs, dates, etc...) .value is fine
-    const raw = (el as any).value;
-    if (raw == null) return undefined;
-
-    const s = String(raw);
-    // do not overwrite with blank string
-    if (s.trim() === '') return undefined;
-
-    return s;
-  };
-
-  const walk = (items: Item[]) => {
-    for (const item of items) {
-      // Containers
-      if (item.type === 'container' && Array.isArray(item.children) && item.children.length) {
-        const isRepeatable = item.attributes?.isRepeatable === true;
-
-        if (isRepeatable) {
-          // For repeaters, we rely on stableKey = `${containerKey}-${groupId}-${childUuid}`
-          const containerKey = (item as any)._containerInstanceKey ?? item.uuid;
-          const groupIds = activeGroups[containerKey] || [];
-          for (const child of item.children) {
-            const childUuid = child.uuid;
-            for (const groupId of groupIds) {
-              const stableKey = `${containerKey}-${groupId}-${childUuid}`;
-
-              // Always take the current DOM value if present and different
-              const v = readElementValue(stableKey);
-              if (v !== undefined && formState[stableKey] !== v) {
-                formState[stableKey] = v;
-              }
-            }
-          }
-        } else {
-          // Non-repeatable container – recurse into children
-          walk(item.children);
-        }
-        continue;
-      }
-
-      // Simple field (non-container)
-      const uuid = item.uuid;
-      if (!uuid) continue;
-
-      const v = readElementValue(uuid);
-      if (v !== undefined && formState[uuid] !== v) {
-        formState[uuid] = v;
-      }
-    }
-  };
-
-  walk((formDefinition.elements as Item[]) || []);
-}
-
 
 export async function saveFormData(action: 'save' | 'save_and_close' | 'generate'): Promise<string> {
   try {
