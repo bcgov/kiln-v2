@@ -99,7 +99,11 @@
 <div class="field-container select-field">
 	<PrintRow {item} {printing} {labelText} value={selectedLabel || ''} />
 
-	<div class="web-input" class:visible={!printing && item.visible_web !== false} class:moustache={enableVarSub}>
+	<div
+		class="web-input"
+		class:visible={!printing && item.visible_web !== false}
+		class:moustache={enableVarSub}
+	>
 		<Select
 			{...filterAttributes(item?.attributes)}
 			id={item.uuid}
@@ -125,7 +129,7 @@
 			<div id={a11y.errorId} class="invalid-text" role="alert">{anyError}</div>
 		{/if}
 		{#if helperText}
-			<div id={a11y.helperId} class="helper-text">{helperText}</div>
+			<div id={a11y.helperId} class="bx--form__helper-text">{helperText}</div>
 		{/if}
 	</div>
 </div>

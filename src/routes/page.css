@@ -263,6 +263,7 @@ h1 {
 .cds--form__helper-text {
   color: #525252;
   font-size: 1rem;
+  margin-top: 0.25rem;
 }
 
 .cds--label,
