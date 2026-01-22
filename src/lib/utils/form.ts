@@ -80,6 +80,61 @@ function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
   walk((formDefinition.elements as Item[]) || []);
 }
 
+// Turn the flat formState keys into a list of repeater rows (also works for nested repeaters using the instance key)
+function inferRowsForInstanceKey(containerKey: string, repeatableItem: Item, state: Record<string, FieldValue>) {
+  const childUuids = (repeatableItem.children || []).map((c) => c.uuid);
+  const prefix = `${containerKey}-`;
+  const byGroupId = new Map<string, Record<string, FieldValue>>();
+
+  for (const k of Object.keys(state)) {
+    if (!k.startsWith(prefix)) continue;
+
+    const matchedChild = childUuids.find((cu) => k.endsWith(`-${cu}`));
+    if (!matchedChild) continue;
+
+    const rest = k.slice(prefix.length); // "<groupId>-<childUuid>"
+    const suffix = `-${matchedChild}`;
+    const gid = rest.slice(0, rest.length - suffix.length);
+
+    const row = byGroupId.get(gid) ?? {};
+    row[matchedChild] = state[k];
+    byGroupId.set(gid, row);
+  }
+
+  return [...byGroupId.values()].filter((r) => Object.keys(r).length > 0);
+}
+
+// Find repeatable containers anywhere under a container 
+function findDescendantRepeaters(node: Item): Item[] {
+  const out: Item[] = [];
+  const walk = (n: Item) => {
+    if (n.type === 'container' && n.attributes?.isRepeatable === true) out.push(n);
+    for (const c of (n.children || [])) walk(c);
+  };
+  for (const c of (node.children || [])) walk(c);
+  return out;
+}
+
+// If __kilnActiveGroups isn’t available, figure out the repeater row IDs by scanning the formState stable keys
+function inferGroupIdsForInstance(containerKey: string, repeatableItem: Item, state: Record<string, FieldValue>) {
+  const childUuids = (repeatableItem.children || []).map((c) => c.uuid);
+  const prefix = `${containerKey}-`;
+  const ids = new Set<string>();
+
+  for (const k of Object.keys(state)) {
+    if (!k.startsWith(prefix)) continue;
+
+    const matchedChild = childUuids.find((cu) => k.endsWith(`-${cu}`));
+    if (!matchedChild) continue;
+
+    const rest = k.slice(prefix.length); // "<groupId>-<childUuid>"
+    const gid = rest.slice(0, rest.length - (`-${matchedChild}`.length));
+  ids.add(gid);
+  }
+
+  return Array.from(ids.values());
+}
+
 function buildSavedJson(formDefinition: FormDefinition) {
   const win: any = (typeof window !== 'undefined') ? window : undefined;
 
@@ -114,8 +169,8 @@ function buildSavedJson(formDefinition: FormDefinition) {
         if (!it) continue;
 
         if (it.type === 'container' && it.attributes?.isRepeatable === true) {
-          const containerUuid = it.uuid;
-          const gs = groupState[containerUuid] as any;
+          const containerKey = getContainerKey(it);
+          const gs = groupState[containerKey] as any;
 
           if (Array.isArray(gs) && gs.length > 0) {
             const first = gs[0];
@@ -129,24 +184,34 @@ function buildSavedJson(formDefinition: FormDefinition) {
                 const row: Record<string, FieldValue> = {};
                 for (const child of (it.children || [])) {
                   const childUuid = (child as Item).uuid;
-                  const stableKey = `${containerUuid}-${gid}-${childUuid}`;
+                  const stableKey = `${containerKey}-${gid}-${childUuid}`;
                   const v = formState[stableKey];
                   if (v !== undefined) row[childUuid] = v;
                 }
+                const descendantRepeaters = findDescendantRepeaters(it);
+                for (const rep of descendantRepeaters) {
+                  const nestedKey = `${containerKey}-${gid}-${rep.uuid}`;
+                  const nestedRows = inferRowsForInstanceKey(nestedKey, rep, formState);
+                  if (nestedRows.length) row[rep.uuid] = nestedRows as unknown as FieldValue;
+                }
                 return row;
               });
-              groupState[containerUuid] = rows as unknown as FieldValue[];
+              groupState[containerKey] = rows as unknown as FieldValue[];
             }
           } else {
             // Case: empty/missing -> infer rows; try to preserve order via __kilnActiveGroups
-            const active = activeGroups[containerUuid] || [];
+            const active = activeGroups[containerKey] || [];
 
             // discover group ids present in formState for this container
+            const childUuids = (it.children || []).map((c) => (c as Item).uuid);
             const present = new Set<string>();
             Object.keys(formState).forEach((k) => {
-              if (!k.startsWith(containerUuid + '-')) return;
-              const rest = k.slice(containerUuid.length + 1);
-              const gid = rest.split('-')[0];
+              if (!k.startsWith(containerKey + '-')) return;
+              const matchedChildUuid = childUuids.find((cu) => k.endsWith(`-${cu}`));
+              if (!matchedChildUuid) return;
+              const rest = k.slice(containerKey.length + 1); // "<groupId>-<childUuid>"
+              const suffix = `-${matchedChildUuid}`;
+              const gid = rest.slice(0, rest.length - suffix.length);
               present.add(gid);
             });
 
@@ -154,18 +219,24 @@ function buildSavedJson(formDefinition: FormDefinition) {
               ? active.filter((gid) => present.has(gid))
               : Array.from(present.values());
 
+            const descendantRepeaters = findDescendantRepeaters(it);
             const rows: Record<string, FieldValue>[] = orderedIds.map((gid) => {
               const row: Record<string, FieldValue> = {};
               for (const child of (it.children || [])) {
                 const childUuid = (child as Item).uuid;
-                const stableKey = `${containerUuid}-${gid}-${childUuid}`;
+                const stableKey = `${containerKey}-${gid}-${childUuid}`;
                 const v = formState[stableKey];
                 if (v !== undefined) row[childUuid] = v;
+              }
+              for (const rep of descendantRepeaters) {
+                const nestedKey = `${containerKey}-${gid}-${rep.uuid}`; // instance key for nested repeater under this parent row
+                const nestedRows = inferRowsForInstanceKey(nestedKey, rep, formState);
+                if (nestedRows.length) row[rep.uuid] = nestedRows as unknown as FieldValue;
               }
               return row;
             });
 
-            groupState[containerUuid] = rows as unknown as FieldValue[];
+            groupState[containerKey] = rows as unknown as FieldValue[];
           }
         }
 
@@ -279,7 +350,7 @@ export function createSavedData(ctx?: {
 
         if (isRepeatable) {
           // Prefer explicit groupState rows when provided
-          const containerKey = (item as any)._containerInstanceKey ?? item.uuid;
+          const containerKey = getContainerKey(item);
           const explicitRows = groupState[containerKey];
           if (Array.isArray(explicitRows) && explicitRows.length > 0) {
             const rows = explicitRows
@@ -443,61 +514,6 @@ export async function saveFormData(action: 'save' | 'save_and_close' | 'generate
     const activeGroups: Record<string, string[]> =
       (win?.__kilnActiveGroups as Record<string, string[]>) || {};
            
-    // Turn the flat formState keys into a list of repeater rows (also works for nested repeaters using the instance key)
-    function inferRowsForInstanceKey(containerKey: string, repeatableItem: Item, state: Record<string, FieldValue>) {
-      const childUuids = (repeatableItem.children || []).map((c) => c.uuid);
-      const prefix = `${containerKey}-`;
-      const byGroupId = new Map<string, Record<string, FieldValue>>();
-
-      for (const k of Object.keys(state)) {
-        if (!k.startsWith(prefix)) continue;
-
-        const matchedChild = childUuids.find((cu) => k.endsWith(`-${cu}`));
-        if (!matchedChild) continue;
-
-        const rest = k.slice(prefix.length); // "<groupId>-<childUuid>"
-        const suffix = `-${matchedChild}`;
-        const gid = rest.slice(0, rest.length - suffix.length);
-
-        const row = byGroupId.get(gid) ?? {};
-        row[matchedChild] = state[k];
-        byGroupId.set(gid, row);
-      }
-  
-      return [...byGroupId.values()].filter((r) => Object.keys(r).length > 0);
-    }
-    
-    // Find repeatable containers anywhere under a container 
-    function findDescendantRepeaters(node: Item): Item[] {
-      const out: Item[] = [];
-      const walk = (n: Item) => {
-        if (n.type === 'container' && n.attributes?.isRepeatable === true) out.push(n);
-        for (const c of (n.children || [])) walk(c);
-      };
-      for (const c of (node.children || [])) walk(c);
-      return out;
-    }
-    
-    // If __kilnActiveGroups isn’t available, figure out the repeater row IDs by scanning the formState stable keys
-    function inferGroupIdsForInstance(containerKey: string, repeatableItem: Item, state: Record<string, FieldValue>) {
-      const childUuids = (repeatableItem.children || []).map((c) => c.uuid);
-      const prefix = `${containerKey}-`;
-      const ids = new Set<string>();
-
-      for (const k of Object.keys(state)) {
-        if (!k.startsWith(prefix)) continue;
-
-        const matchedChild = childUuids.find((cu) => k.endsWith(`-${cu}`));
-        if (!matchedChild) continue;
-
-        const rest = k.slice(prefix.length); // "<groupId>-<childUuid>"
-        const gid = rest.slice(0, rest.length - (`-${matchedChild}`.length));
-      ids.add(gid);
-      }
-
-      return Array.from(ids.values());
-    }
-
     const normalizeGroupStateTree = (list: Item[]) => {
       if (!Array.isArray(list)) return;
 
