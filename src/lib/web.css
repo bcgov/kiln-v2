@@ -150,7 +150,6 @@
   }
 }
 
-.bx--radio-button-group,
-.cds--radio-button-group {
-  margin-top: 1.25rem !important;
+.bx--date-picker-container {
+    align-items: flex-start;
 }
