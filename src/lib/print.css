@@ -274,6 +274,7 @@
   }
 
   /* Content Footer - custom footer defined in form JSON */
+  /* Default: no barcode - use smaller footer height */
   .print-footer {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -284,7 +285,6 @@
     background: white !important;
     padding: 8px 0 0 0 !important;
     font-size: 11px !important;
-    /* Height should be consistent - approximately 25mm */
     max-height: 25mm !important;
     overflow: hidden !important;
     page-break-inside: avoid !important;
@@ -307,6 +307,16 @@
     height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
+  }
+
+  #barcode-placeholder {
+    display: block !important;
+    margin-top: 5px !important;
+    align-content: center !important;
+  }
+
+  #barcode-placeholder svg {
+    display: block;
   }
 
 }
