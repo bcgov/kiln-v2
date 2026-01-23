@@ -10,8 +10,8 @@
 	} from '$lib/utils/valueSync';
 	import './fields.css';
 	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
-	import { maska } from 'maska/svelte';
-	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
+	import { normalizeDash, filterInputByMaskType, applyMaskaWithTokens } from '$lib/utils/mask';
+	import { validateValue, rulesFromAttributes, validateMaskedValue } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
 
 	const { item, printing = false } = $props<{
@@ -34,7 +34,6 @@
 	//   '*': { pattern: /[a-zA-Z0-9]/ }, // letters & digits
 	// }
 
-	//let mask = item.attributes?.mask ?? undefined;
 	let hideLabel = item.attributes?.hideLabel ?? false;
 	let maxCount = item.attributes?.maxCount ?? undefined;
 	let touched = $state(false);
@@ -47,17 +46,42 @@
 		if (!touched) return '';
 		if (error) return error;
 		if (readOnly) return '';
+
+		const maskType = item?.attributes?.maskType;
+		const label = item.attributes?.labelText ?? item.name;
+		const isRequired = item.is_required === true;
+
+		// Delegate mask-aware checks (currency, phone, email) to shared helper
+		const maskErr = validateMaskedValue(value, item.attributes, { fieldLabel: label, isRequired });
+		if (maskErr) return maskErr;
+		// For masked input types, skip the generic string pattern validation (rules.pattern) because masked formats are validated above
+		if (['currency', 'phone', 'email'].includes(maskType)) {
+			return '';
+		}
+
+		// For custom or other masks: use standard string validation
 		return (
 			validateValue(value, rules, {
 				type: 'string',
-				fieldLabel: item.attributes?.labelText ?? item.name
+				fieldLabel: label
 			}).firstError ?? ''
 		);
 	});
 
-	function oninput() {
+	function oninput(e: Event) {
+		const target = e.target as HTMLInputElement;
+		// Filter input based on mask type
+		const maskType = item?.attributes?.maskType;
+		if (maskType) {
+			const filtered = filterInputByMaskType(target.value, maskType);
+			if (filtered !== target.value) {
+				target.value = filtered;
+				value = filtered;
+			}
+		}
 		touched = true;
 	}
+
 	function onblur() {
 		touched = true;
 	}
@@ -98,50 +122,21 @@
 		readOnly: readOnly
 	});
 
-	const DASH_RX = /[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g;
-	const normalizeDash = (s?: string) => s?.normalize('NFKC').replace(DASH_RX, '-') ?? '';
-
-	function isRegexMask(mask: unknown): mask is string {
-		if (typeof mask !== 'string') return false;
-		const s = mask.trim();
-
-		// Quick heuristics — very safe
-		if (s.startsWith('^')) return true;
-		if (s.endsWith('$')) return true;
-		if (s.includes('{') || s.includes('}') || s.includes('(') || s.includes('|')) return true;
-		if (s.includes('?:')) return true;
-
-		// Optional strict validation
-		try {
-			new RegExp(s);
-			return true;
-		} catch {
-			return false;
-		}
-	}
-	// class-spec = "a-z", "A-Z", "0-9", "a-z0-9", or "[A-Za-z' -]"
-	const isClassSpecMask = (m: unknown) => {
-		if (typeof m !== 'string') return false;
-		const s = normalizeDash(m).trim();
-		return /^(?:a-z|A-Z|a-zA-Z|0-9|a-z0-9|A-Z0-9|a-zA-Z0-9)$/i.test(s) || /^\[[^\]]+\]$/.test(s);
-	};
-
-	// only apply maska for real formatting masks (#, @, *, 9, etc.)
-	const hasMaskTokens = (s: string) => /[#@*9ANX]/.test(s);
-
 	// Apply mask to the real input element once it exists
 	let maskApplied = false;
 	$effect(() => {
 		if (maskApplied || typeof document === 'undefined') return;
+		const maskType = item?.attributes?.maskType;
+			// Apply maska for phone and currency
+			if (!['phone', 'currency'].includes(maskType)) {
+			return;
+		}
 		const raw = normalizeDash(item.attributes?.mask).trim();
-		if (isRegexMask(raw)) return;
-		if (!raw || isClassSpecMask(raw) || !hasMaskTokens(raw)) return; // ⟵ skip literal/class-spec masks
-
+		if (!raw) return;
 		const el = document.getElementById(item.uuid) as HTMLInputElement | null;
 		if (el) {
-			// apply only to real token masks like "###-###" or "@@@"
-			maska(el, raw);
-			maskApplied = true;
+			const applied = applyMaskaWithTokens(el, raw, maskType);
+			if (applied) maskApplied = true;
 		}
 	});
 </script>
