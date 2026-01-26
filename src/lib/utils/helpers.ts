@@ -11,7 +11,9 @@ export function getApiUrl(path: string, envVar?: string): string {
 
         
         const match = window.location.pathname.match(/^\/(formfoundry-[^/]+)/);
-        const prefix = match ? `/${match[1]}` : "";
+        let prefix = "";
+		if (match) prefix = `/${match[1]}`;
+		else if (window.location.pathname === "/form" || window.location.pathname.startsWith("/form/")) prefix = "/form";
         
         const cleanPath = path.startsWith("/") ? path : `/${path}`;
         
