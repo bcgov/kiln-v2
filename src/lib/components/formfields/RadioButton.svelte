@@ -125,7 +125,7 @@
 			{/each}
 		</RadioButtonGroup>
 		{#if helperText}
-			<div id={a11y.helperId} class="helper-text">{helperText}</div>
+			<div id={a11y.helperId} class="bx--form__helper-text">{helperText}</div>
 		{/if}
 		{#if anyError}
 			<div id={a11y.errorId} class="invalid-text" role="alert">{anyError}</div>
