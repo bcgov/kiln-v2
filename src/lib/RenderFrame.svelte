@@ -577,7 +577,8 @@
 							`[data-attr-id="${id}"]`,
 							`[data-field-id="${id}"]`,
 							`#${CSS && CSS.escape ? CSS.escape(id) : id}`,
-							`[name="${CSS && CSS.escape ? CSS.escape(id) : id}"]`
+							`[name="${CSS && CSS.escape ? CSS.escape(id) : id}"]`,
+							`#${CSS && CSS.escape ? CSS.escape(id + '-option-0') : id + '-option-0'}`
 						].join(',');
 
 					Object.keys(errors || {}).forEach((id) => {
