@@ -262,7 +262,7 @@ export function validateValue(
           errors.push(buildErrorMessage('max', { max: rules.max }, label));
         }
       }
-      if (typeof rules.step === 'number') {
+      if (typeof rules.step === 'number' && rules.step > 0) {
         const base = typeof rules.min === 'number' ? rules.min : 0;
         if (!nearInteger(n, rules.step, base)) {
           errors.push(buildErrorMessage('step', { step: rules.step, base }, label));
@@ -410,7 +410,7 @@ export function validateAllFields(
     switch (item.type) {
       case 'number-input':
         return 'number';
-      case 'date-picker':
+      case 'date-select-input':
         return 'date';
       case 'checkbox-input':
         return 'boolean';
@@ -436,10 +436,11 @@ export function validateAllFields(
   function inferRowsFromState(container: Item, state: Record<string, FieldValue>) {
     const rows: Record<string, FieldValue>[] = [];
     const childUuids = new Set((container.children || []).map((c) => c.uuid));
-    const prefix = `${container.uuid}-`;
+    const containerKey = (container as any)._containerInstanceKey ?? container.uuid;
+    const prefix = `${containerKey}-`;
 
     // NEW: respect active group IDs if provided by Container.svelte
-    const activeList: string[] | undefined = win?.__kilnActiveGroups?.[container.uuid];
+    const activeList: string[] | undefined = win?.__kilnActiveGroups?.[containerKey];
     const active = Array.isArray(activeList) && activeList.length ? new Set(activeList) : undefined;
 
     const byGroupId = new Map<string, Record<string, FieldValue>>();
@@ -473,7 +474,8 @@ export function validateAllFields(
 
       if (isRepeatable) {
         // Prefer explicit groupState rows when provided
-        const explicitRows = effectiveGroupState[item.uuid];
+        const containerKey = (item as any)._containerInstanceKey ?? item.uuid;
+        const explicitRows = effectiveGroupState[containerKey] ?? effectiveGroupState[item.uuid];
         const rows = Array.isArray(explicitRows) && explicitRows.length > 0
           ? explicitRows
           : inferRowsFromState(item, effectiveFormState);
@@ -482,7 +484,7 @@ export function validateAllFields(
           for (const child of item.children || []) {
             if (child.type === 'container' && child.children) {
               // nested container: recurse passing rowState
-              validateItem(child, rowState as Record<string, FieldValue>, { container: item, rowIndex: idx });
+              validateItem(child, effectiveFormState, { container: item, rowIndex: idx });
             } else {
               if (
                 rowState &&
