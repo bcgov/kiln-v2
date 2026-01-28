@@ -229,7 +229,6 @@ export function initExternalUpdateBridge() {
 							composed: true
 						})
 					);
-					target.dispatchEvent(new Event('change', { bubbles: true }));
 				} else if (tag === 'SELECT') {
 					const el = target as HTMLSelectElement;
 					const valueStr = String(el.value ?? '');
@@ -240,7 +239,6 @@ export function initExternalUpdateBridge() {
 							composed: true
 						})
 					);
-					target.dispatchEvent(new Event('change', { bubbles: true }));
 				} else {
 					const el = target as HTMLInputElement | HTMLTextAreaElement;
 					const valueStr = String(el.value ?? '');
@@ -251,7 +249,6 @@ export function initExternalUpdateBridge() {
 							composed: true
 						})
 					);
-					target.dispatchEvent(new Event('input', { bubbles: true }));
 				}
 			} else {
 				const valueStr = String(target.textContent ?? '');
