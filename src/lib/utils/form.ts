@@ -169,7 +169,8 @@ function buildSavedJson(formDefinition: FormDefinition) {
         if (!it) continue;
 
         if (it.type === 'container' && it.attributes?.isRepeatable === true) {
-          const containerKey = getContainerKey(it);
+          const containerUuid = it.uuid;
+          const containerKey = (it as any)._containerInstanceKey ?? containerUuid;
           const gs = groupState[containerKey] as any;
 
           if (Array.isArray(gs) && gs.length > 0) {
@@ -179,6 +180,7 @@ function buildSavedJson(formDefinition: FormDefinition) {
 
             if (!looksLikeRowObject) {
               // Case: ID array -> build row objects IN THAT ORDER from formState
+              const descendantRepeaters = findDescendantRepeaters(it);
               const idArray: string[] = gs as string[];
               const rows: Record<string, FieldValue>[] = idArray.map((gid) => {
                 const row: Record<string, FieldValue> = {};
@@ -188,12 +190,33 @@ function buildSavedJson(formDefinition: FormDefinition) {
                   const v = formState[stableKey];
                   if (v !== undefined) row[childUuid] = v;
                 }
-                const descendantRepeaters = findDescendantRepeaters(it);
+                // Attach nested repeater arrays under this parent row
                 for (const rep of descendantRepeaters) {
                   const nestedKey = `${containerKey}-${gid}-${rep.uuid}`;
                   const nestedRows = inferRowsForInstanceKey(nestedKey, rep, formState);
                   if (nestedRows.length) row[rep.uuid] = nestedRows as unknown as FieldValue;
                 }
+                return row;
+              });
+              
+              groupState[containerKey] = rows as unknown as FieldValue[];
+            }else {
+              // Row objects already exist, but they may be missing nested repeater arrays
+              const descendantRepeaters = findDescendantRepeaters(it);
+              const ids = Array.isArray(activeGroups[containerKey]) && activeGroups[containerKey].length ? activeGroups[containerKey] : inferGroupIdsForInstance(containerKey, it, formState);
+
+              const rows = (gs as Record<string, FieldValue>[]).map((rowObj, idx) => {
+                const gid = ids[idx];
+                if (!gid) return rowObj;
+  
+                const row: Record<string, FieldValue> = { ...rowObj };
+  
+                for (const rep of descendantRepeaters) {
+                  const nestedKey = `${containerKey}-${gid}-${rep.uuid}`;
+                  const nestedRows = inferRowsForInstanceKey(nestedKey, rep, formState);
+                  if (nestedRows.length) row[rep.uuid] = nestedRows as unknown as FieldValue;
+                }
+  
                 return row;
               });
               groupState[containerKey] = rows as unknown as FieldValue[];
@@ -228,6 +251,7 @@ function buildSavedJson(formDefinition: FormDefinition) {
                 const v = formState[stableKey];
                 if (v !== undefined) row[childUuid] = v;
               }
+              // Attach nested repeater arrays
               for (const rep of descendantRepeaters) {
                 const nestedKey = `${containerKey}-${gid}-${rep.uuid}`; // instance key for nested repeater under this parent row
                 const nestedRows = inferRowsForInstanceKey(nestedKey, rep, formState);
@@ -287,7 +311,8 @@ export function isFieldVisible(
   item: Item,
   mode: 'web' | 'pdf' = 'web',
   formState?: Record<string, FieldValue>,
-  includeDOMCheck = false
+  includeDOMCheck = false,
+  ctx?: { container?: Item; rowIndex?: number }
 ): boolean {
   // Use visible_web or visible_pdf
   let visible = mode === 'pdf' ? item.visible_pdf !== false : item.visible_web !== false;
@@ -308,7 +333,8 @@ export function isFieldVisible(
   // Final gate: DOM visibility
   if (includeDOMCheck && mode === 'web') {
     try {
-      visible = visible && isActuallyVisibleInDOM(item.uuid);
+      const domIdForField = getDOMId(item, ctx);
+      visible = visible && isActuallyVisibleInDOM(domIdForField);
     } catch (e) {
       // fallback to previous visible value
     }
@@ -364,111 +390,147 @@ export function createSavedData(ctx?: {
 
   // Shared builder
   const built = buildSavedJson(formDefinition);  
+  //hydrateFormStateFromDOM(formDefinition);
+
+  console.log('SAVE built.groupState', JSON.parse(JSON.stringify(built.groupState)));
+  console.log('BUILT groupState keys', Object.keys(built.groupState || {}));
+console.log('BUILT groupState sample', built.groupState);
 
   // Apply built formState, groupState, items and preserve ctx overrides if needed
-  const formState: Record<string, FieldValue> =
-    ctx?.formState ?? built.formState;
-  const items: Item[] = ctx?.items ?? built.items;
-  const groupState: Record<string, FieldValue[]> =
-    ctx?.groupState ?? built.groupState;
+  // Ensure __kilnFormState has values for all visible fields
+    hydrateFormStateFromDOM(formDefinition);
+
+    // Apply built formState, groupState, tiems
+    const formState: Record<string, FieldValue> = built.formState;
+    const items: Item[] = built.items;
+    const groupState: Record<string, FieldValue[]> = built.groupState;   
+    
+    Object.entries(groupState).forEach(([containerKey, rows]) => {
+  console.log('Container:', containerKey);
+
+  if (!Array.isArray(rows)) {
+    console.warn('Not an array for container', containerKey, rows);
+    return;
+  }
+
+  rows.forEach((row, rowIndex) => {
+    console.log('  Row', rowIndex, row);
+
+    // Traverse each field in the row
+    Object.entries(row || {}).forEach(([fieldUuid, value]) => {
+      console.log('    Field:', fieldUuid, 'Value:', value);
+    });
+  });
+});
+
 
   const saveFieldData: Record<string, FieldValue> = {};
 
-  function processItems(list: Item[], state: Record<string, FieldValue>) {
-    for (const item of list) {
-      if (item.type === 'container' && item.children) {
-        const isRepeatable = item.attributes?.isRepeatable === true;
+  const processItems = (list: Item[], state: Record<string, any>) => {
+  for (const item of list) {
+    if (item.type === 'container' && item.children) {
+      const isRepeatable = item.attributes?.isRepeatable === true;
 
-        if (isRepeatable) {
-          // Prefer explicit groupState rows when provided
-          const containerKey = getContainerKey(item);
-          const explicitRows = groupState[containerKey];
-          if (Array.isArray(explicitRows) && explicitRows.length > 0) {
-            const rows = explicitRows
-              .map((rowState) => {
-                const row: Record<string, FieldValue> = {};
-                for (const child of item.children || []) {
-                  if (
-                    rowState &&
-                    typeof rowState === 'object' &&
-                    !Array.isArray(rowState) &&
-                    shouldFieldBeIncludedForSaving(child, 'web', rowState as Record<string, FieldValue>) &&
-                    (rowState as Record<string, FieldValue>)[child.uuid] !== undefined
-                  ) {
-                    row[child.uuid] = (rowState as Record<string, FieldValue>)[child.uuid];
-                  }
+      if (isRepeatable) {
+        const containerKey = (item as any)._containerInstanceKey ?? item.uuid;       
+        //const explicitRows = (groupState as any)[containerKey] ?? groupState[item.uuid];
+        const explicitRows = (groupState as any)[containerKey];
+        if (Array.isArray(explicitRows) && explicitRows.length > 0) {
+          const rows = explicitRows
+            .map((rowState) => {
+              const row: Record<string, any> = {};
+              for (const child of item.children || []) {
+                if (
+                  rowState &&
+                  typeof rowState === 'object' &&
+                  !Array.isArray(rowState) &&
+                  shouldFieldBeIncludedForSaving(
+                    child,
+                    'web',
+                    rowState as Record<string, any>
+                  ) &&
+                  (rowState as Record<string, any>)[child.uuid] !==
+                    undefined
+                ) {
+                  row[child.uuid] = (rowState as Record<string, any>)[
+                    child.uuid
+                  ];
                 }
-                // Copy nested repeater arrays that live on rowState
-                if (rowState && typeof rowState === 'object' && !Array.isArray(rowState)) {
-                  for (const [fieldKey, fieldValue] of Object.entries(rowState as Record<string, any>)) {
-                    const isNestedRepeaterArray = Array.isArray(fieldValue);
-                    const isAlreadyCaptured = row[fieldKey] !== undefined;
-                
-                    if (isNestedRepeaterArray && !isAlreadyCaptured) {
-                      row[fieldKey] = fieldValue as unknown as FieldValue;
-                    }
-                  }
-                }
-                return Object.keys(row).length > 0 ? row : null;
-              })
-              .filter(Boolean) as Record<string, FieldValue>[];
-
-            if (rows.length > 0) {
-              saveFieldData[item.uuid] = rows as unknown as FieldValue;
-            }
-            continue;
-          }
-
-          // Infer rows using Container.svelte stableKey pattern: `${containerUuid}-${groupId}-${originalChildUuid}`
-          const childUuids = new Set((item.children || []).map((c) => c.uuid));
-          const prefix = `${containerKey}-`;
-          const byGroupId = new Map<string, Record<string, FieldValue>>();
-
-          for (const key of Object.keys(state)) {
-            if (!key.startsWith(prefix)) continue;
-
-            const matchedChildUuid = [...childUuids].find((cu) => key.endsWith(`-${cu}`));
-            if (!matchedChildUuid) continue;
-
-            const rest = key.slice(prefix.length); // "<groupId>-<childUuid>"
-            const suffix = `-${matchedChildUuid}`;
-            const groupId = rest.slice(0, rest.length - suffix.length);
-
-            const groupObj = byGroupId.get(groupId) ?? {};
-            groupObj[matchedChildUuid] = state[key];
-            byGroupId.set(groupId, groupObj);
-          }
-
-          const inferredRows = [...byGroupId.values()].filter((row) => Object.keys(row).length > 0);
-          if (inferredRows.length > 0) {
-            saveFieldData[item.uuid] = inferredRows as unknown as FieldValue;
-          }
-        } else {
-          // Non-repeatable: process children as normal fields
-          for (const child of item.children) {
-            if (child.type === 'container' && child.children) {
-              processItems([child], state);
-            } else if (shouldFieldBeIncludedForSaving(child, 'web', state)) {
-              const val = state[child.uuid];
-              if (val !== undefined) {
-                saveFieldData[child.uuid] = val;
               }
+              // Preserve nested repeater arrays stored on the row object 
+              if (rowState && typeof rowState === 'object' && !Array.isArray(rowState)) {
+                for (const [k, v] of Object.entries(rowState as Record<string, any>)) {
+                  if (Array.isArray(v) && row[k] === undefined) {
+                    row[k] = v;
+                  }
+                }
+              }
+              return Object.keys(row).length > 0 ? row : null;
+            })
+            .filter(Boolean) as Record<string, any>[];
+
+          if (rows.length > 0) {
+            console.log("rows >",rows);
+            saveFieldData[item.uuid] = rows;
+          }
+          continue;
+        }
+
+        const childUuids = new Set(
+          (item.children || []).map((c) => c.uuid)
+        );
+        const prefix = `${containerKey}-`;
+        const byGroupId = new Map<string, Record<string, any>>();
+
+        for (const key of Object.keys(state)) {
+          if (!key.startsWith(prefix)) continue;
+
+          const matchedChildUuid = [...childUuids].find((cu) =>
+            key.endsWith(`-${cu}`)
+          );
+          if (!matchedChildUuid) continue;
+
+          const rest = key.slice(prefix.length);
+          const suffix = `-${matchedChildUuid}`;
+          const groupId = rest.slice(0, rest.length - suffix.length);
+
+          const groupObj = byGroupId.get(groupId) ?? {};
+          groupObj[matchedChildUuid] = state[key];
+          byGroupId.set(groupId, groupObj);
+        }
+
+        const inferredRows = [...byGroupId.values()].filter(
+          (row) => Object.keys(row).length > 0
+        );
+        if (inferredRows.length > 0) {
+          saveFieldData[item.uuid] = inferredRows;
+        }
+      } else {
+        for (const child of item.children) {
+          if (child.type === 'container' && child.children) {
+            processItems([child], state);
+          } else if (
+            shouldFieldBeIncludedForSaving(child, 'web', state)
+          ) {
+            const val = state[child.uuid];
+            if (val !== undefined) {
+              saveFieldData[child.uuid] = val;
             }
           }
         }
-      } else {
-        // Simple field
-        if (shouldFieldBeIncludedForSaving(item, 'web', state)) {
-          const val = state[item.uuid];
-          if (val !== undefined) {
-            saveFieldData[item.uuid] = val;
-          }
+      }
+    } else {
+      if (shouldFieldBeIncludedForSaving(item, 'web', state)) {
+        const val = state[item.uuid];
+        if (val !== undefined) {
+          saveFieldData[item.uuid] = val;
         }
       }
     }
   }
+};
 
-  processItems(items, formState);
+processItems(items, formState);
 
   const updatedMetadata = {
     ...(ctx?.metadata || {}),
@@ -833,3 +895,21 @@ export async function submitForButtonAction(buttonConfig: any): Promise<string> 
 			return 'failed';
 		}
 	}
+
+  export function getDOMId(
+  item: Item,
+  ctx?: { container?: Item; rowIndex?: number }
+) {
+  const win: any = (typeof window !== 'undefined') ? window : undefined;
+  if (ctx?.container && ctx.rowIndex != null) {
+    const containerId = ctx.container.uuid;
+    const groupId =
+      win?.__kilnActiveGroups?.[containerId]?.[ctx.rowIndex];
+
+    if (groupId) {
+      return `${containerId}-${groupId}-${item.uuid}`;
+    }
+  }
+
+  return item.uuid; // non-repeatable fallback
+}

@@ -1,4 +1,4 @@
-import { isFieldVisible,hydrateFormStateFromDOM } from './form';
+import { isFieldVisible,hydrateFormStateFromDOM,getDOMId } from './form';
 import type { FormDefinition, Item, FieldValue } from '../types/form';
 import { isClassSpecMask } from '$lib/utils/mask';
 
@@ -481,35 +481,42 @@ export function validateAllFields(
   function validateItem(item: Item, state: Record<string, FieldValue>, ctx?: { container?: Item; rowIndex?: number }) {
     console.log("ctx >>",ctx);
     console.log("item.uuid >>",item.uuid);
-    if (item.type === 'container' && item.children && isFieldVisible(item, 'web', state,true) ) {
+    if (item.type === 'container' && item.children && isFieldVisible(item, 'web', state,true, ctx) ) {
       const isRepeatable = item.attributes?.isRepeatable === true;
 
       if (isRepeatable) {
         // Prefer explicit groupState rows when provided
         const containerKey = (item as any)._containerInstanceKey ?? item.uuid;
-        const explicitRows = effectiveGroupState[containerKey] ?? effectiveGroupState[item.uuid];
-        const rows = Array.isArray(explicitRows) && explicitRows.length > 0
+        console.log("containerKey > ",containerKey);
+        //const explicitRows = effectiveGroupState[containerKey] ?? effectiveGroupState[item.uuid];
+        /* let rows = Array.isArray(explicitRows) && explicitRows.length > 0
           ? explicitRows
           : inferRowsFromState(item, effectiveFormState);
-
+ */
+        let rows = inferRowsFromState(item, effectiveFormState);
         console.log(
           'Repeatable container:',
           item.uuid,
           'rows:',
-          rows
+          rows.length
         );  
+
+        // ✅ NEW: force validation when container is visible but empty
+        if (rows.length === 0) {
+          rows = [{}];
+        }
 
         rows.forEach((rowState, idx) => {
           for (const child of item.children || []) {
             if (child.type === 'container' && child.children) {
               // nested container: recurse passing rowState
-              validateItem(child, effectiveFormState, { container: item, rowIndex: idx });
+              validateItem(child, rowState, { container: item, rowIndex: idx });
             } else {
               if (
                 rowState &&
                 typeof rowState === 'object' &&
                 !Array.isArray(rowState) &&
-                isFieldVisible(child, 'web', rowState as Record<string, FieldValue>,false)
+                isFieldVisible(child, 'web', rowState as Record<string, FieldValue>,true, { container: item, rowIndex: idx })
               ) {
                 runValidation(child, rowState as Record<string, FieldValue>, {
                   container: item,
@@ -536,7 +543,7 @@ export function validateAllFields(
     }
 
     // Leaf/simple field
-    if (isFieldVisible(item, 'web', state,true)) {
+    if (isFieldVisible(item, 'web', state,true,ctx)) {
       runValidation(item, state, ctx);
     }
   }
@@ -558,10 +565,8 @@ export function validateAllFields(
       isValid = false;
 
       // Create a unique key (handles repeatable rows without clobbering)
-      const errorKey = ctx?.rowIndex != null
-        ? `${item.uuid}__row_${ctx.rowIndex}`
-        : item.uuid;
-
+      const errorKey = getDOMId(item, ctx);
+      console.log("errorKey >",errorKey);
       // Surface only the first message per key (keep concise)
       if (!errors[errorKey]) {
         errors[errorKey] = firstError;
