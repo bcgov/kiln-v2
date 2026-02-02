@@ -49,6 +49,7 @@ export function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
           const containerKey = getContainerKey(item);
           const groupIds = activeGroups[containerKey] || [];
           for (const child of item.children) {
+            if (child.type === 'container') continue;
             const childUuid = child.uuid;
             for (const groupId of groupIds) {
               const stableKey = `${containerKey}-${groupId}-${childUuid}`;
@@ -185,6 +186,7 @@ function buildSavedJson(formDefinition: FormDefinition) {
               const rows: Record<string, FieldValue>[] = idArray.map((gid) => {
                 const row: Record<string, FieldValue> = {};
                 for (const child of (it.children || [])) {
+                  if (child.type === 'container') continue;
                   const childUuid = (child as Item).uuid;
                   const stableKey = `${containerKey}-${gid}-${childUuid}`;
                   const v = formState[stableKey];
@@ -210,6 +212,14 @@ function buildSavedJson(formDefinition: FormDefinition) {
                 if (!gid) return rowObj;
   
                 const row: Record<string, FieldValue> = { ...rowObj };
+
+                for (const child of (it.children || [])) {
+                  if (child.type === 'container') continue;
+                  const childUuid = (child as Item).uuid;
+                  const stableKey = `${containerKey}-${gid}-${childUuid}`;
+                  const v = formState[stableKey];
+                  if (v !== undefined) row[childUuid] = v;
+                }
   
                 for (const rep of descendantRepeaters) {
                   const nestedKey = `${containerKey}-${gid}-${rep.uuid}`;
@@ -630,6 +640,7 @@ export async function saveFormData(action: 'save' | 'save_and_close' | 'generate
               const rows: Record<string, FieldValue>[] = idArray.map((gid) => {
                 const row: Record<string, FieldValue> = {};
                 for (const child of (it.children || [])) {
+                  if (child.type === 'container') continue;
                   const childUuid = (child as Item).uuid;
                   const stableKey = `${containerKey}-${gid}-${childUuid}`;
                   const v = formState[stableKey];
@@ -655,6 +666,14 @@ export async function saveFormData(action: 'save' | 'save_and_close' | 'generate
                 if (!gid) return rowObj;
   
                 const row: Record<string, FieldValue> = { ...rowObj };
+
+                for (const child of (it.children || [])) {
+                  if (child.type === 'container') continue;
+                  const childUuid = (child as Item).uuid;
+                  const stableKey = `${containerKey}-${gid}-${childUuid}`;
+                  const v = formState[stableKey];
+                  if (v !== undefined) row[childUuid] = v;
+                }
   
                 for (const rep of descendantRepeaters) {
                   const nestedKey = `${containerKey}-${gid}-${rep.uuid}`;
@@ -902,12 +921,12 @@ export async function submitForButtonAction(buttonConfig: any): Promise<string> 
 ) {
   const win: any = (typeof window !== 'undefined') ? window : undefined;
   if (ctx?.container && ctx.rowIndex != null) {
-    const containerId = ctx.container.uuid;
+    const containerKey = (ctx.container as any)._containerInstanceKey ?? ctx.container.uuid;
     const groupId =
-      win?.__kilnActiveGroups?.[containerId]?.[ctx.rowIndex];
+      win?.__kilnActiveGroups?.[containerKey]?.[ctx.rowIndex];
 
     if (groupId) {
-      return `${containerId}-${groupId}-${item.uuid}`;
+      return `${containerKey}-${groupId}-${item.uuid}`;
     }
   }
 
