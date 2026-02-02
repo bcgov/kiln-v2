@@ -28,8 +28,16 @@
 
 	let extAttrs = $state<Record<string, any>>({});
 
+	let printValue = $derived.by(() => {
+		const valueStr = value !== null && value !== undefined ? (value === 0 ? value.toString() : value) : ''
+		return item?.attributes?.formatStyle === 'currency' ? '$' + valueStr : valueStr;
+	});
+
 	const rules = $derived.by(() => {
-		const r = rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'number' });
+		const r = rulesFromAttributes(item.attributes, {
+			is_required: item.is_required,
+			type: 'number'
+		});
 		// If maskType indicates integer, enforce integer rule
 		if (item?.attributes?.maskType === 'integer') r.isInteger = true;
 		return r;
@@ -138,14 +146,21 @@
 	});
 </script>
 
-<div class="field-container number-input-field">
+<div
+	class="field-container number-input-field"
+	class:format-currency={item?.attributes?.formatStyle === 'currency' && 'format-currency'}
+>
 	<PrintRow
 		{item}
 		{printing}
 		{labelText}
-		value={value !== null && value !== undefined ? (value === 0 ? value.toString() : value) : ''}
+		value={printValue}
 	/>
-	<div class="web-input" class:visible={!printing && item.visible_web !== false} class:moustache={enableVarSub}>
+	<div
+		class="web-input"
+		class:visible={!printing && item.visible_web !== false}
+		class:moustache={enableVarSub}
+	>
 		<NumberInput
 			{...filterAttributes(item?.attributes)}
 			id={item.uuid}
@@ -174,3 +189,29 @@
 		{/if}
 	</div>
 </div>
+
+<style>
+	:global {
+		.bx--number {
+			input[type='number'] {
+				font-family: 'BC Sans', var(--default-font-family), sans-serif;
+				font-size: 1rem;
+				font-weight: 400;
+				letter-spacing: 1px;
+			}
+		}
+		.format-currency {
+			.bx--number__input-wrapper {
+				&::before {
+					content: '$';
+					position: absolute;
+					left: 1rem;
+					font-size: 1rem;
+				}
+				input {
+					padding-left: calc(1.15rem + 1ch);
+				}
+			}
+		}
+	}
+</style>
