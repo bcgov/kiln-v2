@@ -31,7 +31,8 @@
 		goBack = undefined,
 		mode = 'preview',
 		formDelivery = undefined,
-		disablePrint = false
+		disablePrint = false,
+		securityClassification = undefined
 	} = $props();
 
 	// Modal and loading state
@@ -47,7 +48,7 @@
 	let modalSecondaryText = $state<string | null>(null);
 	let modalResolver = $state<((result: boolean) => void) | null>(null);
 
-	let barcode = $derived<{ content: string } | undefined>(formData.barcode);
+	let barcode = $derived<{ content: string } | undefined>(formData?.barcode);
 
 	function resetModalRuntime() {
 		modalMode = 'info';
@@ -867,5 +868,5 @@
 			{/if}
 		</div>
 	</div>
-	<PrintFooter bind:this={printFooter} {barcode} />
+	<PrintFooter bind:this={printFooter} {barcode} {securityClassification} />
 </div>

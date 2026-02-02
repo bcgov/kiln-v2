@@ -1,7 +1,7 @@
 <script lang="ts">
 	import JsBarcode from 'jsbarcode';
 
-	let { barcode }: { barcode: { content: string } | undefined } = $props();
+	let { barcode, securityClassification }: { barcode: { content: string } | undefined, securityClassification?: string | null } = $props();
 
 	export function setFooterText(text: string): void {
 		if (typeof document !== 'undefined') {
@@ -63,11 +63,20 @@
 		const encoded = `data:image/svg+xml,${encodeURIComponent(svgString)}`;
 		document.documentElement.style.setProperty('--barcode', `url('${encoded}')`);
 	});
+
+	$effect(() => {
+		if (securityClassification && securityClassification.trim()) {
+			document.documentElement.style.setProperty('--security-classification', `"${securityClassification.trim()}"`);
+		} else {
+			document.documentElement.style.setProperty('--security-classification', '""');
+		}
+	});
 </script>
 
 <style>
 	:root {
 		--barcode: '';
+		--security-classification: '';
 	}
 
 	@page {
@@ -77,6 +86,10 @@
 		@bottom-center {
 			content: var(--barcode);
 			margin: 0 0.5em;
+		}
+		@bottom-right {
+			content: var(--security-classification);
+			font-size: 10pt;
 		}
 	}
 </style>

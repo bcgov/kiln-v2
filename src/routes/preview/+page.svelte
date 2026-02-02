@@ -13,6 +13,7 @@
 	let error = $state('');
 	let saveData = $state<{ data: any } | undefined>(undefined);
 	let isLoading = $state(false);
+	let securityClassification = $state<string | undefined>(undefined);
 
 	const trustedOrigins = [
 		import.meta.env.VITE_TEMPLATE_REPO_URL,
@@ -107,6 +108,10 @@
 
 			jsonContent = boundData.form_definition || {};
 			saveData = boundData.data ? { data: boundData.data } : undefined;
+			// TEMP: Hardcoded barcode for testing - inject into jsonContent since RenderFrame derives barcode from formData.barcode
+			(jsonContent as any).barcode = { content: 'HR0080R,{{attachmentId}}' };
+			// Extract security classification from form definition
+			securityClassification = boundData.form_definition?.security_classification || undefined;
 			present = true;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Invalid JSON format or API error. Please correct it.';
@@ -129,6 +134,7 @@
 	<RenderFrame
 		formData={jsonContent}
 		{saveData}
+		{securityClassification}
 		mode={FORM_MODE.preview}
 		formDelivery={isPortalIntegrated ? FORM_DELIVERY_MODE.portal : undefined}
 		goBack={handleGoBack}
