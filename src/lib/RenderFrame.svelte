@@ -5,7 +5,7 @@
 	import FormRenderer from './components/FormRenderer.svelte';
 	import ScriptStyleInjection from './components/ScriptStyleInjection.svelte';
 	import PrintFooter from './components/PrintFooter.svelte';
-	import { FORM_MODE } from './constants/formMode';	
+	import { FORM_MODE } from './constants/formMode';
 	import {
 		saveFormData,
 		unlockICMFinalFlags,
@@ -31,8 +31,7 @@
 		goBack = undefined,
 		mode = 'preview',
 		formDelivery = undefined,
-		disablePrint = false,
-		barcode = undefined
+		disablePrint = false
 	} = $props();
 
 	// Modal and loading state
@@ -47,6 +46,8 @@
 	let modalPrimaryText = $state('OK');
 	let modalSecondaryText = $state<string | null>(null);
 	let modalResolver = $state<((result: boolean) => void) | null>(null);
+
+	let barcode = $derived<{ content: string } | undefined>(formData.barcode);
 
 	function resetModalRuntime() {
 		modalMode = 'info';
@@ -181,14 +182,12 @@
 	});
 
 	let ministryLogoPath = $derived.by(() => {
-		const base = 
-		typeof window !== 'undefined' && window.location.href.includes('klamm')
-			? '/ministries'
-			: './ministries';
+		const base =
+			typeof window !== 'undefined' && window.location.href.includes('klamm')
+				? '/ministries'
+				: './ministries';
 
-		const path = mergedFormData?.ministry_id
-			? `${base}/${mergedFormData.ministry_id}.png`
-			: null;
+		const path = mergedFormData?.ministry_id ? `${base}/${mergedFormData.ministry_id}.png` : null;
 		return path;
 	});
 
@@ -216,7 +215,9 @@
 	}
 
 	function paginateContentForPrint(): () => void {
-		const letterContent = document.querySelector('.letter-content, [id^="letter-content-"]') as HTMLElement;
+		const letterContent = document.querySelector(
+			'.letter-content, [id^="letter-content-"]'
+		) as HTMLElement;
 		if (!letterContent) {
 			return () => {};
 		}
@@ -225,14 +226,14 @@
 		document.querySelectorAll('.page-break').forEach((el) => el.remove());
 
 		// Paper and margin constants
-		const DPI = 96; 
+		const DPI = 96;
 		const MM_TO_PX = DPI / 25.4; // 1mm ≈ 3.78px
-		const INCH_TO_PX = DPI;      // 1in = 96px
+		const INCH_TO_PX = DPI; // 1in = 96px
 
 		// Letter paper dimensions
 		const LETTER_WIDTH_INCHES = 8.5;
 		const LETTER_HEIGHT_INCHES = 11;
-		const LETTER_WIDTH_PX = LETTER_WIDTH_INCHES * INCH_TO_PX;   // 816px
+		const LETTER_WIDTH_PX = LETTER_WIDTH_INCHES * INCH_TO_PX; // 816px
 		const LETTER_HEIGHT_PX = LETTER_HEIGHT_INCHES * INCH_TO_PX; // 1056px
 
 		const PAGE_MARGIN_TOP_MM = 5;
@@ -240,7 +241,7 @@
 		const PAGE_MARGIN_BOTTOM_MM = 20;
 		const PAGE_MARGIN_LEFT_MM = 15;
 
-		const PAGE_MARGIN_TOP_PX = PAGE_MARGIN_TOP_MM * MM_TO_PX;       // ~19px
+		const PAGE_MARGIN_TOP_PX = PAGE_MARGIN_TOP_MM * MM_TO_PX; // ~19px
 		const PAGE_MARGIN_BOTTOM_PX = PAGE_MARGIN_BOTTOM_MM * MM_TO_PX; // ~76px
 
 		// Detect footer height
@@ -248,10 +249,10 @@
 		let fakeFooterHeight: number;
 
 		if (printFooter) {
-			if (printFooter.parentElement != null){
+			if (printFooter.parentElement != null) {
 				const originalFooterDisplay = getComputedStyle(printFooter.parentElement).display;
-				const originalFooterVisibility =  getComputedStyle(printFooter.parentElement).visibility;
-				const originalFooterPosition =  getComputedStyle(printFooter.parentElement).position;
+				const originalFooterVisibility = getComputedStyle(printFooter.parentElement).visibility;
+				const originalFooterPosition = getComputedStyle(printFooter.parentElement).position;
 
 				printFooter.parentElement.style.display = 'block';
 				printFooter.parentElement.style.visibility = 'visible';
@@ -262,26 +263,23 @@
 
 				printFooter.parentElement.style.display = originalFooterDisplay;
 				printFooter.parentElement.style.visibility = originalFooterVisibility;
-				printFooter.parentElement.style.position = originalFooterPosition
-			
-			}
-			else{
+				printFooter.parentElement.style.position = originalFooterPosition;
+			} else {
 				const originalFooterDisplay = getComputedStyle(printFooter).display;
-				const originalFooterVisibility =  getComputedStyle(printFooter).visibility;
-				const originalFooterPosition =  getComputedStyle(printFooter).position;
+				const originalFooterVisibility = getComputedStyle(printFooter).visibility;
+				const originalFooterPosition = getComputedStyle(printFooter).position;
 
 				printFooter.style.display = 'block';
 				printFooter.style.visibility = 'visible';
 				printFooter.style.position = 'absolute';
 				printFooter.offsetHeight; // Force reflow
 
-				fakeFooterHeight = Math.ceil(printFooter.getBoundingClientRect().height);	
+				fakeFooterHeight = Math.ceil(printFooter.getBoundingClientRect().height);
 
 				// Restore original styles
 				printFooter.style.display = originalFooterDisplay;
 				printFooter.style.visibility = originalFooterVisibility;
 				printFooter.style.position = originalFooterPosition;
-
 			}
 
 			// No extra padding - use actual measured height
@@ -307,10 +305,12 @@
 
 		// Calculate available content height
 		// Base content height = Letter height - top margin - bottom margin - footer space
-		const baseContentHeight =  Math.ceil(LETTER_HEIGHT_PX - PAGE_MARGIN_TOP_PX - PAGE_MARGIN_BOTTOM_PX - fakeFooterHeight);
+		const baseContentHeight = Math.ceil(
+			LETTER_HEIGHT_PX - PAGE_MARGIN_TOP_PX - PAGE_MARGIN_BOTTOM_PX - fakeFooterHeight
+		);
 
 		// First page has less space due to header
-		const firstPageContentHeight =  Math.ceil(baseContentHeight - headerHeight);
+		const firstPageContentHeight = Math.ceil(baseContentHeight - headerHeight);
 		const subsequentPageContentHeight = baseContentHeight;
 
 		// No safety margin - maximize content per page
@@ -331,11 +331,16 @@
 		letterContent.style.width = `${contentWidth}px`;
 		letterContent.offsetHeight; // Force reflow
 
-		const breakableTags =[
+		const breakableTags = [
 			'p',
 			'li',
 			'table',
-			'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+			'h1',
+			'h2',
+			'h3',
+			'h4',
+			'h5',
+			'h6',
 			'div.paragraph',
 			'div.text-block',
 			'div.header-row',
@@ -363,16 +368,16 @@
 			const computedStyle = window.getComputedStyle(el);
 			const marginTop = parseFloat(computedStyle.marginTop) || 0;
 			const marginBottom = parseFloat(computedStyle.marginBottom) || 0;
-			const totalElementHeight = elHeight + marginTop + marginBottom;	
+			const totalElementHeight = elHeight + marginTop + marginBottom;
 			// Skip empty/hidden elements
 			if (totalElementHeight <= 0) {
 				return;
 			}
 
 			// Skip element with breakable child elements
-			if ( el.childElementCount > 0) {
-				for( const child of el.children){
-					if(breakableTags.includes(child.tagName.toLowerCase())){
+			if (el.childElementCount > 0) {
+				for (const child of el.children) {
+					if (breakableTags.includes(child.tagName.toLowerCase())) {
 						return;
 					}
 				}
@@ -418,7 +423,6 @@
 
 			// Force reflow to ensure elements are measured correctly
 			document.body.offsetHeight;
-
 
 			// Prepare and set footer text via PrintFooter component
 			const footerText = buildPrintFooterText();
@@ -507,7 +511,7 @@
 		isLoading = true;
 		modalOpen = false;
 		try {
-			const { isValid, errorList} = handleValidation();
+			const { isValid, errorList } = handleValidation();
 			if (isValid) {
 				const returnMessage = await saveFormData('save');
 				if (returnMessage === 'success') {
@@ -531,7 +535,7 @@
 		modalOpen = false;
 
 		try {
-			const { isValid, errorList} = handleValidation();
+			const { isValid, errorList } = handleValidation();
 			if (isValid) {
 				const returnMessage = await saveFormData('save_and_close');
 				if (returnMessage === 'success') {
@@ -543,7 +547,7 @@
 					showModal('error', returnMessage);
 				}
 			} else {
-				showModal('validation', undefined, errorList);				
+				showModal('validation', undefined, errorList);
 			}
 		} catch (error) {
 			console.error('Save and close error:', error);
@@ -554,9 +558,7 @@
 	}
 
 	//this function validates all fields and set the error message at field level
-	function handleValidation(): {isValid: boolean;	errorList: string[];}
-	{
-		
+	function handleValidation(): { isValid: boolean; errorList: string[] } {
 		try {
 			const { isValid, errorList, errors } = validateAllFields();
 			if (!isValid) {
@@ -576,7 +578,8 @@
 							`[data-attr-id="${id}"]`,
 							`[data-field-id="${id}"]`,
 							`#${CSS && CSS.escape ? CSS.escape(id) : id}`,
-							`[name="${CSS && CSS.escape ? CSS.escape(id) : id}"]`
+							`[name="${CSS && CSS.escape ? CSS.escape(id) : id}"]`,
+							`#${CSS && CSS.escape ? CSS.escape(id + '-option-0') : id + '-option-0'}`
 						].join(',');
 
 					Object.keys(errors || {}).forEach((id) => {
@@ -600,17 +603,16 @@
 							console.log('blur dispatch error:', e);
 						}
 					});
-				});			
-				
+				});
 			}
-			return { isValid, errorList };			
+			return { isValid, errorList };
 		} catch (error) {
-			console.error('Save error:', error);	
+			console.error('Save error:', error);
 			return {
 				isValid: false,
 				errorList: ['Unexpected validation error']
-				};		
-		} 
+			};
+		}
 	}
 
 	async function handleGenerate() {
@@ -666,15 +668,21 @@
 	const clickButtonByText = (text: string) => {
 		const targetText = text.trim().toLowerCase();
 
-		const targetButton = Array.from(document.querySelectorAll("button")).find((b) =>
-			b.innerText.trim().toLowerCase() === targetText
+		const targetButton = Array.from(document.querySelectorAll('button')).find(
+			(b) => b.innerText.trim().toLowerCase() === targetText
 		);
 
 		targetButton?.click();
 	};
 
 	$effect(() => {
-		if (mode !== FORM_MODE.preview && mode !== FORM_MODE.view &&  mode !== FORM_MODE.portalEdit &&  mode !== FORM_MODE.portalView && typeof window !== 'undefined') {
+		if (
+			mode !== FORM_MODE.preview &&
+			mode !== FORM_MODE.view &&
+			mode !== FORM_MODE.portalEdit &&
+			mode !== FORM_MODE.portalView &&
+			typeof window !== 'undefined'
+		) {
 			const handleClose = (event: BeforeUnloadEvent) => {
 				if (!isFormCleared) {
 					event.preventDefault();
@@ -693,7 +701,6 @@
 			(window as any).__kilnFormState = (window as any).__kilnFormState || {};
 		}
 	});
-	
 
 	$effect(() => {
 		// Install the external-update bridge
@@ -808,7 +815,13 @@
 					{/if}
 
 					{#if interfaceItems.length === 0}
-					<Button disabled={disablePrint} kind="tertiary" id="print" class="no-print" onclick={handlePrint}>Print</Button>
+						<Button
+							disabled={disablePrint}
+							kind="tertiary"
+							id="print"
+							class="no-print"
+							onclick={handlePrint}>Print</Button
+						>
 					{/if}
 				</div>
 

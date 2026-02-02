@@ -1,7 +1,7 @@
 <script lang="ts">
 	import JsBarcode from 'jsbarcode';
 
-	let { barcode }: { barcode: { content: string } } = $props();
+	let { barcode }: { barcode: { content: string } | undefined } = $props();
 
 	export function setFooterText(text: string): void {
 		if (typeof document !== 'undefined') {

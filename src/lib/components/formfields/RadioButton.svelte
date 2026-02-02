@@ -49,6 +49,9 @@
 	function onchange() {
 		touched = true;
 	}
+	function onblur() {
+		touched = true;
+	}
 
 	$effect(() => {
 		return createValueSyncEffect({
@@ -121,14 +124,30 @@
 			>
 
 			{#each options as opt, index (opt.id)}
-				<RadioButton value={opt.value} labelText={opt.label} id={`${item.uuid}-option-${index}`} />
+				<RadioButton
+					value={opt.value}
+					labelText={opt.label}
+					id={`${item.uuid}-option-${index}`}
+					{onblur}
+				/>
 			{/each}
 		</RadioButtonGroup>
+		{#if anyError}
+			<div id={a11y.errorId} class="bx--form-requirement hack-visible" role="alert">{anyError}</div>
+		{/if}
 		{#if helperText}
 			<div id={a11y.helperId} class="bx--form__helper-text">{helperText}</div>
 		{/if}
-		{#if anyError}
-			<div id={a11y.errorId} class="invalid-text" role="alert">{anyError}</div>
-		{/if}
 	</div>
 </div>
+
+<style>
+	/* carbon components doesn't have a native way of adding errors to radio groups */
+	.bx--form-requirement.hack-visible {
+		display: block;
+		overflow: visible;
+		max-height: 12.5rem;
+		font-weight: 400;
+		color: var(--cds-text-error, #da1e28);
+	}
+</style>

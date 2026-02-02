@@ -193,6 +193,7 @@
   /* No spacing between adjacent fields */
   .field-container {
     margin-bottom: 0px !important;
+    break-inside: avoid;
   }
 
   /* FormRenderer: flatten grid and remove default spacing in print */
@@ -244,27 +245,6 @@
     visibility: visible !important;
   }
 
-  /* Never break before the very first visible block in the letter.
-      (Covers all letters without relying on specific IDs.) */
-  * {
-    page-break-before: avoid !important;
-    break-before: avoid-page !important;
-    margin-top: 0 !important;
-    padding-top: 0 !important;
-  }
-
-  /* Neutralize aggressive page-break rules inside the letter only
-      (safer than applying * to the whole document). */
-  [id^="letter-content-"] *,
-  .letter-content * {
-    page-break-before: auto !important;
-    page-break-after: auto !important;
-    page-break-inside: auto !important;
-    break-before: auto !important;
-    break-after: auto !important;
-    break-inside: auto !important;
-  }
-
   /* Common "top spacer" classes used at the start of letters — keep modest */
   .letter-header,
   .date-case-line,
@@ -285,7 +265,6 @@
     background: white !important;
     padding: 8px 0 0 0 !important;
     font-size: 11px !important;
-    max-height: 25mm !important;
     overflow: hidden !important;
     page-break-inside: avoid !important;
     z-index: 1000 !important;

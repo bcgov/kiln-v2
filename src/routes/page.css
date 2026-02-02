@@ -130,8 +130,6 @@ html, body {
 }
 
 .group-fields-grid {
-  display: grid !important;
-  grid-template-columns: repeat(1, 1fr) !important;
   padding: 16px;
 }
 

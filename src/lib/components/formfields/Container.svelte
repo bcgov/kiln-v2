@@ -67,7 +67,7 @@
 		if (!w) return;
 		w.__kilnActiveGroups = w.__kilnActiveGroups || {};
 		const registryKey = (item as any)._containerInstanceKey ?? item.uuid;
-  		w.__kilnActiveGroups[registryKey] = activeGroupIds();
+		w.__kilnActiveGroups[registryKey] = activeGroupIds();
 	}
 
 	function cleanupStaleFormState() {
@@ -83,7 +83,7 @@
 			// key format for repeatable children is: <containerUuid>-<groupId>-<childUuid>
 			const rest = key.slice(prefix.length);
 			const matchedChildUuid = [...childUuids].find((cu) => key.endsWith(`-${cu}`));
-    		if (!matchedChildUuid) continue;
+			if (!matchedChildUuid) continue;
 			const suffix = `-${matchedChildUuid}`;
 			const groupId = rest.slice(0, rest.length - suffix.length);
 			if (!active.has(groupId)) {
@@ -147,20 +147,19 @@
 	}
 
 	function getGroupSpecificChildren(group: { id: string; data: any; index: number }) {
-
 		const isContainer = (item: any) => item?.type === 'container' && Array.isArray(item?.children);
-		const isRepeatableContainer = (item: any) => isContainer(item) && item?.attributes?.isRepeatable === true;
+		const isRepeatableContainer = (item: any) =>
+			isContainer(item) && item?.attributes?.isRepeatable === true;
 		const parentKey = containerKey();
-		
+
 		function attachNestedRepeaterData(item: any): any {
 			const copy = { ...item };
 
 			if (isRepeatableContainer(copy) && Array.isArray(group.data[copy.uuid])) {
 				copy._containerInstanceKey = `${parentKey}-${group.id}-${copy.uuid}`;
 
-
 				if (Array.isArray(group.data[copy.uuid])) {
-				copy.repeaterData = group.data[copy.uuid];
+					copy.repeaterData = group.data[copy.uuid];
 				}
 
 				return copy;
@@ -188,21 +187,21 @@
 				_indexUuid: indexUuid
 			};
 
-		//direct nested repeater container
-		if (isRepeatableContainer(child) && Array.isArray(group.data[originalUuid])) {
+			//direct nested repeater container
+			if (isRepeatableContainer(child) && Array.isArray(group.data[originalUuid])) {
 				groupSpecificChild.repeaterData = group.data[originalUuid];
-				(groupSpecificChild as any)._containerInstanceKey = `${containerKey()}-${group.id}-${originalUuid}`;
+				(groupSpecificChild as any)._containerInstanceKey =
+					`${containerKey()}-${group.id}-${originalUuid}`;
 				return groupSpecificChild;
-		}
+			}
 
-		//non-repeatable container: bind nested repeaters inside it
-		if (isContainer(child) && !isRepeatableContainer(child)) {
-			return attachNestedRepeaterData(groupSpecificChild);
-		}
+			//non-repeatable container: bind nested repeaters inside it
+			if (isContainer(child) && !isRepeatableContainer(child)) {
+				return attachNestedRepeaterData(groupSpecificChild);
+			}
 
-
-		//Regular field value
-		if (group.data && group.data[originalUuid] !== undefined) {
+			//Regular field value
+			if (group.data && group.data[originalUuid] !== undefined) {
 				groupSpecificChild.value = group.data[originalUuid];
 				if (groupSpecificChild.attributes) {
 					groupSpecificChild.attributes = {
@@ -291,25 +290,27 @@
 						{repeaterItemLabel ? idx + 1 : ' '}
 					</div>
 				{/if}
-				<div
-					class="group-fields-grid"
-					style="display: grid; grid-template-columns: repeat(1, 1fr);"
-				>
+				<div class="group-fields-grid">
 					{#each getGroupSpecificChildren(group) as child (child._stableKey)}
-					{@const fieldItem =
-						child.type === 'container'
-						  ? child
-						  : {
-							  ...child,
-							  uuid: child._stableKey,
-							  attributes: {
-								...(child.attributes || {}),
-								id: child._stableKey
-							  }
-							}
-					  }
+						{@const fieldItem =
+							child.type === 'container'
+								? child
+								: {
+										...child,
+										uuid: child._stableKey,
+										attributes: {
+											...(child.attributes || {}),
+											id: child._stableKey
+										}
+									}}
 						{#if isFieldVisible(fieldItem, printing ? 'pdf' : 'web')}
-							<div style={applyWrapperStyles(child)} data-print-columns={child.visible_pdf || 1}>
+							<div
+								class={child.type === 'container'
+									? 'group-item-child-container'
+									: 'group-item-child-field'}
+								style={applyWrapperStyles(child)}
+								data-print-columns={child.visible_pdf || 1}
+							>
 								<FieldRenderer item={fieldItem} {mode} {printing} />
 							</div>
 						{/if}
@@ -336,13 +337,16 @@
 				{@html `<h${level}>${legend}</h${level}>`}
 			</legend>
 		{/if}
-		<div
-			class="container-fields-grid"
-			style="display: grid; grid-template-columns: repeat(1, 1fr);"
-		>
+		<div class="container-fields-grid">
 			{#each children as child (child.uuid)}
 				{#if isFieldVisible(child, printing ? 'pdf' : 'web')}
-					<div style={applyWrapperStyles(child)} data-print-columns={child.visible_pdf || 1}>
+					<div
+						class={child.type === 'container'
+							? 'group-item-child-container'
+							: 'group-item-child-field'}
+						style={applyWrapperStyles(child)}
+						data-print-columns={child.visible_pdf || 1}
+					>
 						<FieldRenderer item={child} {mode} {printing} />
 					</div>
 				{/if}
@@ -352,11 +356,6 @@
 {/if}
 
 <style>
-	.container-group {
-		display: grid;
-		grid-template-columns: repeat(1, 1fr);
-	}
-
 	/* Fieldset container - border styling handled by containerTypeStyleMap */
 	.container-fieldset {
 		margin-bottom: 20px;
@@ -374,7 +373,6 @@
 		.container-group.printing {
 			border: none !important;
 			margin: 0 0 0.5rem 0;
-			page-break-inside: avoid;
 		}
 
 		/* Reduce printed legend size and remove heavy background */
@@ -384,6 +382,7 @@
 			font-weight: 600;
 			font-size: 13px;
 			border: 0;
+			break-after: avoid;
 		}
 
 		/* Group item header: bold only, no boxy backgrounds/borders */
@@ -393,10 +392,21 @@
 			font-weight: 700;
 			font-size: 12px;
 			border: 0;
+			break-after: avoid;
 		}
 
 		.group-item-container {
 			margin-bottom: 0.5rem;
+		}
+
+		.group-item-child-field {
+			&:first-child {
+				break-after: avoid;
+			}
+			/* Can improve cases where a special item is at the bottom of a list, but causes more gaps */
+			/* &:last-child {
+				break-before: avoid;
+			} */
 		}
 
 		/* Ensure container-page is on its own page in print */
