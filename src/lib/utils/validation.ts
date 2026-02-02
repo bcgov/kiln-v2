@@ -407,8 +407,6 @@ export function validateAllFields(
   const effectiveGroupState: Record<string, FieldValue[]> =
     groupState ?? (win?.__kilnGroupState as Record<string, FieldValue[]>) ?? {};
 
-    console.log("effectiveGroupState >>",effectiveGroupState);
-
   const getType = (item: Item): ValueType => {
     switch (item.type) {
       case 'number-input':
@@ -442,23 +440,17 @@ export function validateAllFields(
     const containerKey = (container as any)._containerInstanceKey ?? container.uuid;
     const prefix = `${containerKey}-`;
 
-    console.log("prefix",prefix);
-
     // NEW: respect active group IDs if provided by Container.svelte
     const activeList: string[] | undefined = win?.__kilnActiveGroups?.[containerKey];
     const active = Array.isArray(activeList) && activeList.length ? new Set(activeList) : undefined;
-    console.log("activeList",activeList);
-    console.log("active",active);
 
     const byGroupId = new Map<string, Record<string, FieldValue>>();
 
     for (const key of Object.keys(state)) {
-      console.log("key > ",key);
       if (!key.startsWith(prefix)) continue;
       const matchedChildUuid = [...childUuids].find((cu) => key.endsWith(`-${cu}`));
       if (!matchedChildUuid) continue;
-      console.log("matchedChildUuid ",matchedChildUuid);
-
+    
       const rest = key.slice(prefix.length); // "<groupId>-<childUuid>"
       const suffix = `-${matchedChildUuid}`;
       const groupId = rest.slice(0, rest.length - suffix.length);
@@ -467,7 +459,6 @@ export function validateAllFields(
       if (active && !active.has(groupId)) continue;
 
       const groupObj = byGroupId.get(groupId) ?? {};
-      console.log("groupObj >",groupObj);
       groupObj[matchedChildUuid] = state[key];
       byGroupId.set(groupId, groupObj);
     }
@@ -479,29 +470,16 @@ export function validateAllFields(
   }
 
   function validateItem(item: Item, state: Record<string, FieldValue>, ctx?: { container?: Item; rowIndex?: number }) {
-    console.log("ctx >>",ctx);
-    console.log("item.uuid >>",item.uuid);
+    
     if (item.type === 'container' && item.children && isFieldVisible(item, 'web', state,true, ctx) ) {
       const isRepeatable = item.attributes?.isRepeatable === true;
 
       if (isRepeatable) {
         // Prefer explicit groupState rows when provided
         const containerKey = (item as any)._containerInstanceKey ?? item.uuid;
-        console.log("containerKey > ",containerKey);
-        //const explicitRows = effectiveGroupState[containerKey] ?? effectiveGroupState[item.uuid];
-        /* let rows = Array.isArray(explicitRows) && explicitRows.length > 0
-          ? explicitRows
-          : inferRowsFromState(item, effectiveFormState);
- */
+        
         let rows = inferRowsFromState(item, effectiveFormState);
-        console.log(
-          'Repeatable container:',
-          item.uuid,
-          'rows:',
-          rows.length
-        );  
-
-        // ✅ NEW: force validation when container is visible but empty
+        // NEW: force validation when container is visible but empty
         if (rows.length === 0) {
           rows = [{}];
         }
@@ -533,7 +511,6 @@ export function validateAllFields(
             validateItem(child, effectiveFormState, { container: item });
           } else {
             if (isFieldVisible(child, 'web', effectiveFormState,true)) {
-              console.log("inside element of container")
               runValidation(child, effectiveFormState, { container: item });
             }
           }
@@ -566,7 +543,6 @@ export function validateAllFields(
 
       // Create a unique key (handles repeatable rows without clobbering)
       const errorKey = getDOMId(item, ctx);
-      console.log("errorKey >",errorKey);
       // Surface only the first message per key (keep concise)
       if (!errors[errorKey]) {
         errors[errorKey] = firstError;
