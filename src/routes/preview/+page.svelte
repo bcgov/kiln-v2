@@ -108,9 +108,6 @@
 
 			jsonContent = boundData.form_definition || {};
 			saveData = boundData.data ? { data: boundData.data } : undefined;
-			// TEMP: Hardcoded barcode for testing - inject into jsonContent since RenderFrame derives barcode from formData.barcode
-			(jsonContent as any).barcode = { content: 'HR0080R,{{attachmentId}}' };
-			// Extract security classification from form definition
 			securityClassification = boundData.form_definition?.security_classification || undefined;
 			present = true;
 		} catch (e) {
