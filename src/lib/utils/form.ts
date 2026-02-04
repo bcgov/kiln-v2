@@ -6,7 +6,7 @@ function getContainerKey(item: Item): string {
 }
 
 // helper
-function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
+export function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
   if (!formDefinition) return;
 
@@ -49,6 +49,7 @@ function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
           const containerKey = getContainerKey(item);
           const groupIds = activeGroups[containerKey] || [];
           for (const child of item.children) {
+            if (child.type === 'container') continue;
             const childUuid = child.uuid;
             for (const groupId of groupIds) {
               const stableKey = `${containerKey}-${groupId}-${childUuid}`;
@@ -169,358 +170,6 @@ function buildSavedJson(formDefinition: FormDefinition) {
         if (!it) continue;
 
         if (it.type === 'container' && it.attributes?.isRepeatable === true) {
-          const containerKey = getContainerKey(it);
-          const gs = groupState[containerKey] as any;
-
-          if (Array.isArray(gs) && gs.length > 0) {
-            const first = gs[0];
-            const looksLikeRowObject =
-              typeof first === 'object' && first !== null && !Array.isArray(first);
-
-            if (!looksLikeRowObject) {
-              // Case: ID array -> build row objects IN THAT ORDER from formState
-              const idArray: string[] = gs as string[];
-              const rows: Record<string, FieldValue>[] = idArray.map((gid) => {
-                const row: Record<string, FieldValue> = {};
-                for (const child of (it.children || [])) {
-                  const childUuid = (child as Item).uuid;
-                  const stableKey = `${containerKey}-${gid}-${childUuid}`;
-                  const v = formState[stableKey];
-                  if (v !== undefined) row[childUuid] = v;
-                }
-                const descendantRepeaters = findDescendantRepeaters(it);
-                for (const rep of descendantRepeaters) {
-                  const nestedKey = `${containerKey}-${gid}-${rep.uuid}`;
-                  const nestedRows = inferRowsForInstanceKey(nestedKey, rep, formState);
-                  if (nestedRows.length) row[rep.uuid] = nestedRows as unknown as FieldValue;
-                }
-                return row;
-              });
-              groupState[containerKey] = rows as unknown as FieldValue[];
-            }
-          } else {
-            // Case: empty/missing -> infer rows; try to preserve order via __kilnActiveGroups
-            const active = activeGroups[containerKey] || [];
-
-            // discover group ids present in formState for this container
-            const childUuids = (it.children || []).map((c) => (c as Item).uuid);
-            const present = new Set<string>();
-            Object.keys(formState).forEach((k) => {
-              if (!k.startsWith(containerKey + '-')) return;
-              const matchedChildUuid = childUuids.find((cu) => k.endsWith(`-${cu}`));
-              if (!matchedChildUuid) return;
-              const rest = k.slice(containerKey.length + 1); // "<groupId>-<childUuid>"
-              const suffix = `-${matchedChildUuid}`;
-              const gid = rest.slice(0, rest.length - suffix.length);
-              present.add(gid);
-            });
-
-            const orderedIds = active.length
-              ? active.filter((gid) => present.has(gid))
-              : Array.from(present.values());
-
-            const descendantRepeaters = findDescendantRepeaters(it);
-            const rows: Record<string, FieldValue>[] = orderedIds.map((gid) => {
-              const row: Record<string, FieldValue> = {};
-              for (const child of (it.children || [])) {
-                const childUuid = (child as Item).uuid;
-                const stableKey = `${containerKey}-${gid}-${childUuid}`;
-                const v = formState[stableKey];
-                if (v !== undefined) row[childUuid] = v;
-              }
-              for (const rep of descendantRepeaters) {
-                const nestedKey = `${containerKey}-${gid}-${rep.uuid}`; // instance key for nested repeater under this parent row
-                const nestedRows = inferRowsForInstanceKey(nestedKey, rep, formState);
-                if (nestedRows.length) row[rep.uuid] = nestedRows as unknown as FieldValue;
-              }
-              return row;
-            });
-
-            groupState[containerKey] = rows as unknown as FieldValue[];
-          }
-        }
-
-        // Recurse – normalize nested containers too
-        if (it.type === 'container' && Array.isArray(it.children) && it.children.length) {
-          normalizeGroupStateTree(it.children as Item[]);
-        }
-      }
-    };
-
-    normalizeGroupStateTree(items);
-    // ---- END NORMALIZE ----
-
-  // Return the saved JSON
-  const template: any = {
-    ...formDefinition,
-    id: (formDefinition as any).id ?? '',
-    version: (formDefinition as any).version ?? '',
-    status: (formDefinition as any).status ?? '',
-    data: (formDefinition as any).data ?? {},
-    created_by: (formDefinition as any).created_by ?? '',
-    created_date: (formDefinition as any).created_date ?? '',
-    updated_by: (formDefinition as any).updated_by ?? '',
-    updated_date: (formDefinition as any).updated_date ?? '',
-  };
-
-  return {
-    formState,
-    groupState,
-    formDefinition,
-    items,
-    metadata: { updated_date: new Date().toISOString() },
-    // legacy/portal compact shape fields:
-    data: undefined,                 // filled by createSavedData()
-    form_definition: template        // for portal consumers
-  };
-}
-
-function getCookie(name: string): string | null {
-	const match = document.cookie.match(
-		new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)')
-	);
-	return match ? decodeURIComponent(match[1]) : null;
-}
-
-// --- Visibility ---
-export function isFieldVisible(
-  item: Item,
-  mode: 'web' | 'pdf' = 'web',
-  formState?: Record<string, FieldValue>
-): boolean {
-  // Use visible_web or visible_pdf
-  let visible = mode === 'pdf' ? item.visible_pdf !== false : item.visible_web !== false;
-  // Evaluate custom_visibility if present
-  if (item.custom_visibility && typeof item.custom_visibility === 'string') {
-    try {
-      // The custom_visibility string should be a JS function body, e.g. "{return true}"
-      // Allow access to formState if needed
-      const fn = new Function('formState', item.custom_visibility.replace(/^{|}$/g, ''));
-      visible = !!fn(formState || {});
-    } catch (e) {
-      // fallback to previous visible value
-    }
-  }
-  return visible;
-}
-
-// --- Save logic ---
-// Determine if a field should be included in the saved data
-export function shouldFieldBeIncludedForSaving(
-  item: Item,
-  mode: 'web' | 'pdf' = 'web',
-  formState?: Record<string, FieldValue>
-): boolean {
-  // Save if visible or save_on_submit is true
-  return isFieldVisible(item, mode, formState) || !!item.save_on_submit;
-}
-
-// --- Save data creation ---
-// Create the payload to be sent to the save API
-export function createSavedData(ctx?: {
-  formState?: Record<string, FieldValue>;
-  groupState?: Record<string, FieldValue[]>;
-  items?: Item[];
-  formDefinition?: FormDefinition;
-  metadata?: Record<string, any>;
-}): SavedData {
-  const win: any = typeof window !== 'undefined' ? window : undefined;
-
-  const formDefinition: FormDefinition =
-    ctx?.formDefinition ??
-    (win?.__kilnFormDefinition as FormDefinition) ??
-    (win?.formData as FormDefinition);
-
-  // Shared builder
-  const built = buildSavedJson(formDefinition);  
-
-  // Apply built formState, groupState, items and preserve ctx overrides if needed
-  const formState: Record<string, FieldValue> =
-    ctx?.formState ?? built.formState;
-  const items: Item[] = ctx?.items ?? built.items;
-  const groupState: Record<string, FieldValue[]> =
-    ctx?.groupState ?? built.groupState;
-
-  const saveFieldData: Record<string, FieldValue> = {};
-
-  function processItems(list: Item[], state: Record<string, FieldValue>) {
-    for (const item of list) {
-      if (item.type === 'container' && item.children) {
-        const isRepeatable = item.attributes?.isRepeatable === true;
-
-        if (isRepeatable) {
-          // Prefer explicit groupState rows when provided
-          const containerKey = getContainerKey(item);
-          const explicitRows = groupState[containerKey];
-          if (Array.isArray(explicitRows) && explicitRows.length > 0) {
-            const rows = explicitRows
-              .map((rowState) => {
-                const row: Record<string, FieldValue> = {};
-                for (const child of item.children || []) {
-                  if (
-                    rowState &&
-                    typeof rowState === 'object' &&
-                    !Array.isArray(rowState) &&
-                    shouldFieldBeIncludedForSaving(child, 'web', rowState as Record<string, FieldValue>) &&
-                    (rowState as Record<string, FieldValue>)[child.uuid] !== undefined
-                  ) {
-                    row[child.uuid] = (rowState as Record<string, FieldValue>)[child.uuid];
-                  }
-                }
-                // Copy nested repeater arrays that live on rowState
-                if (rowState && typeof rowState === 'object' && !Array.isArray(rowState)) {
-                  for (const [fieldKey, fieldValue] of Object.entries(rowState as Record<string, any>)) {
-                    const isNestedRepeaterArray = Array.isArray(fieldValue);
-                    const isAlreadyCaptured = row[fieldKey] !== undefined;
-                
-                    if (isNestedRepeaterArray && !isAlreadyCaptured) {
-                      row[fieldKey] = fieldValue as unknown as FieldValue;
-                    }
-                  }
-                }
-                return Object.keys(row).length > 0 ? row : null;
-              })
-              .filter(Boolean) as Record<string, FieldValue>[];
-
-            if (rows.length > 0) {
-              saveFieldData[item.uuid] = rows as unknown as FieldValue;
-            }
-            continue;
-          }
-
-          // Infer rows using Container.svelte stableKey pattern: `${containerUuid}-${groupId}-${originalChildUuid}`
-          const childUuids = new Set((item.children || []).map((c) => c.uuid));
-          const prefix = `${containerKey}-`;
-          const byGroupId = new Map<string, Record<string, FieldValue>>();
-
-          for (const key of Object.keys(state)) {
-            if (!key.startsWith(prefix)) continue;
-
-            const matchedChildUuid = [...childUuids].find((cu) => key.endsWith(`-${cu}`));
-            if (!matchedChildUuid) continue;
-
-            const rest = key.slice(prefix.length); // "<groupId>-<childUuid>"
-            const suffix = `-${matchedChildUuid}`;
-            const groupId = rest.slice(0, rest.length - suffix.length);
-
-            const groupObj = byGroupId.get(groupId) ?? {};
-            groupObj[matchedChildUuid] = state[key];
-            byGroupId.set(groupId, groupObj);
-          }
-
-          const inferredRows = [...byGroupId.values()].filter((row) => Object.keys(row).length > 0);
-          if (inferredRows.length > 0) {
-            saveFieldData[item.uuid] = inferredRows as unknown as FieldValue;
-          }
-        } else {
-          // Non-repeatable: process children as normal fields
-          for (const child of item.children) {
-            if (child.type === 'container' && child.children) {
-              processItems([child], state);
-            } else if (shouldFieldBeIncludedForSaving(child, 'web', state)) {
-              const val = state[child.uuid];
-              if (val !== undefined) {
-                saveFieldData[child.uuid] = val;
-              }
-            }
-          }
-        }
-      } else {
-        // Simple field
-        if (shouldFieldBeIncludedForSaving(item, 'web', state)) {
-          const val = state[item.uuid];
-          if (val !== undefined) {
-            saveFieldData[item.uuid] = val;
-          }
-        }
-      }
-    }
-  }
-
-  processItems(items, formState);
-
-  const updatedMetadata = {
-    ...(ctx?.metadata || {}),
-    updated_date: new Date().toISOString()
-  };
-
-  // Ensure form_definition is a Template object
-  const template: any = {
-    ...formDefinition,
-    id: (formDefinition as any).id ?? '',
-    version: (formDefinition as any).version ?? '',
-    status: (formDefinition as any).status ?? '',
-    data: (formDefinition as any).data ?? {},
-    created_by: (formDefinition as any).created_by ?? '',
-    created_date: (formDefinition as any).created_date ?? '',
-    updated_by: (formDefinition as any).updated_by ?? '',
-    updated_date: (formDefinition as any).updated_date ?? '',
-  };
-
-  return {
-    data: saveFieldData,
-    form_definition: template,
-    metadata: updatedMetadata
-  };
-}
-
-export async function saveFormData(action: 'save' | 'save_and_close' | 'generate'): Promise<string> {
-  try {
-    // @ts-ignore
-    const { API } = await import('$lib/utils/api');
-    let saveFormDataEndpoint = API.saveFormData;
-    if (action === 'generate'){
-      saveFormDataEndpoint = API.saveFormDataGenerate;
-    }
-
-    const win: any = typeof window !== 'undefined' ? window : undefined;
-
-    // Get formDefinition first so we can hydrate from DOM
-    const formDefinition: FormDefinition =
-      (win?.__kilnFormDefinition as FormDefinition) ??
-      (win?.formData as FormDefinition);
-
-    // Shared builder
-    const built = buildSavedJson(formDefinition);
-
-    // Ensure __kilnFormState has values for all visible fields
-    hydrateFormStateFromDOM(formDefinition);
-
-    // Apply built formState, groupState, tiems
-    const formState: Record<string, FieldValue> = built.formState;
-    const items: Item[] = built.items;
-    const groupState: Record<string, FieldValue[]> = built.groupState;
-
-    const state = sessionStorage.getItem("formParams");
-    const sessionParams = state ? (JSON.parse(state) as Record<string, string>) : {};
-    const token = (window as any)?.keycloak?.token ?? null;
-
-    // Force-sync all date inputs into formState at save time
-    if (typeof document !== 'undefined') {
-      const dateInputs = document.querySelectorAll<HTMLInputElement>('input[data-kiln-date="true"]');
-      dateInputs.forEach((input) => {
-        const uuid = input.getAttribute('data-kiln-uuid');
-        if (!uuid) return;
-
-        const v = input.value;
-        // Only write non-empty values; avoid clobbering with ""
-        if (v && v.trim() !== '') {
-          formState[uuid] = v;
-        }
-      });
-    }
-
-    // ---- NORMALIZE groupState (handles nested repeaters and preserves visual order) ----
-    const activeGroups: Record<string, string[]> =
-      (win?.__kilnActiveGroups as Record<string, string[]>) || {};
-           
-    const normalizeGroupStateTree = (list: Item[]) => {
-      if (!Array.isArray(list)) return;
-
-      for (const it of list) {
-        if (!it) continue;
-
-        if (it.type === 'container' && it.attributes?.isRepeatable === true) {
           const containerUuid = it.uuid;
           const containerKey = (it as any)._containerInstanceKey ?? containerUuid;
           const gs = groupState[containerKey] as any;
@@ -537,6 +186,7 @@ export async function saveFormData(action: 'save' | 'save_and_close' | 'generate
               const rows: Record<string, FieldValue>[] = idArray.map((gid) => {
                 const row: Record<string, FieldValue> = {};
                 for (const child of (it.children || [])) {
+                  if (child.type === 'container') continue;
                   const childUuid = (child as Item).uuid;
                   const stableKey = `${containerKey}-${gid}-${childUuid}`;
                   const v = formState[stableKey];
@@ -562,6 +212,14 @@ export async function saveFormData(action: 'save' | 'save_and_close' | 'generate
                 if (!gid) return rowObj;
   
                 const row: Record<string, FieldValue> = { ...rowObj };
+
+                for (const child of (it.children || [])) {
+                  if (child.type === 'container') continue;
+                  const childUuid = (child as Item).uuid;
+                  const stableKey = `${containerKey}-${gid}-${childUuid}`;
+                  const v = formState[stableKey];
+                  if (v !== undefined) row[childUuid] = v;
+                }
   
                 for (const rep of descendantRepeaters) {
                   const nestedKey = `${containerKey}-${gid}-${rep.uuid}`;
@@ -626,6 +284,288 @@ export async function saveFormData(action: 'save' | 'save_and_close' | 'generate
     normalizeGroupStateTree(items);
     // ---- END NORMALIZE ----
 
+  // Return the saved JSON
+  const template: any = {
+    ...formDefinition,
+    id: (formDefinition as any).id ?? '',
+    version: (formDefinition as any).version ?? '',
+    status: (formDefinition as any).status ?? '',
+    data: (formDefinition as any).data ?? {},
+    created_by: (formDefinition as any).created_by ?? '',
+    created_date: (formDefinition as any).created_date ?? '',
+    updated_by: (formDefinition as any).updated_by ?? '',
+    updated_date: (formDefinition as any).updated_date ?? '',
+  };
+
+  return {
+    formState,
+    groupState,
+    formDefinition,
+    items,
+    metadata: { updated_date: new Date().toISOString() },
+    // legacy/portal compact shape fields:
+    data: undefined,                 // filled by createSavedData()
+    form_definition: template        // for portal consumers
+  };
+}
+
+function getCookie(name: string): string | null {
+	const match = document.cookie.match(
+		new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)')
+	);
+	return match ? decodeURIComponent(match[1]) : null;
+}
+
+// --- Visibility ---
+export function isFieldVisible(
+  item: Item,
+  mode: 'web' | 'pdf' = 'web',
+  formState?: Record<string, FieldValue>,
+  includeDOMCheck = false,
+  ctx?: { container?: Item; rowIndex?: number }
+): boolean {
+  // Use visible_web or visible_pdf
+  let visible = mode === 'pdf' ? item.visible_pdf !== false : item.visible_web !== false;
+  // Evaluate custom_visibility if present
+  if (item.custom_visibility && typeof item.custom_visibility === 'string') {
+    try {
+      // The custom_visibility string should be a JS function body, e.g. "{return true}"
+      // Allow access to formState if needed
+      const fn = new Function('formState', item.custom_visibility.replace(/^{|}$/g, ''));
+      visible = !!fn(formState || {});
+    } catch (e) {
+      // fallback to previous visible value
+    }
+  }
+  // Final gate: DOM visibility
+  if (includeDOMCheck && mode === 'web') {
+    try {
+      const domIdForField = getDOMId(item, ctx);
+      visible = visible && isActuallyVisibleInDOM(domIdForField);
+    } catch (e) {
+      // fallback to previous visible value
+    }
+  }
+  return visible;
+}
+
+function isActuallyVisibleInDOM(id: string): boolean {
+  const el = document.getElementById(id);
+  if (!el) return false;
+
+  const wrapper =
+    (el.closest('.field-container, .container-group') as HTMLElement | null)
+    || el;
+
+  if (!(wrapper instanceof HTMLElement)) return false;
+
+  return (
+    wrapper.offsetParent !== null &&
+    getComputedStyle(wrapper).display !== 'none' &&
+    getComputedStyle(wrapper).visibility !== 'hidden'
+  );
+}
+
+// --- Save logic ---
+// Determine if a field should be included in the saved data
+export function shouldFieldBeIncludedForSaving(
+  item: Item,
+  mode: 'web' | 'pdf' = 'web',
+  formState?: Record<string, FieldValue>
+): boolean {
+  // Save if visible or save_on_submit is true
+  return isFieldVisible(item, mode, formState) || !!item.save_on_submit;
+}
+
+// --- Save data creation ---
+// Create the payload to be sent to the save API
+export function createSavedData(ctx?: {
+  formState?: Record<string, FieldValue>;
+  groupState?: Record<string, FieldValue[]>;
+  items?: Item[];
+  formDefinition?: FormDefinition;
+  metadata?: Record<string, any>;
+}): SavedData {
+  const win: any = typeof window !== 'undefined' ? window : undefined;
+
+  const formDefinition: FormDefinition =
+    ctx?.formDefinition ??
+    (win?.__kilnFormDefinition as FormDefinition) ??
+    (win?.formData as FormDefinition);
+
+  // Shared builder
+  const built = buildSavedJson(formDefinition);  
+  //hydrateFormStateFromDOM(formDefinition);
+
+  // Apply built formState, groupState, items and preserve ctx overrides if needed
+  // Ensure __kilnFormState has values for all visible fields
+    //hydrateFormStateFromDOM(formDefinition);
+
+    // Apply built formState, groupState, tiems
+    const formState: Record<string, FieldValue> = built.formState;
+    const items: Item[] = built.items;
+    const groupState: Record<string, FieldValue[]> = built.groupState;   
+    
+  const saveFieldData: Record<string, FieldValue> = {};
+
+  const processItems = (list: Item[], state: Record<string, any>) => {
+  for (const item of list) {
+    if (item.type === 'container' && item.children) {
+      const isRepeatable = item.attributes?.isRepeatable === true;
+
+      if (isRepeatable) {
+        const containerKey = (item as any)._containerInstanceKey ?? item.uuid;       
+        //const explicitRows = (groupState as any)[containerKey] ?? groupState[item.uuid];
+        const explicitRows = (groupState as any)[containerKey];
+        if (Array.isArray(explicitRows) && explicitRows.length > 0) {
+          const rows = explicitRows
+            .map((rowState) => {
+              const row: Record<string, any> = {};
+              for (const child of item.children || []) {
+                if (
+                  rowState &&
+                  typeof rowState === 'object' &&
+                  !Array.isArray(rowState) &&
+                  shouldFieldBeIncludedForSaving(
+                    child,
+                    'web',
+                    rowState as Record<string, any>
+                  ) &&
+                  (rowState as Record<string, any>)[child.uuid] !==
+                    undefined
+                ) {
+                  row[child.uuid] = (rowState as Record<string, any>)[
+                    child.uuid
+                  ];
+                }
+              }
+              // Preserve nested repeater arrays stored on the row object 
+              if (rowState && typeof rowState === 'object' && !Array.isArray(rowState)) {
+                for (const [k, v] of Object.entries(rowState as Record<string, any>)) {
+                  if (Array.isArray(v) && row[k] === undefined) {
+                    row[k] = v;
+                  }
+                }
+              }
+              return Object.keys(row).length > 0 ? row : null;
+            })
+            .filter(Boolean) as Record<string, any>[];
+
+          if (rows.length > 0) {            
+            saveFieldData[item.uuid] = rows;
+          }
+          continue;
+        }
+
+        const childUuids = new Set(
+          (item.children || []).map((c) => c.uuid)
+        );
+        const prefix = `${containerKey}-`;
+        const byGroupId = new Map<string, Record<string, any>>();
+
+        for (const key of Object.keys(state)) {
+          if (!key.startsWith(prefix)) continue;
+
+          const matchedChildUuid = [...childUuids].find((cu) =>
+            key.endsWith(`-${cu}`)
+          );
+          if (!matchedChildUuid) continue;
+
+          const rest = key.slice(prefix.length);
+          const suffix = `-${matchedChildUuid}`;
+          const groupId = rest.slice(0, rest.length - suffix.length);
+
+          const groupObj = byGroupId.get(groupId) ?? {};
+          groupObj[matchedChildUuid] = state[key];
+          byGroupId.set(groupId, groupObj);
+        }
+
+        const inferredRows = [...byGroupId.values()].filter(
+          (row) => Object.keys(row).length > 0
+        );
+        if (inferredRows.length > 0) {
+          saveFieldData[item.uuid] = inferredRows;
+        }
+      } else {
+        for (const child of item.children) {
+          if (child.type === 'container' && child.children) {
+            processItems([child], state);
+          } else if (
+            shouldFieldBeIncludedForSaving(child, 'web', state)
+          ) {
+            const val = state[child.uuid];
+            if (val !== undefined) {
+              saveFieldData[child.uuid] = val;
+            }
+          }
+        }
+      }
+    } else {
+      if (shouldFieldBeIncludedForSaving(item, 'web', state)) {
+        const val = state[item.uuid];
+        if (val !== undefined) {
+          saveFieldData[item.uuid] = val;
+        }
+      }
+    }
+  }
+};
+
+processItems(items, formState);
+
+  const updatedMetadata = {
+    ...(ctx?.metadata || {}),
+    updated_date: new Date().toISOString()
+  };
+
+  // Ensure form_definition is a Template object
+  const template: any = {
+    ...formDefinition,
+    id: (formDefinition as any).id ?? '',
+    version: (formDefinition as any).version ?? '',
+    status: (formDefinition as any).status ?? '',
+    data: (formDefinition as any).data ?? {},
+    created_by: (formDefinition as any).created_by ?? '',
+    created_date: (formDefinition as any).created_date ?? '',
+    updated_by: (formDefinition as any).updated_by ?? '',
+    updated_date: (formDefinition as any).updated_date ?? '',
+  };
+
+  return {
+    data: saveFieldData,
+    form_definition: template,
+    metadata: updatedMetadata
+  };
+}
+
+export async function saveFormData(action: 'save' | 'save_and_close' | 'generate'): Promise<string> {
+  try {
+    // @ts-ignore
+    const { API } = await import('$lib/utils/api');
+    let saveFormDataEndpoint = API.saveFormData;
+    if (action === 'generate'){
+      saveFormDataEndpoint = API.saveFormDataGenerate;
+    }
+
+    const win: any = typeof window !== 'undefined' ? window : undefined;
+
+    // Get formDefinition first so we can hydrate from DOM
+    const formDefinition: FormDefinition =
+      (win?.__kilnFormDefinition as FormDefinition) ??
+      (win?.formData as FormDefinition);
+
+    // Shared builder
+    const built = buildSavedJson(formDefinition);
+
+    // Apply built formState, groupState, tiems
+    const formState: Record<string, FieldValue> = built.formState;
+    const items: Item[] = built.items;
+    const groupState: Record<string, FieldValue[]> = built.groupState;
+
+    const state = sessionStorage.getItem("formParams");
+    const sessionParams = state ? (JSON.parse(state) as Record<string, string>) : {};
+    const token = (window as any)?.keycloak?.token ?? null;    
+
     const payload = {
       action,
       formState,
@@ -664,8 +604,7 @@ export async function saveFormData(action: 'save' | 'save_and_close' | 'generate
 
     if (response.ok) {
       const result = await response.json();
-      console.log("Save result:", result);
-
+      
       if (result.data?.action === 'save_and_close') {
         const { saved, unlocked } = result.data;
         if (saved && unlocked) {
@@ -802,3 +741,21 @@ export async function submitForButtonAction(buttonConfig: any): Promise<string> 
 			return 'failed';
 		}
 	}
+
+  export function getDOMId(
+  item: Item,
+  ctx?: { container?: Item; rowIndex?: number }
+) {
+  const win: any = (typeof window !== 'undefined') ? window : undefined;
+  if (ctx?.container && ctx.rowIndex != null) {
+    const containerKey = (ctx.container as any)._containerInstanceKey ?? ctx.container.uuid;
+    const groupId =
+      win?.__kilnActiveGroups?.[containerKey]?.[ctx.rowIndex];
+
+    if (groupId) {
+      return `${containerKey}-${groupId}-${item.uuid}`;
+    }
+  }
+
+  return item.uuid; // non-repeatable fallback
+}
