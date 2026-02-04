@@ -66,7 +66,7 @@
 
 	$effect(() => {
 		if (securityClassification && securityClassification.trim()) {
-			document.documentElement.style.setProperty('--security-classification', `"${securityClassification.trim()}"`);
+			document.documentElement.style.setProperty('--security-classification', `"Security Classification: ${securityClassification.trim()}"`);
 		} else {
 			document.documentElement.style.setProperty('--security-classification', '""');
 		}
@@ -81,15 +81,18 @@
 
 	@page {
 		@bottom-left {
-			line-height: 1.1;
+			content: attr(data-form-id) "\A" var(--security-classification);
+			white-space: pre-wrap;
+			font-size: 9pt;
+			line-height: 1.3;
 		}
 		@bottom-center {
 			content: var(--barcode);
 			margin: 0 0.5em;
 		}
 		@bottom-right {
-			content: var(--security-classification);
-			font-size: 10pt;
+			content: "Page " counter(page) " of " counter(pages);
+			font-size: 9pt;
 		}
 	}
 </style>
