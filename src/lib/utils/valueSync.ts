@@ -34,6 +34,11 @@ export function createValueSyncEffect<T = any>(options: ValueSyncOptions<T>) {
 		const target = event.target as HTMLInputElement;
 		if (!target) return;
 
+		const isTargetCheckboxOrRadio = target instanceof HTMLInputElement &&
+			(target.type === 'checkbox' || target.type === 'radio');
+
+		if (isTargetCheckboxOrRadio) return;
+
 		const parsedValue = parser(target.value);
 		const currentValue = getValue();
 
@@ -45,6 +50,8 @@ export function createValueSyncEffect<T = any>(options: ValueSyncOptions<T>) {
 	const handleExternalUpdate = (event: Event) => {
 		const customEvent = event as CustomEvent;
 		if (!customEvent.detail) return;
+
+		if ('checked' in customEvent.detail) return;
 
 		const parsedValue = parser(customEvent.detail.value);
 		const currentValue = getValue();
