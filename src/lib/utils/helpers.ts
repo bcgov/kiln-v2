@@ -90,3 +90,26 @@ import type { Item } from '$lib/types/form';
 export function getFieldLabel(item: Item): string {
 	return item.attributes?.labelText ?? item.attributes?.text ?? item.name ?? '';
 }
+
+export function getOriginalServerHeader(): Record<string, string> {
+		try {
+			// 1) URL ?originalServer=...
+			if (typeof window !== 'undefined') {
+				const params = new URLSearchParams(window.location.search);
+				const fromQs = params.get('originalServer');
+				if (fromQs && fromQs.trim()) return { 'X-Original-Server': fromQs.trim() };
+
+				// 2) local/session storage
+				const fromStore =
+					localStorage.getItem('originalServer') || sessionStorage.getItem('originalServer');
+				if (fromStore && fromStore.trim()) return { 'X-Original-Server': fromStore.trim() };
+
+				// 3) global set by host page (optional)
+				const g = (window as any).__kilnOriginalServer;
+				if (g && typeof g === 'string' && g.trim()) return { 'X-Original-Server': g.trim() };
+			}
+		} catch {
+			// ignore
+		}
+		return {};
+	}

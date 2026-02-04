@@ -134,6 +134,17 @@
 		isRequired: item.is_required,
 		readOnly
 	});
+
+	// Filter out 'id' from attributes for the outer DatePicker wrapper to prevent
+	// duplicate IDs when inside a repeater (the wrapper div should not have an ID)
+	const datePickerWrapperAttrs = $derived.by(() => {
+		const attrs = filterAttributes(item.attributes);
+		if (attrs && typeof attrs === 'object') {
+			const { id, ...rest } = attrs;
+			return rest;
+		}
+		return attrs;
+	});
 </script>
 
 <div class="field-container date-picker-field">
@@ -141,7 +152,7 @@
 
 	<div class="web-input" class:visible={!printing && item.visible_web !== false} class:moustache={enableVarSub}>
 		<DatePicker
-			{...filterAttributes(item.attributes)}
+			{...datePickerWrapperAttrs}
 			{...extAttrs as any}
 			class={item.class}
 			datePickerType="single"
