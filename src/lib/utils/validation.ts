@@ -415,6 +415,8 @@ export function validateAllFields(
         return 'date';
       case 'checkbox-input':
         return 'boolean';
+      case 'currency-input':
+        return 'number';
       case 'select-input':
       case 'radio-input':
       case 'text-input':
