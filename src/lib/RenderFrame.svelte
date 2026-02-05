@@ -47,7 +47,8 @@
 	let modalSecondaryText = $state<string | null>(null);
 	let modalResolver = $state<((result: boolean) => void) | null>(null);
 
-	let barcode = $derived<{ content: string } | undefined>(formData.barcode);
+	let barcode = $derived<{ content: string } | undefined>(formData?.barcode);
+	let securityClassification = $derived<string | undefined>(formData?.security_classification);
 
 	function resetModalRuntime() {
 		modalMode = 'info';
@@ -867,5 +868,5 @@
 			{/if}
 		</div>
 	</div>
-	<PrintFooter bind:this={printFooter} {barcode} />
+	<PrintFooter bind:this={printFooter} {barcode} {securityClassification} />
 </div>
