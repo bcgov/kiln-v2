@@ -23,6 +23,7 @@
 	let readonly = $state(item.is_read_only ?? false);
 	let labelText = $state(getFieldLabel(item));
 	let helperText = item.help_text ?? '';
+	let hideLabel = item.attributes?.hideLabel ?? false;
 	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let touched = $state(false);
 
@@ -151,6 +152,7 @@
 			id={item.uuid}
 			class={item.class}
 			{readonly}
+			{hideLabel}
 			hideSteppers
 			allowEmpty
 			value={value ?? ''}
