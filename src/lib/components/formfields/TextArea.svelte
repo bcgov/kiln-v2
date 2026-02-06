@@ -24,6 +24,7 @@
 	let labelText = $state(getFieldLabel(item));
 	let placeholder = item.attributes?.placeholder ?? '';
 	let helperText = item.help_text ?? '';
+	let hideLabel = item.attributes?.hideLabel ?? false;
 	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let maxlength = item.attributes?.maxCount ?? undefined;
 	let touched = $state(false);
@@ -103,6 +104,7 @@
 			{placeholder}
 			bind:value
 			readonly={readOnly}
+			{hideLabel}
 			invalid={!!anyError}
 			invalidText={anyError}
 			{maxlength}

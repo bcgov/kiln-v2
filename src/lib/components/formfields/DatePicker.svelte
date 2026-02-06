@@ -21,6 +21,7 @@
 
 	let readOnly = $state(item.is_read_only ?? false);
 	let labelText = $state(getFieldLabel(item));
+	let hideLabel = item.attributes?.hideLabel ?? false;
 	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let helperText = item.help_text ?? '';
 	let touched = $state(false);
@@ -163,6 +164,7 @@
 				{...filterAttributes(item.attributes)}
 				id={item.uuid}
 				disabled={readOnly}
+				{hideLabel}
 				invalid={!!anyError}
 				invalidText={anyError}
 				{oninput}

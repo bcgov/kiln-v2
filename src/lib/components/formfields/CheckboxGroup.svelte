@@ -20,6 +20,7 @@
 	const options = $derived((item.options ?? []) as FormOption[]);
 	const labelText = $derived(getFieldLabel(item));
 	const helperText = $derived(item.help_text ?? '');
+	const hideLabel = $derived(item.attributes?.hideLabel ?? false);
 	const enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
 
 	const a11y = $derived(
@@ -109,7 +110,7 @@
 		{...filterAttributes(filteredAttributes)}
 		{...extAttrs}
 	>
-		<label id={a11y.labelId} class="bx--label" class:required={item.is_required}>
+		<label id={a11y.labelId} class="bx--label" class:bx--visually-hidden={hideLabel} class:required={item.is_required}>
 			{@html labelText}
 		</label>
 
