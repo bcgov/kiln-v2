@@ -193,7 +193,6 @@
   /* No spacing between adjacent fields */
   .field-container {
     margin-bottom: 0px !important;
-    break-inside: avoid;
   }
 
   /* FormRenderer: flatten grid and remove default spacing in print */
