@@ -149,7 +149,7 @@
 
 <div
 	class="field-container number-input-field"
-	class:format-currency={item?.attributes?.formatStyle === 'currency' && 'format-currency'}
+	class:format-currency={item?.attributes?.formatStyle === 'currency'}
 >
 	<PrintRow
 		{item}
