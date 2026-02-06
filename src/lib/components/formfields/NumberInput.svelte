@@ -196,9 +196,10 @@
 	:global {
 		.bx--number {
 			input[type='number'] {
-				font-family: 'BC Sans', var(--default-font-family), sans-serif;
-				font-size: 1rem;
-				font-weight: 400;
+				font-family: var(--default-font-family), sans-serif;
+				font-size: var(--cds-body-short-01-font-size, 0.875rem);
+				font-weight: var(--cds-body-short-01-font-weight, 400);
+				line-height: var(--cds-body-short-01-line-height, 1.25rem);
 				letter-spacing: 1px;
 			}
 		}
@@ -208,7 +209,7 @@
 					content: '$';
 					position: absolute;
 					left: 1rem;
-					font-size: 1rem;
+					font-size: var(--cds-body-short-01-font-size, 0.875rem);
 				}
 				input {
 					padding-left: calc(1.15rem + 1ch);
