@@ -10,7 +10,7 @@
 	} from '$lib/utils/valueSync';
 	import './fields.css';
 	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
-	import { unmaskNumberString } from '$lib/utils/mask';
+	import { preprocessDecimalInput, unmaskNumberString } from '$lib/utils/mask';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
 	import { MaskInput } from 'maska';
@@ -113,26 +113,8 @@
 			locale: 'en-CA',
 			fraction: 2
 		},
-		preProcess: (val: string) => {
-			const unmaskedValue = unmaskNumberString(val).split('.');
-
-			// Intl.NumberFormat loses precision at 16 digits
-			if (unmaskedValue.length > 1) { // has decimal
-				if (unmaskedValue[0].length === 0) {
-					// insert a 0 if leading with a decimal
-					return `0.${unmaskedValue[1].substring(0, 2)}`;
-				}
-				if (unmaskedValue[0].length > 13) {
-					// tried to add decimal without space for 2 decimals
-					return unmaskedValue[0].substring(0, 15);
-				}
-				// allow 13 digits before decimal + 2 after
-				return `${unmaskedValue[0].substring(0, 13)}.${unmaskedValue[1].substring(0, 2)}`;
-			}
-			return unmaskedValue[0].substring(0, 15);
-		},
+		preProcess: preprocessDecimalInput(2, 2),
 		postProcess: (val: string) => {
-			// const maxValue = Math.min(parseFloat(val), max);
 			return val ? `$${val}` : '';
 		}
 	};
