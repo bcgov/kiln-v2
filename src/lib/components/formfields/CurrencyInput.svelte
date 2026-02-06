@@ -115,8 +115,13 @@
 		},
 		preProcess: (val: string) => {
 			const unmaskedValue = unmaskNumberString(val).split('.');
+
 			// Intl.NumberFormat loses precision at 16 digits
 			if (unmaskedValue.length > 1) { // has decimal
+				if (unmaskedValue[0].length === 0) {
+					// insert a 0 if leading with a decimal
+					return `0.${unmaskedValue[1].substring(0, 2)}`;
+				}
 				if (unmaskedValue[0].length > 13) {
 					// tried to add decimal without space for 2 decimals
 					return unmaskedValue[0].substring(0, 15);
