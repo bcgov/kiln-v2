@@ -22,6 +22,7 @@
 	let labelText = $state(getFieldLabel(item));
 	let readonly = $state(item.is_read_only ?? false);
 	let helperText = item.help_text ?? '';
+	let hideLabel = item.attributes?.hideLabel ?? false;
 	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let touched = $state(false);
 
@@ -110,6 +111,7 @@
 			class={item.class}
 			bind:checked
 			disabled={readonly}
+			{hideLabel}
 			{onchange}
 			{onblur}
 			role="checkbox"

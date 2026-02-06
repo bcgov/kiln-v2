@@ -24,6 +24,7 @@
 	let error = $state(item.attributes?.error ?? '');
 	let readonly = $state(item.is_read_only ?? false);
 	let labelText = $state(getFieldLabel(item));
+	let hideLabel = item.attributes?.hideLabel ?? false;
 	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let helperText = item.help_text ?? '';
 	let options = item.options ?? [];
@@ -113,6 +114,7 @@
 			class={item.class}
 			name={item.uuid}
 			bind:selected
+			hideLegend={hideLabel}
 			role="radiogroup"
 			data-selected={selected}
 			{...a11y.ariaProps}

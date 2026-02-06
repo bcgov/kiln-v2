@@ -25,6 +25,7 @@
 	let readOnly = $state(item.is_read_only ?? false);
 	let labelText = $state(getFieldLabel(item));
 	let helperText = item.help_text ?? '';
+	let hideLabel = item.attributes?.hideLabel ?? false;
 	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let options = item.options ?? [];
 	let touched = $state(false);
@@ -110,6 +111,7 @@
 			class={item.class}
 			bind:selected
 			disabled={readOnly}
+			{hideLabel}
 			invalid={!!anyError}
 			invalidText={anyError}
 			{...a11y.ariaProps}
