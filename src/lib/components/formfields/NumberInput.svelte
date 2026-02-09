@@ -30,8 +30,7 @@
 	let extAttrs = $state<Record<string, any>>({});
 
 	let printValue = $derived.by(() => {
-		const valueStr = value !== null && value !== undefined ? (value === 0 ? value.toString() : value) : ''
-		return item?.attributes?.formatStyle === 'currency' ? '$' + valueStr : valueStr;
+		return value !== null && value !== undefined ? (value === 0 ? value.toString() : value) : '';
 	});
 
 	const rules = $derived.by(() => {
@@ -147,16 +146,8 @@
 	});
 </script>
 
-<div
-	class="field-container number-input-field"
-	class:format-currency={item?.attributes?.formatStyle === 'currency'}
->
-	<PrintRow
-		{item}
-		{printing}
-		{labelText}
-		value={printValue}
-	/>
+<div class="field-container number-input-field">
+	<PrintRow {item} {printing} {labelText} value={printValue} />
 	<div
 		class="web-input"
 		class:visible={!printing && item.visible_web !== false}
@@ -201,19 +192,6 @@
 				font-weight: var(--cds-body-short-01-font-weight, 400);
 				line-height: var(--cds-body-short-01-line-height, 1.25rem);
 				letter-spacing: 1px;
-			}
-		}
-		.format-currency {
-			.bx--number__input-wrapper {
-				&::before {
-					content: '$';
-					position: absolute;
-					left: 1rem;
-					font-size: var(--cds-body-short-01-font-size, 0.875rem);
-				}
-				input {
-					padding-left: calc(1.15rem + 1ch);
-				}
 			}
 		}
 	}

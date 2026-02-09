@@ -51,11 +51,11 @@
 		const label = item.attributes?.labelText ?? item.name;
 		const isRequired = item.is_required === true;
 
-		// Delegate mask-aware checks (currency, phone, email) to shared helper
+		// Delegate mask-aware checks (phone, email) to shared helper
 		const maskErr = validateMaskedValue(value, item.attributes, { fieldLabel: label, isRequired });
 		if (maskErr) return maskErr;
 		// For masked input types, skip the generic string pattern validation (rules.pattern) because masked formats are validated above
-		if (['currency', 'phone', 'email'].includes(maskType)) {
+		if (['phone', 'email'].includes(maskType)) {
 			return '';
 		}
 
@@ -127,8 +127,8 @@
 	$effect(() => {
 		if (maskApplied || typeof document === 'undefined') return;
 		const maskType = item?.attributes?.maskType;
-			// Apply maska for phone and currency
-			if (!['phone', 'currency'].includes(maskType)) {
+		// Apply maska for phone
+		if (maskType !== 'phone') {
 			return;
 		}
 		const raw = normalizeDash(item.attributes?.mask).trim();
