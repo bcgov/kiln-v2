@@ -27,8 +27,9 @@ export function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
 
     if (!el) return undefined;
 
-    // for our use-case (text inputs, dates, etc...) .value is fine
-    const raw = (el as any).value;
+    // handle inputs like currency where masked value is different to what we want to save
+    const raw = el.getAttribute('data-raw-value') !== null ? el.getAttribute('data-raw-value') : (el as any).value;
+
     if (raw == null) return undefined;
 
     const s = String(raw);

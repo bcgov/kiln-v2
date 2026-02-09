@@ -129,6 +129,24 @@ export interface DateField extends BaseFormField {
   value?: string | null;
 }
 
+export interface CurrencyField extends BaseFormField {
+  type: "currency-input";
+  value?: string;
+  attributes: {
+    // locale: string; // not yet, maska barely supports this
+    // currency: string; // will require custom mask processing
+    value?: string;
+    defaultValue?: string;
+    hideLabel?: boolean;
+    labelText?: string;
+    placeholder?: string;
+    enableVarSub?: boolean;
+    min?: number | string;
+    max?: number | string;
+    step?: number | string;
+  }
+}
+
 export interface GroupField extends BaseFormField {
   type: "group";
   groupId?: string;
