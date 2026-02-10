@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { TextInput } from 'carbon-components-svelte';
+	import { NumberInput, TextInput } from 'carbon-components-svelte';
 	import type { Item, NumberField } from '$lib/types/form';
 	import {
 		createValueSyncEffect,
@@ -33,11 +33,13 @@
 	let helperText = item.help_text ?? '';
 	let hideLabel = item.attributes?.hideLabel ?? false;
 	let enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
+	let maskType = $derived(item.attributes?.maskType ?? 'integer');
 	let fractionDigits = $derived.by(() => {
 		return item.attributes?.step
 			? (item.attributes?.step.toString().split('.')[1]?.length ?? 0)
 			: 0;
 	});
+	let FieldComponent = $derived(maskType === 'decimal' ? TextInput : NumberInput);
 
 	let touched = $state(false);
 	let ref = $state<HTMLInputElement | null>(null);
@@ -54,7 +56,7 @@
 			type: 'number'
 		});
 		// If maskType indicates integer, enforce integer rule
-		if (item?.attributes?.maskType === 'integer') r.isInteger = true;
+		if (maskType === 'integer') r.isInteger = true;
 		return r;
 	});
 	let anyError = $derived.by(() => {
@@ -74,7 +76,6 @@
 	}
 
 	function handleKeyDown(e: KeyboardEvent) {
-		const maskType = item?.attributes?.maskType;
 		if (maskType === 'integer') {
 			// block decimal separator characters
 			if (e.key === '.' || e.key === ',') {
@@ -146,7 +147,7 @@
 		class:visible={!printing && item.visible_web !== false}
 		class:moustache={enableVarSub}
 	>
-		<TextInput
+		<FieldComponent
 			{...filterAttributes(item?.attributes)}
 			{...a11y.ariaProps}
 			{...extAttrs as any}
@@ -160,16 +161,16 @@
 			allowEmpty
 			invalid={!!anyError}
 			invalidText={anyError}
-			inputmode={item?.attributes?.maskType === 'decimal' ? 'decimal' : 'numeric'}
+			inputmode={maskType === 'decimal' ? 'decimal' : 'numeric'}
 			onchange={handleInput}
 			onblur={handleInput}
-			on:keydown={handleKeyDown}
+			onkeydown={handleKeyDown}
 			data-raw-value={unmaskedValue}
 		>
 			<span slot="labelChildren" id={a11y.labelId} class:required={item.is_required}
 				>{@html labelText}</span
 			>
-		</TextInput>
+		</FieldComponent>
 		{#if anyError}
 			<div id={a11y.errorId} class="bx--form-requirement" role="alert">{anyError}</div>
 		{/if}
