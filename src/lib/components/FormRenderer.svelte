@@ -1,9 +1,8 @@
 <script lang="ts">
 	import '$lib/components/formfields/fields.css';
 
-	import type { Item, Template } from '$lib/types/form';
+	import type { Template } from '$lib/types/form';
 	import FieldRenderer from './FieldRenderer.svelte';
-	import { isFieldVisible } from '$lib/utils/form';
 
 	let {
 		formData,
@@ -26,8 +25,6 @@
 
 <div class="form-renderer" class:printing={printingState}>
 	{#each elements as item (item.uuid)}
-		{#if isFieldVisible(item, viewMode)}
-			<FieldRenderer {item} {mode} printing={printingState} />
-		{/if}
+		<FieldRenderer {item} {mode} printing={printingState} />
 	{/each}
 </div>
