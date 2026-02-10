@@ -39,6 +39,9 @@
 			? (item.attributes?.step.toString().split('.')[1]?.length ?? 0)
 			: 0;
 	});
+
+	// carbon's NumberInput has UX issues with decimal values, even with allowDecimal
+	// keep using it for integer for form script compatability
 	let FieldComponent = $derived(maskType === 'decimal' ? TextInput : NumberInput);
 
 	let touched = $state(false);
