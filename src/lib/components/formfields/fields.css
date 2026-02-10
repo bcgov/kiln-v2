@@ -41,6 +41,14 @@
 	font-weight: 300;
 }
 
+.container-group {
+	display: none;
+}
+
+.container-group.visible {
+	display: block;
+}
+
 .text-info-field {
 	padding: 10px 0px;
 	font: initial;
