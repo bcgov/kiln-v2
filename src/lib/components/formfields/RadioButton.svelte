@@ -121,7 +121,7 @@
 			{onchange}
 			{...extAttrs as any}
 		>
-			<span slot="legendText" id={a11y.labelId} class:required={item.is_required}
+			<span slot="legendChildren" id={a11y.labelId} class:required={item.is_required}
 				>{@html labelText}</span
 			>
 

@@ -171,7 +171,7 @@
 			on:paste={handlePaste}
 			{...extAttrs as any}
 		>
-			<span slot="label" id={a11y.labelId} class:required={item.is_required}>{@html labelText}</span
+			<span slot="labelChildren" id={a11y.labelId} class:required={item.is_required}>{@html labelText}</span
 			>
 		</NumberInput>
 		{#if anyError}

@@ -167,7 +167,7 @@
 			{onblur}
 			{...extAttrs as any}
 		>
-			<span slot="labelText" id={a11y.labelId} class:required={item.is_required}
+			<span slot="labelChildren" id={a11y.labelId} class:required={item.is_required}
 				>{@html labelText}</span
 			>
 		</TextInput>
