@@ -3,7 +3,6 @@
 	import { Add, TrashCan } from 'carbon-icons-svelte';
 	import FieldRenderer from '../FieldRenderer.svelte';
 	import type { Item } from '$lib/types/form';
-	import { isFieldVisible } from '$lib/utils/form';
 
 	let {
 		item,
