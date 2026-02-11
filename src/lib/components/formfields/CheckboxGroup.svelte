@@ -127,7 +127,7 @@
 				aria-checked={selected.includes(opt.value) ? 'true' : 'false'}
 				aria-labelledby={`${a11y.labelId} ${item.uuid}-${opt.value}-label`}
 			>
-				<span slot="labelText" id={`${item.uuid}-${opt.value}-label`}>
+				<span slot="labelChildren" id={`${item.uuid}-${opt.value}-label`}>
 					{opt.label}
 				</span>
 			</Checkbox>

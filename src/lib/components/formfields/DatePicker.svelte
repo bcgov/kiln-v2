@@ -174,7 +174,7 @@
 				data-kiln-date="true"
 				data-kiln-uuid={item.uuid}
 			>
-				<span slot="labelText" class:required={item.is_required}>{@html labelText}</span>
+				<span slot="labelChildren" class:required={item.is_required}>{@html labelText}</span>
 			</DatePickerInput>
 		</DatePicker>
 		{#if anyError}

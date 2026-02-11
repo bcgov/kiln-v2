@@ -15,7 +15,7 @@
 	import PrintRow from './common/PrintRow.svelte';
 	import { MaskInput } from 'maska';
 
-	const {
+	let {
 		item,
 		printing = false
 	}: {
@@ -41,11 +41,11 @@
 
 	let ref = $state<HTMLInputElement | null>(null);
 
-	const rules = $derived.by(() => ({
+	let rules = $derived.by(() => ({
 		...rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'number' }),
 		isInteger: false
 	}));
-	const anyError = $derived.by(() => {
+	let anyError = $derived.by(() => {
 		if (!touched) return '';
 		if (readOnly) return '';
 		return (
@@ -154,10 +154,10 @@
 			{onblur}
 			bind:ref
 			{...extAttrs as any}
-			inputmode="numeric"
+			inputmode="decimal"
 			data-raw-value={unmaskedValue}
 		>
-			<span slot="labelText" id={a11y.labelId} class:required={item.is_required}
+			<span slot="labelChildren" id={a11y.labelId} class:required={item.is_required}
 				>{@html labelText}</span
 			>
 		</TextInput>

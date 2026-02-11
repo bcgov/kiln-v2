@@ -174,8 +174,8 @@ export function unmaskNumberString(s?: string): string {
 	if (!s) return '';
 	// Keep only digits, dot, space, and minus; remove everything else
 	const cleaned = String(s).replace(/[^0-9. -]/g, '').trim();
-	// Additional safety: remove any remaining commas (though they should already be gone)
-	return cleaned.replace(/,/g, '');
+	// Remove any hyphens that aren't the first character
+	return cleaned.replace(/(?!^-)-/g, '');
 }
 
 /**
@@ -214,30 +214,41 @@ export function filterInputByMaskType(
 	}
 }
 
-/** 
+/**
  * Clamps decimal number to <16 significant digits and n decimal places.
  * this avoids problems with Intl.NumberFormat losing precision at 16 digits
  * @param decimalPlaces - number of decimal places to allow (default 2)
  * @param reservedDecimalPlaces - minimum number of remaining digits required to allow adding a decimal
  * @returns a function that takes a string input and returns a clamped decimal string
  */
-export const preprocessDecimalInput = (decimalPlaces: number = 2, reservedDecimalPlaces: number = 1) => (val: string): string => {
-	const sigDigits = 15;
-	const clampedDecimalPlaces = Math.min(decimalPlaces, sigDigits - 1);
-	const unmaskedValue = unmaskNumberString(val).split('.');
-	
-	if (unmaskedValue.length > 1 && clampedDecimalPlaces > 0) { // has decimal
-		if (unmaskedValue[0].length === 0) {
-			// insert a 0 if leading with a decimal
-			return `0.${unmaskedValue[1].substring(0, clampedDecimalPlaces)}`;
+export const preprocessDecimalInput =
+	(decimalPlaces: number = 2, reservedDecimalPlaces: number = 1) =>
+	(val: string): string => {
+		const sigDigits = 15;
+		const clampedDecimalPlaces = Math.min(decimalPlaces, sigDigits - 1);
+		const unmaskedValue = unmaskNumberString(normalizeDash(val)).split('.');
+
+		if (unmaskedValue.length > 1 && clampedDecimalPlaces > 0) {
+			// has decimal
+			if (unmaskedValue[0].length === 0) {
+				// insert a 0 if leading with a decimal
+				return `0.${unmaskedValue[1].substring(0, clampedDecimalPlaces)}`;
+			}
+			if (unmaskedValue[0].length > sigDigits - reservedDecimalPlaces) {
+				// tried to add decimal point without space for minimum decimal places
+				return unmaskedValue[0].substring(0, sigDigits);
+			}
+			// allow 15 - reserved places before decimal
+			const whole = unmaskedValue[0].substring(
+				0,
+				sigDigits - reservedDecimalPlaces,
+			);
+			// allow range between remaining sig digits and clampedDecimalPlaces after decimal
+			const fraction = unmaskedValue[1].substring(
+				0,
+				Math.min(clampedDecimalPlaces, sigDigits - whole.length),
+			);
+			return `${whole}.${fraction}`;
 		}
-		if (unmaskedValue[0].length > sigDigits - reservedDecimalPlaces) {
-			// tried to add decimal point without space for minimum decimal places
-			return unmaskedValue[0].substring(0, sigDigits);
-		}
-		// allow 13 digits before decimal + 2 after
-		return unmaskedValue[0].substring(0, sigDigits - reservedDecimalPlaces)
-			+ '.' + unmaskedValue[1].substring(0, sigDigits - unmaskedValue[0].length);
-	}
-	return unmaskedValue[0].substring(0, sigDigits);
-}
+		return unmaskedValue[0].substring(0, sigDigits);
+	};

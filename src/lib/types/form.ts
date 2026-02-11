@@ -129,6 +129,25 @@ export interface DateField extends BaseFormField {
   value?: string | null;
 }
 
+export interface NumberField extends BaseFormField {
+  type: "number-input";
+  value?: string;
+  attributes: {
+    value?: string;
+    defaultValue?: string;
+    hideLabel?: boolean;
+    labelText?: string;
+    placeholder?: string;
+    enableVarSub?: boolean;
+    min?: number | string;
+    max?: number | string;
+    step?: number | string;
+    maskType?: "integer" | "decimal";
+    formatStyle?: string; // currently removed from klamm
+    error?: string;
+  }
+}
+
 export interface CurrencyField extends BaseFormField {
   type: "currency-input";
   value?: string;
