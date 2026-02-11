@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { Item } from '$lib/types/form';
-	import { isFieldVisible } from '$lib/utils/form';
 	import './fields.css';
 
 	const { item, printing = false } = $props<{

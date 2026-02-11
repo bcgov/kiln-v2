@@ -8,7 +8,6 @@ export interface Item {
 	is_required?: boolean;
 	visible_web?: boolean;
 	visible_pdf?: boolean;
-  custom_visibility?: string;
 	is_read_only?: boolean | string;
 	save_on_submit?: boolean;
 	order?: number;

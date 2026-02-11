@@ -473,7 +473,7 @@ export function validateAllFields(
 
   function validateItem(item: Item, state: Record<string, FieldValue>, ctx?: { container?: Item; rowIndex?: number }) {
     
-    if (item.type === 'container' && item.children && isFieldVisible(item, 'web', state,true, ctx) ) {
+    if (item.type === 'container' && item.children && isFieldVisible(item, 'web', true, ctx) ) {
       const isRepeatable = item.attributes?.isRepeatable === true;
 
       if (isRepeatable) {
@@ -496,7 +496,7 @@ export function validateAllFields(
                 rowState &&
                 typeof rowState === 'object' &&
                 !Array.isArray(rowState) &&
-                isFieldVisible(child, 'web', rowState as Record<string, FieldValue>,true, { container: item, rowIndex: idx })
+                isFieldVisible(child, 'web')
               ) {
                 runValidation(child, rowState as Record<string, FieldValue>, {
                   container: item,
@@ -512,7 +512,7 @@ export function validateAllFields(
           if (child.type === 'container' && child.children) {
             validateItem(child, effectiveFormState, { container: item });
           } else {
-            if (isFieldVisible(child, 'web', effectiveFormState,true)) {
+            if (isFieldVisible(child, 'web', true)) {
               runValidation(child, effectiveFormState, { container: item });
             }
           }
@@ -522,7 +522,7 @@ export function validateAllFields(
     }
 
     // Leaf/simple field
-    if (isFieldVisible(item, 'web', state,true,ctx)) {
+    if (isFieldVisible(item, 'web', true, ctx)) {
       runValidation(item, state, ctx);
     }
   }
