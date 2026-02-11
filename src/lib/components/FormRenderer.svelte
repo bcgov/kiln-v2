@@ -20,7 +20,6 @@
 	});
 
 	let printingState = $derived(printing);
-	const viewMode: 'web' | 'pdf' = $derived(printingState ? 'pdf' : 'web');
 </script>
 
 <div class="form-renderer" class:printing={printingState}>

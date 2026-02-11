@@ -251,10 +251,6 @@
 
 		if (printFooter) {
 			if (printFooter.parentElement != null) {
-				const originalFooterDisplay = getComputedStyle(printFooter.parentElement).display;
-				const originalFooterVisibility = getComputedStyle(printFooter.parentElement).visibility;
-				const originalFooterPosition = getComputedStyle(printFooter.parentElement).position;
-
 				printFooter.parentElement.style.display = 'block';
 				printFooter.parentElement.style.visibility = 'visible';
 				printFooter.parentElement.style.position = 'static';
@@ -262,14 +258,10 @@
 
 				fakeFooterHeight = Math.ceil(printFooter.parentElement.getBoundingClientRect().height);
 
-				printFooter.parentElement.style.display = originalFooterDisplay;
-				printFooter.parentElement.style.visibility = originalFooterVisibility;
-				printFooter.parentElement.style.position = originalFooterPosition;
+				printFooter.parentElement.style.display = '';
+				printFooter.parentElement.style.visibility = '';
+				printFooter.parentElement.style.position = '';
 			} else {
-				const originalFooterDisplay = getComputedStyle(printFooter).display;
-				const originalFooterVisibility = getComputedStyle(printFooter).visibility;
-				const originalFooterPosition = getComputedStyle(printFooter).position;
-
 				printFooter.style.display = 'block';
 				printFooter.style.visibility = 'visible';
 				printFooter.style.position = 'absolute';
@@ -278,9 +270,9 @@
 				fakeFooterHeight = Math.ceil(printFooter.getBoundingClientRect().height);
 
 				// Restore original styles
-				printFooter.style.display = originalFooterDisplay;
-				printFooter.style.visibility = originalFooterVisibility;
-				printFooter.style.position = originalFooterPosition;
+				printFooter.style.display = '';
+				printFooter.style.visibility = '';
+				printFooter.style.position = '';
 			}
 
 			// No extra padding - use actual measured height

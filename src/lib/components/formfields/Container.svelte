@@ -245,12 +245,17 @@
 	let containerStyle = $derived(containerTypeStyleMap[containerType] ?? '');
 
 	const legendId = `${item.uuid}-legend`;
+
+	const isVisible = $derived(
+		(!printing && item.visible_web !== false) || (printing && item.visible_pdf !== false)
+	);
 </script>
 
 {#if isRepeatable}
 	<fieldset
 		class="container-repeatable container-group {containerClass} {item.class}"
 		class:printing
+		class:visible={isVisible}
 		style={containerStyle}
 		id={item.uuid}
 		aria-labelledby={legend ? legendId : undefined}
@@ -303,17 +308,15 @@
 											id: child._stableKey
 										}
 									}}
-						{#if isFieldVisible(fieldItem, printing ? 'pdf' : 'web')}
-							<div
-								class={child.type === 'container'
-									? 'group-item-child-container'
-									: 'group-item-child-field'}
-								style={applyWrapperStyles(child)}
-								data-print-columns={child.visible_pdf || 1}
-							>
-								<FieldRenderer item={fieldItem} {mode} {printing} />
-							</div>
-						{/if}
+						<div
+							class={child.type === 'container'
+								? 'group-item-child-container'
+								: 'group-item-child-field'}
+							style={applyWrapperStyles(child)}
+							data-print-columns={child.visible_pdf || 1}
+						>
+							<FieldRenderer item={fieldItem} {mode} {printing} />
+						</div>
 					{/each}
 				</div>
 			</div>
@@ -329,6 +332,7 @@
 		id={item.uuid}
 		class="container-regular container-group {containerClass} {item.class}"
 		class:printing
+		class:visible={isVisible}
 		style={containerStyle}
 		aria-labelledby={legend ? legendId : undefined}
 	>
@@ -339,17 +343,15 @@
 		{/if}
 		<div class="container-fields-grid">
 			{#each children as child (child.uuid)}
-				{#if isFieldVisible(child, printing ? 'pdf' : 'web')}
-					<div
-						class={child.type === 'container'
-							? 'group-item-child-container'
-							: 'group-item-child-field'}
-						style={applyWrapperStyles(child)}
-						data-print-columns={child.visible_pdf || 1}
-					>
-						<FieldRenderer item={child} {mode} {printing} />
-					</div>
-				{/if}
+				<div
+					class={child.type === 'container'
+						? 'group-item-child-container'
+						: 'group-item-child-field'}
+					style={applyWrapperStyles(child)}
+					data-print-columns={child.visible_pdf || 1}
+				>
+					<FieldRenderer item={child} {mode} {printing} />
+				</div>
 			{/each}
 		</div>
 	</fieldset>
