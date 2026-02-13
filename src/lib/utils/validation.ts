@@ -1,6 +1,6 @@
 import { isFieldVisible,hydrateFormStateFromDOM,getDOMId } from './form';
 import type { FormDefinition, Item, FieldValue } from '../types/form';
-import { isClassSpecMask } from '$lib/utils/mask';
+import { isClassSpecMask, isRegexMask } from '$lib/utils/mask';
 
 export type ValueType = 'string' | 'number' | 'date' | 'boolean';
 
@@ -14,6 +14,7 @@ export type ValidationRules = {
   step?: number;
   pattern?: RegExp | string;
   mask?: string;
+  maskErrorMessage?: string;
   isInteger?: boolean;
   isEmail?: boolean;
   isUrl?: boolean;
@@ -187,6 +188,7 @@ function buildErrorMessage(key: string, params: Record<string, any>, label: stri
     case 'maxLength':
       return `${label} must be at most ${params.maxLength} characters.`;
     case 'pattern':
+      if (params.maskErrorMessage) return params.maskErrorMessage;
       return `${label} doesn't match the required format of ${params.mask}.`;
     case 'step':
       return `${label} must align to steps of ${params.step}${params.base !== undefined ? ` starting at ${params.base}` : ''}.`;
@@ -284,7 +286,7 @@ export function validateValue(
   }
   const rx = toRegExp(rules.pattern);
   if (rx && !rx.test(s)) {
-    errors.push(buildErrorMessage('pattern', { mask: rules.mask}, label));
+    errors.push(buildErrorMessage('pattern', { mask: rules.mask, maskErrorMessage: rules.maskErrorMessage }, label));
   }
   if (rules.isEmail) {
     const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -354,6 +356,12 @@ export function rulesFromAttributes(
       // Allowed-character spec => permissive regex (allows partial typing)
       const re = classSpecToRegex(raw);
       if (re) rules.pattern = re;
+    } else if (isRegexMask(raw)) {      
+      try {
+        rules.pattern = new RegExp(raw);
+      } catch {
+        console.warn("Invalid regex mask ignored:", raw);
+      }
     } else if (containsMaskTokens(raw)) {
       // Real formatting mask => compile a strict full-match regex
       rules.pattern = compileMaskToRegex(raw);
@@ -371,6 +379,11 @@ export function rulesFromAttributes(
   if (attrs.max != null && item?.type !== 'date') rules.max = Number(attrs.max);
   if (attrs.step != null) rules.step = Number(attrs.step);
   if (attrs.integer === true) rules.isInteger = true;
+
+  // Custom mask error message
+  if (typeof attrs.maskErrorMessage === 'string' && attrs.maskErrorMessage.trim()) {
+    rules.maskErrorMessage = attrs.maskErrorMessage.trim();
+  }
 
   // Convenience flags
   if (attrs.email === true) rules.isEmail = true;
