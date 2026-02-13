@@ -14,7 +14,7 @@
 	let touched = $state(false);
 	let error = $state(item.attributes?.error ?? '');
 	let extAttrs = $state<Record<string, any>>({});
-	
+
 	let readOnly = $derived(item.is_read_only ?? false);
 	// Derived
 	const options = $derived((item.options ?? []) as FormOption[]);
@@ -24,7 +24,13 @@
 	const enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
 
 	const a11y = $derived(
-		buildFieldAria({ uuid: item.uuid, labelText, helperText, isRequired: item.is_required, readOnly })
+		buildFieldAria({
+			uuid: item.uuid,
+			labelText,
+			helperText,
+			isRequired: item.is_required,
+			readOnly
+		})
 	);
 
 	const rules = $derived(
@@ -33,10 +39,12 @@
 
 	const anyError = $derived(() => {
 		if (!touched || readOnly) return error || '';
-		return validateValue(selected, rules, {
-			type: 'string',
-			fieldLabel: item.attributes?.labelText ?? item.name
-		}).firstError ?? error;
+		return (
+			validateValue(selected, rules, {
+				type: 'string',
+				fieldLabel: item.attributes?.labelText ?? item.name
+			}).firstError ?? error
+		);
 	});
 
 	const printValue = $derived(
@@ -83,12 +91,12 @@
 	function handleCheckboxChange(value: string) {
 		touched = true;
 		if (selected.includes(value)) {
-			selected = selected.filter(v => v !== value);
+			selected = selected.filter((v) => v !== value);
 		} else {
 			selected = [...selected, value];
 		}
 	}
-	
+
 	// Publish to global form state when selected changes
 	$effect(() => {
 		publishToGlobalFormState({ item, value: selected });
@@ -110,9 +118,14 @@
 		{...filterAttributes(filteredAttributes)}
 		{...extAttrs}
 	>
-		<label id={a11y.labelId} class="bx--label" class:bx--visually-hidden={hideLabel} class:required={item.is_required}>
+		<span
+			id={a11y.labelId}
+			class="bx--label"
+			class:bx--visually-hidden={hideLabel}
+			class:required={item.is_required}
+		>
 			{@html labelText}
-		</label>
+		</span>
 
 		{#each options as opt (opt.value)}
 			<Checkbox
