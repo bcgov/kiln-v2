@@ -151,5 +151,13 @@
 }
 
 .bx--date-picker-container {
-    align-items: flex-start;
+  align-items: flex-start;
+}
+
+.bx--checkbox-label {
+  padding-top: 0;
+}
+
+.bx--checkbox-label::before {
+  top: 0;
 }
