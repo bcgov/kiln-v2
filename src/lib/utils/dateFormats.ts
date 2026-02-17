@@ -1,6 +1,9 @@
 export function toFlatpickrFormat(fmt?: string): string {
     if (!fmt) return 'Y/m/d';
-    return String(fmt)
+    const s = String(fmt);
+    // skip conversion if already in flatpickr format 
+    if (!/[A-Z]{2,}/.test(s)) return s;
+    return s
         // year
         .replace(/YYYY|yyyy/g, 'Y')
         .replace(/YY|yy/g, 'y')
