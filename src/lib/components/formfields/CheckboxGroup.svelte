@@ -18,8 +18,8 @@
 	let readOnly = $derived(item.is_read_only ?? false);
 	// Derived
 	const options = $derived((item.options ?? []) as FormOption[]);
+	const labelText = $derived(getFieldLabel(item));
 	const hideLabel = $derived(item.attributes?.hideLabel ?? false);
-	const labelText = $derived(hideLabel ? '' : getFieldLabel(item));
 	const helperText = $derived(item.help_text ?? '');
 	const enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
 
@@ -116,15 +116,19 @@
 			id={item.uuid}
 			class={item.class}
 			name={item.uuid}
-			legendText={labelText}
 			role="checkboxgroup"
 			data-selected={selected}
 			{...a11y.ariaProps}
 			{...extAttrs as any}
 		>
-			<span slot="legendChildren" id={a11y.labelId} class:required={item.is_required}
-				>{@html labelText}</span
-			>
+			<legend class="bx--label">
+				<span
+					id={a11y.labelId}
+					class:bx--visually-hidden={hideLabel}
+					class:required={item.is_required}
+					class:moustache={enableVarSub}>{@html labelText}</span
+				>
+			</legend>
 
 			{#each options as opt (opt.value)}
 				<Checkbox
