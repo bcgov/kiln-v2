@@ -103,7 +103,6 @@
 		class="web-input"
 		class:visible={!printing && item.visible_web !== false}
 		class:read-only={readonly}
-		class:moustache={enableVarSub}
 	>
 		<Checkbox
 			{...filterAttributes(filteredAttributes)}
@@ -119,15 +118,27 @@
 			{...a11y.ariaProps}
 			{...extAttrs as any}
 		>
-			<span slot="labelChildren" id={a11y.labelId} class:required={item.is_required}
-				>{@html labelText}</span
+			<span
+				slot="labelChildren"
+				id={a11y.labelId}
+				class:required={item.is_required}
+				class:moustache={enableVarSub}>{@html labelText}</span
 			>
 		</Checkbox>
 		{#if anyError}
-			<div id={a11y.errorId} class="bx--form-requirement" role="alert">{anyError}</div>
+			<div
+				id={a11y.errorId}
+				class="bx--form-requirement"
+				class:moustache={enableVarSub}
+				role="alert"
+			>
+				{anyError}
+			</div>
 		{/if}
 		{#if helperText}
-			<div id={a11y.helperId} class="bx--form__helper-text">{helperText}</div>
+			<div id={a11y.helperId} class="bx--form__helper-text" class:moustache={enableVarSub}>
+				{helperText}
+			</div>
 		{/if}
 	</div>
 </div>

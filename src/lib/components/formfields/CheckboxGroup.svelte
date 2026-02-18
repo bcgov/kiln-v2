@@ -110,14 +110,9 @@
 <div class="field-container checkbox-group-field">
 	<PrintRow {item} {printing} {labelText} value={printValue} />
 
-	<div
-		id={item.uuid}
-		class="web-input"
-		class:visible={!printing && item.visible_web !== false}
-		class:moustache={enableVarSub}
-	>
+	<div id={item.uuid} class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<FormGroup
-			{...filterAttributes(item?.attributes)}
+			{...filterAttributes(filteredAttributes)}
 			id={item.uuid}
 			class={item.class}
 			name={item.uuid}
@@ -143,7 +138,11 @@
 					aria-checked={selected.includes(opt.value) ? 'true' : 'false'}
 					aria-labelledby={`${a11y.labelId} ${item.uuid}-${opt.value}-label`}
 				>
-					<span slot="labelChildren" id={`${item.uuid}-${opt.value}-label`}>
+					<span
+						slot="labelChildren"
+						id={`${item.uuid}-${opt.value}-label`}
+						class:moustache={enableVarSub}
+					>
 						{opt.label}
 					</span>
 				</Checkbox>
@@ -151,10 +150,19 @@
 		</FormGroup>
 
 		{#if anyError}
-			<div id={a11y.errorId} class="bx--form-requirement" role="alert">{anyError}</div>
+			<div
+				id={a11y.errorId}
+				class="bx--form-requirement"
+				class:moustache={enableVarSub}
+				role="alert"
+			>
+				{anyError}
+			</div>
 		{/if}
 		{#if helperText}
-			<div id={a11y.helperId} class="bx--form__helper-text">{helperText}</div>
+			<div id={a11y.helperId} class="bx--form__helper-text" class:moustache={enableVarSub}>
+				{helperText}
+			</div>
 		{/if}
 	</div>
 </div>

@@ -151,7 +151,7 @@
 <div class="field-container date-picker-field">
 	<PrintRow {item} {printing} {labelText} value={value ?? ''} />
 
-	<div class="web-input" class:visible={!printing && item.visible_web !== false} class:moustache={enableVarSub}>
+	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<DatePicker
 			{...datePickerWrapperAttrs}
 			{...extAttrs as any}
@@ -174,14 +174,25 @@
 				data-kiln-date="true"
 				data-kiln-uuid={item.uuid}
 			>
-				<span slot="labelChildren" class:required={item.is_required}>{@html labelText}</span>
+				<span slot="labelChildren" class:required={item.is_required} class:moustache={enableVarSub}
+					>{@html labelText}</span
+				>
 			</DatePickerInput>
 		</DatePicker>
 		{#if anyError}
-			<div id={a11y.errorId} class="bx--form-requirement" role="alert">{anyError}</div>
+			<div
+				id={a11y.errorId}
+				class="bx--form-requirement"
+				class:moustache={enableVarSub}
+				role="alert"
+			>
+				{anyError}
+			</div>
 		{/if}
 		{#if helperText}
-			<div id={a11y.helperId} class="bx--form__helper-text">{helperText}</div>
+			<div id={a11y.helperId} class="bx--form__helper-text" class:moustache={enableVarSub}>
+				{helperText}
+			</div>
 		{/if}
 	</div>
 </div>
