@@ -100,11 +100,7 @@
 <div class="field-container select-field">
 	<PrintRow {item} {printing} {labelText} value={selectedLabel || ''} />
 
-	<div
-		class="web-input"
-		class:visible={!printing && item.visible_web !== false}
-		class:moustache={enableVarSub}
-	>
+	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<Select
 			{...filterAttributes(item?.attributes)}
 			id={item.uuid}
@@ -119,8 +115,11 @@
 			{onblur}
 			{...extAttrs as any}
 		>
-			<span slot="labelChildren" id={a11y.labelId} class:required={item.is_required}
-				>{@html labelText}</span
+			<span
+				slot="labelChildren"
+				id={a11y.labelId}
+				class:required={item.is_required}
+				class:moustache={enableVarSub}>{@html labelText}</span
 			>
 			<SelectItem value="" text="Please select an option" />
 			{#each options as opt (opt.id)}
@@ -128,10 +127,14 @@
 			{/each}
 		</Select>
 		{#if anyError}
-			<div id={a11y.errorId} class="invalid-text" role="alert">{anyError}</div>
+			<div id={a11y.errorId} class="invalid-text" class:moustache={enableVarSub} role="alert">
+				{anyError}
+			</div>
 		{/if}
 		{#if helperText}
-			<div id={a11y.helperId} class="bx--form__helper-text">{helperText}</div>
+			<div id={a11y.helperId} class="bx--form__helper-text" class:moustache={enableVarSub}>
+				{helperText}
+			</div>
 		{/if}
 	</div>
 </div>

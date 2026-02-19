@@ -94,9 +94,9 @@
 </script>
 
 <div class="field-container text-area-field">
-	<PrintRow {item} {printing} {labelText} value={value || ''} rows={rows} />
+	<PrintRow {item} {printing} {labelText} value={value || ''} {rows} />
 
-	<div class="web-input" class:visible={!printing && item.visible_web !== false} class:moustache={enableVarSub}>
+	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<TextArea
 			{...filterAttributes(item?.attributes)}
 			id={item.uuid}
@@ -112,17 +112,29 @@
 			{oninput}
 			{onblur}
 			{...extAttrs as any}
-			rows={rows}
+			{rows}
 		>
-			<span slot="labelChildren" id={a11y.labelId} class:required={item.is_required}
-				>{@html labelText}</span
+			<span
+				slot="labelChildren"
+				id={a11y.labelId}
+				class:required={item.is_required}
+				class:moustache={enableVarSub}>{@html labelText}</span
 			>
 		</TextArea>
 		{#if anyError}
-			<div id={a11y.errorId} class="bx--form-requirement" role="alert">{anyError}</div>
+			<div
+				id={a11y.errorId}
+				class="bx--form-requirement"
+				class:moustache={enableVarSub}
+				role="alert"
+			>
+				{anyError}
+			</div>
 		{/if}
 		{#if helperText}
-			<div id={a11y.helperId} class="bx--form__helper-text">{helperText}</div>
+			<div id={a11y.helperId} class="bx--form__helper-text" class:moustache={enableVarSub}>
+				{helperText}
+			</div>
 		{/if}
 	</div>
 </div>
