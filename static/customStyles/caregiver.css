@@ -6,11 +6,10 @@
  {
     display: none;
 }
-.header-section
-{
- max-width: 1200px
-}
-.content-wrapper
-{
-    max-width: 1200px
+.header-section, .content-wrapper {
+    max-width: 1120px;
+    padding: 0 1rem;
+    @media (min-width: 820px) {
+        padding: 0 2rem;
+    }
 }
