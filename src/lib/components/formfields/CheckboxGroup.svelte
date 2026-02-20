@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Checkbox, FormGroup, RadioButtonGroup } from 'carbon-components-svelte';
+	import { Checkbox, CheckboxGroup } from 'carbon-components-svelte';
 	import type { FormOption, Item } from '$lib/types/form';
 	import { publishToGlobalFormState, syncExternalAttributes } from '$lib/utils/valueSync';
 	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
@@ -11,12 +11,12 @@
 
 	// Local state
 	let selected = $state<string[]>(
-	Array.isArray(item.value)
-		? item.value
-		: typeof item.value === 'string'
-			? item.value.split(',').map(v => v.trim())
-			: item.attributes?.defaultSelected ?? []
-);
+		Array.isArray(item.value)
+			? item.value
+			: typeof item.value === 'string'
+				? item.value.split(',').map((v: string) => v.trim())
+				: (item.attributes?.defaultSelected ?? [])
+	);
 	let touched = $state(false);
 	let error = $state(item.attributes?.error ?? '');
 	let extAttrs = $state<Record<string, any>>({});
@@ -72,22 +72,22 @@
 	// Sync external values when item.value changes
 	let previousKey = $state('');
 	$effect(() => {
-	if (!item.value) return;
+		if (!item.value) return;
 
-	const external = Array.isArray(item.value)
-		? item.value
-		: typeof item.value === 'string'
-			? item.value.split(',').map(v => v.trim())
-			: [];
+		const external = Array.isArray(item.value)
+			? item.value
+			: typeof item.value === 'string'
+				? item.value.split(',').map((v: string) => v.trim())
+				: [];
 
-	const key = JSON.stringify([...external].sort());
+		const key = JSON.stringify([...external].sort());
 
-	if (key !== previousKey) {
-		previousKey = key;
-		selected = external;
-		touched = false;
-	}
-});
+		if (key !== previousKey) {
+			previousKey = key;
+			selected = external;
+			touched = false;
+		}
+	});
 
 	// Sync external attributes
 	$effect(() => {
@@ -97,16 +97,6 @@
 			set: (next) => (extAttrs = next)
 		});
 	});
-
-	// Handle user interaction
-	function handleCheckboxChange(value: string) {
-		touched = true;
-		if (selected.includes(value)) {
-			selected = selected.filter((v) => v !== value);
-		} else {
-			selected = [...selected, value];
-		}		
-	}
 
 	// Publish to global form state when selected changes
 	$effect(() => {
@@ -122,24 +112,24 @@
 	<PrintRow {item} {printing} {labelText} value={printValue} />
 
 	<div id={item.uuid} class="web-input" class:visible={!printing && item.visible_web !== false}>
-		<FormGroup
+		<CheckboxGroup
 			{...filterAttributes(filteredAttributes)}
 			id={item.uuid}
 			class={item.class}
 			name={item.uuid}
+			bind:selected
+			hideLegend={hideLabel}
 			role="checkboxgroup"
 			data-selected={selected}
 			{...a11y.ariaProps}
 			{...extAttrs as any}
 		>
-			<legend class="bx--label">
-				<span
-					id={a11y.labelId}
-					class:bx--visually-hidden={hideLabel}
-					class:required={item.is_required}
-					class:moustache={enableVarSub}>{@html labelText}</span
-				>
-			</legend>
+			<span
+				slot="legendChildren"
+				id={a11y.labelId}
+				class:required={item.is_required}
+				class:moustache={enableVarSub}>{@html labelText}</span
+			>
 
 			{#each options as opt (opt.value)}
 				<Checkbox
@@ -147,7 +137,6 @@
 					value={opt.value}
 					checked={selected.includes(opt.value)}
 					disabled={readOnly}
-					on:change={(e) => handleCheckboxChange(opt.value)}
 					on:blur={onblur}
 					role="checkbox"
 					aria-checked={selected.includes(opt.value) ? 'true' : 'false'}
@@ -162,7 +151,7 @@
 					</span>
 				</Checkbox>
 			{/each}
-		</FormGroup>
+		</CheckboxGroup>
 
 		{#if anyError}
 			<div
