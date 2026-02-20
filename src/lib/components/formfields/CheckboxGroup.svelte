@@ -10,7 +10,13 @@
 	const { item, printing = false } = $props<{ item: Item; printing?: boolean }>();
 
 	// Local state
-	let selected = $state((item.attributes?.defaultSelected ?? []) as string[]);
+	let selected = $state<string[]>(
+	Array.isArray(item.value)
+		? item.value
+		: typeof item.value === 'string'
+			? item.value.split(',').map(v => v.trim())
+			: item.attributes?.defaultSelected ?? []
+);
 	let touched = $state(false);
 	let error = $state(item.attributes?.error ?? '');
 	let extAttrs = $state<Record<string, any>>({});
@@ -66,17 +72,22 @@
 	// Sync external values when item.value changes
 	let previousKey = $state('');
 	$effect(() => {
-		if (Array.isArray(item.value)) {
-			const external = item.value;
-			const key = JSON.stringify([...external].sort());
+	if (!item.value) return;
 
-			if (key !== previousKey) {
-				previousKey = key;
-				selected = [...external];
-				touched = false;
-			}
-		}
-	});
+	const external = Array.isArray(item.value)
+		? item.value
+		: typeof item.value === 'string'
+			? item.value.split(',').map(v => v.trim())
+			: [];
+
+	const key = JSON.stringify([...external].sort());
+
+	if (key !== previousKey) {
+		previousKey = key;
+		selected = external;
+		touched = false;
+	}
+});
 
 	// Sync external attributes
 	$effect(() => {
@@ -94,7 +105,7 @@
 			selected = selected.filter((v) => v !== value);
 		} else {
 			selected = [...selected, value];
-		}
+		}		
 	}
 
 	// Publish to global form state when selected changes
