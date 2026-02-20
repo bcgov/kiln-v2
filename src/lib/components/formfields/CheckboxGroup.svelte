@@ -111,7 +111,11 @@
 <div class="field-container checkbox-group-field">
 	<PrintRow {item} {printing} {labelText} value={printValue} />
 
-	<div id={item.uuid} class="web-input" class:visible={!printing && item.visible_web !== false}>
+	<div
+		class="web-input checkbox-group-wrapper"
+		class:visible={!printing && item.visible_web !== false}
+		data-selected={selected}
+	>
 		<CheckboxGroup
 			{...filterAttributes(filteredAttributes)}
 			id={item.uuid}
@@ -120,7 +124,6 @@
 			bind:selected
 			hideLegend={hideLabel}
 			role="checkboxgroup"
-			data-selected={selected}
 			{...a11y.ariaProps}
 			{...extAttrs as any}
 		>
