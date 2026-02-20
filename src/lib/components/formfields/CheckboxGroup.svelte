@@ -43,7 +43,7 @@
 		rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'string' })
 	);
 
-	const anyError = $derived(() => {
+	const anyError = $derived.by(() => {
 		if (!touched || readOnly) return error || '';
 		return (
 			validateValue(selected, rules, {
@@ -167,7 +167,7 @@
 		{#if anyError}
 			<div
 				id={a11y.errorId}
-				class="bx--form-requirement"
+				class="bx--form-requirement hack-visible"
 				class:moustache={enableVarSub}
 				role="alert"
 			>
@@ -194,5 +194,13 @@
 	.required::after {
 		content: ' *';
 		color: var(--cds-support-error);
+	}
+	/* carbon components doesn't have a native way of adding errors to field groups */
+	.bx--form-requirement.hack-visible {
+		display: block;
+		overflow: visible;
+		max-height: 12.5rem;
+		font-weight: 400;
+		color: var(--cds-text-error, #da1e28);
 	}
 </style>
