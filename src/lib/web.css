@@ -158,6 +158,7 @@
   padding-top: 0;
 }
 
-.bx--checkbox-label::before {
-  top: 0;
+.bx--checkbox-label-text {
+  display: inline-flex;
+  align-items: center;
 }
