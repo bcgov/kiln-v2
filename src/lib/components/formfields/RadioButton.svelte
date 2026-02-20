@@ -103,9 +103,10 @@
 	<PrintRow {item} {printing} {labelText} {value} />
 
 	<div
-		class="web-input"
+		class="web-input radio-group-wrapper"
 		style={readonly ? 'pointer-events: none;' : ''}
 		class:visible={!printing && item.visible_web !== false}
+		data-selected={selected}
 	>
 		<RadioButtonGroup
 			{...filterAttributes(item?.attributes)}
@@ -115,7 +116,6 @@
 			bind:selected
 			hideLegend={hideLabel}
 			role="radiogroup"
-			data-selected={selected}
 			{...a11y.ariaProps}
 			{onchange}
 			{...extAttrs as any}
