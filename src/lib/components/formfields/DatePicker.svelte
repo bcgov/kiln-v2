@@ -1,13 +1,7 @@
 <script lang="ts">
 	import { DatePicker, DatePickerInput } from 'carbon-components-svelte';
 	import type { Item } from '$lib/types/form';
-	import {
-		createValueSyncEffect,
-		parsers,
-		comparators,
-		createAttributeSyncEffect,
-		publishToGlobalFormState
-	} from '$lib/utils/valueSync';
+	import { createAttributeSyncEffect, publishToGlobalFormState } from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
 	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
@@ -77,20 +71,22 @@
 	});
 
 	$effect(() => {
-		return createValueSyncEffect({
-			item,
-			getValue: () => value,
-			setValue: (newValue) => {
-				if (newValue == null || newValue === '') {
-					value = null;
-				} else {
-					value = newValue as string;
-				}
-			},
-			componentName: 'DatePicker',
-			parser: parsers.string,
-			comparator: comparators.date
-		});
+		const element = document.getElementById(item.uuid);
+		if (!element) return;
+
+		const handleExternalUpdate = (event: Event) => {
+			const ce = event as CustomEvent;
+			if (!ce.detail?.attr) return;
+			const newValue = (ce.detail.value as string) || null;
+			if ((newValue ?? '') !== (value ?? '')) {
+				value = newValue;
+			}
+		};
+
+		element.addEventListener('external-update', handleExternalUpdate);
+		return () => {
+			element.removeEventListener('external-update', handleExternalUpdate);
+		};
 	});
 
 	$effect(() => {
