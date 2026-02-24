@@ -127,8 +127,8 @@
 	$effect(() => {
 		if (maskApplied || typeof document === 'undefined') return;
 		const maskType = item?.attributes?.maskType;
-		// Apply maska for phone
-		if (maskType !== 'phone') {
+		// Apply maska for phone and postal
+		if (!['phone', 'postal'].includes(maskType)) {
 			return;
 		}
 		const raw = normalizeDash(item.attributes?.mask).trim();
