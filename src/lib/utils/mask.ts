@@ -206,7 +206,10 @@ export function filterInputByMaskType(
 			return input.replace(/[^0-9\s().\-+]/g, '');
 		case 'email':
 			// Allow standard email characters (note: not exhaustive — full validation is regex-based)
-			return input.replace(/[^a-zA-Z0-9@._+-]/g, '');
+			return input.replace(/[^a-zA-Z0-9@._+-]/g, '');	
+		case 'postal':
+			// Allow only uppercase letters and digits, convert lowercase to uppercase
+			return input.replace(/[^a-zA-Z0-9\s]/g, '').toUpperCase();
 		case 'custom':
 		default:
 			// For custom or unknown mask types, don't restrict input
