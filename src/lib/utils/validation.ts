@@ -161,6 +161,26 @@ export function validateMaskedValue(
     return null;
   }
 
+  // Postal Code: validate format (Canadian format A#A #A#)
+  if (maskType === 'postal') {
+    // Canadian postal code format: @#@ #@# (letter-digit-letter space digit-letter-digit)
+    let postalRx: RegExp;
+    if (typeof mask === 'string') {
+      try {
+        console.log(mask);
+        postalRx = new RegExp(mask);
+      } catch {
+        postalRx = /^[A-Z]\d[A-Z]\s\d[A-Z]\d$/;
+      }
+    } else {
+      postalRx = /^[A-Z]\d[A-Z]\s\d[A-Z]\d$/;
+    }
+    if (!postalRx.test(String(value))) {
+      return buildErrorMessage('postal', {}, label);
+    }
+    return null;
+  }
+
   // Unknown maskType — treat as valid
   return null;
 }
@@ -194,6 +214,8 @@ function buildErrorMessage(key: string, params: Record<string, any>, label: stri
       return `${label} must align to steps of ${params.step}${params.base !== undefined ? ` starting at ${params.base}` : ''}.`;
     case 'email':
       return `${label} must be a valid email address.`;
+    case 'postal':
+      return `${label} must be a valid postal code (e.g., A0A 0A0).`;
     case 'url':
       return `${label} must be a valid URL.`;
     case 'after':

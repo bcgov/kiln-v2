@@ -51,11 +51,11 @@
 		const label = item.attributes?.labelText ?? item.name;
 		const isRequired = item.is_required === true;
 
-		// Delegate mask-aware checks (phone, email) to shared helper
+		// Delegate mask-aware checks (phone, email, postal code) to shared helper
 		const maskErr = validateMaskedValue(value, item.attributes, { fieldLabel: label, isRequired });
 		if (maskErr) return maskErr;
 		// For masked input types, skip the generic string pattern validation (rules.pattern) because masked formats are validated above
-		if (['phone', 'email'].includes(maskType)) {
+		if (['phone', 'email', 'postal'].includes(maskType)) {
 			return '';
 		}
 
