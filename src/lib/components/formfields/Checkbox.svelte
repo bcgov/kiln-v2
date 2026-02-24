@@ -128,7 +128,7 @@
 		{#if anyError}
 			<div
 				id={a11y.errorId}
-				class="bx--form-requirement"
+				class="bx--form-requirement checkbox-error"
 				class:moustache={enableVarSub}
 				role="alert"
 			>
@@ -157,5 +157,17 @@
 	:global(.web-input.read-only .bx--checkbox) {
 		border-color: black !important;
 		background-color: white !important;
+	}
+
+	.required::after {
+		content: ' *';
+		color: var(--cds-support-error);
+	}	
+	.bx--form-requirement.checkbox-error {
+		display: block;
+		overflow: visible;
+		max-height: 12.5rem;
+		font-weight: 400;
+		color: var(--cds-text-error, #da1e28);
 	}
 </style>

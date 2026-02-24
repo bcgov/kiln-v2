@@ -127,7 +127,7 @@
 			{/each}
 		</Select>
 		{#if anyError}
-			<div id={a11y.errorId} class="invalid-text" class:moustache={enableVarSub} role="alert">
+			<div id={a11y.errorId} class="bx--form-requirement" class:moustache={enableVarSub} role="alert">
 				{anyError}
 			</div>
 		{/if}
