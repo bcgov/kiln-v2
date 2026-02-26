@@ -11,6 +11,8 @@ spec:
       app.kubernetes.io/name: {{ include "kiln-v2.fullname" . }}
   template:
     metadata:
+      annotations:
+        rollme: {{ randAlphaNum 8 | quote }}
       labels:
         app.kubernetes.io/name: {{ include "kiln-v2.fullname" . }}
     spec:
@@ -25,4 +27,4 @@ spec:
                 name: kiln-secrets
       restartPolicy: Always
   strategy:
-    type: Recreate
+    type: RollingUpdate
