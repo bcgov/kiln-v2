@@ -51,11 +51,11 @@
 		const label = item.attributes?.labelText ?? item.name;
 		const isRequired = item.is_required === true;
 
-		// Delegate mask-aware checks (currency, phone, email) to shared helper
+		// Delegate mask-aware checks (phone, email, postal code) to shared helper
 		const maskErr = validateMaskedValue(value, item.attributes, { fieldLabel: label, isRequired });
 		if (maskErr) return maskErr;
 		// For masked input types, skip the generic string pattern validation (rules.pattern) because masked formats are validated above
-		if (['currency', 'phone', 'email'].includes(maskType)) {
+		if (['phone', 'email', 'postal'].includes(maskType)) {
 			return '';
 		}
 
@@ -127,8 +127,8 @@
 	$effect(() => {
 		if (maskApplied || typeof document === 'undefined') return;
 		const maskType = item?.attributes?.maskType;
-			// Apply maska for phone and currency
-			if (!['phone', 'currency'].includes(maskType)) {
+		// Apply maska for phone and postal
+		if (!['phone', 'postal'].includes(maskType)) {
 			return;
 		}
 		const raw = normalizeDash(item.attributes?.mask).trim();
@@ -144,11 +144,7 @@
 <div class="field-container text-input-field">
 	<PrintRow {item} {printing} {labelText} value={value || ''} />
 
-	<div
-		class="web-input"
-		class:visible={!printing && item.visible_web !== false}
-		class:moustache={enableVarSub}
-	>
+	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<TextInput
 			{...filterAttributes(item?.attributes)}
 			id={item.uuid}
@@ -167,15 +163,27 @@
 			{onblur}
 			{...extAttrs as any}
 		>
-			<span slot="labelText" id={a11y.labelId} class:required={item.is_required}
-				>{@html labelText}</span
+			<span
+				slot="labelChildren"
+				id={a11y.labelId}
+				class:required={item.is_required}
+				class:moustache={enableVarSub}>{@html labelText}</span
 			>
 		</TextInput>
 		{#if anyError}
-			<div id={a11y.errorId} class="bx--form-requirement" role="alert">{anyError}</div>
+			<div
+				id={a11y.errorId}
+				class="bx--form-requirement"
+				class:moustache={enableVarSub}
+				role="alert"
+			>
+				{anyError}
+			</div>
 		{/if}
 		{#if helperText}
-			<div id={a11y.helperId} class="bx--form__helper-text">{helperText}</div>
+			<div id={a11y.helperId} class="bx--form__helper-text" class:moustache={enableVarSub}>
+				{helperText}
+			</div>
 		{/if}
 	</div>
 </div>

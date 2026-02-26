@@ -27,8 +27,9 @@ export function hydrateFormStateFromDOM(formDefinition?: FormDefinition) {
 
     if (!el) return undefined;
 
-    // for our use-case (text inputs, dates, etc...) .value is fine
-    const raw = (el as any).value;
+    // handle inputs like currency where masked value is different to what we want to save
+    const raw = el.getAttribute('data-raw-value') !== null ? el.getAttribute('data-raw-value') : (el as any).value;
+
     if (raw == null) return undefined;
 
     const s = String(raw);
@@ -320,23 +321,11 @@ function getCookie(name: string): string | null {
 export function isFieldVisible(
   item: Item,
   mode: 'web' | 'pdf' = 'web',
-  formState?: Record<string, FieldValue>,
   includeDOMCheck = false,
   ctx?: { container?: Item; rowIndex?: number }
 ): boolean {
   // Use visible_web or visible_pdf
   let visible = mode === 'pdf' ? item.visible_pdf !== false : item.visible_web !== false;
-  // Evaluate custom_visibility if present
-  if (item.custom_visibility && typeof item.custom_visibility === 'string') {
-    try {
-      // The custom_visibility string should be a JS function body, e.g. "{return true}"
-      // Allow access to formState if needed
-      const fn = new Function('formState', item.custom_visibility.replace(/^{|}$/g, ''));
-      visible = !!fn(formState || {});
-    } catch (e) {
-      // fallback to previous visible value
-    }
-  }
   // Final gate: DOM visibility
   if (includeDOMCheck && mode === 'web') {
     try {
@@ -371,10 +360,9 @@ function isActuallyVisibleInDOM(id: string): boolean {
 export function shouldFieldBeIncludedForSaving(
   item: Item,
   mode: 'web' | 'pdf' = 'web',
-  formState?: Record<string, FieldValue>
 ): boolean {
   // Save if visible or save_on_submit is true
-  return isFieldVisible(item, mode, formState) || !!item.save_on_submit;
+  return isFieldVisible(item, mode) || !!item.save_on_submit;
 }
 
 // --- Save data creation ---
@@ -428,8 +416,7 @@ export function createSavedData(ctx?: {
                   !Array.isArray(rowState) &&
                   shouldFieldBeIncludedForSaving(
                     child,
-                    'web',
-                    rowState as Record<string, any>
+                    'web'
                   ) &&
                   (rowState as Record<string, any>)[child.uuid] !==
                     undefined
@@ -491,7 +478,7 @@ export function createSavedData(ctx?: {
           if (child.type === 'container' && child.children) {
             processItems([child], state);
           } else if (
-            shouldFieldBeIncludedForSaving(child, 'web', state)
+            shouldFieldBeIncludedForSaving(child, 'web')
           ) {
             const val = state[child.uuid];
             if (val !== undefined) {
@@ -501,7 +488,7 @@ export function createSavedData(ctx?: {
         }
       }
     } else {
-      if (shouldFieldBeIncludedForSaving(item, 'web', state)) {
+      if (shouldFieldBeIncludedForSaving(item, 'web')) {
         const val = state[item.uuid];
         if (val !== undefined) {
           saveFieldData[item.uuid] = val;

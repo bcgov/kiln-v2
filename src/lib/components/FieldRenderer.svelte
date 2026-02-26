@@ -6,6 +6,7 @@
 	import Checkbox from './formfields/Checkbox.svelte';
 	import CheckboxGroup from './formfields/CheckboxGroup.svelte';
 	import Container from './formfields/Container.svelte';
+	import CurrencyInput from './formfields/CurrencyInput.svelte';
 	import DatePicker from './formfields/DatePicker.svelte';
 	import NumberInput from './formfields/NumberInput.svelte';
 	import RadioButton from './formfields/RadioButton.svelte';
@@ -37,6 +38,7 @@
 		'text-info': TextInfo,
 		'radio-input': RadioButton,
 		'select-input': Select,
+		'currency-input': CurrencyInput,
 		container: Container
 	};
 

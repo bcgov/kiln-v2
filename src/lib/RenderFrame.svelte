@@ -47,7 +47,8 @@
 	let modalSecondaryText = $state<string | null>(null);
 	let modalResolver = $state<((result: boolean) => void) | null>(null);
 
-	let barcode = $derived<{ content: string } | undefined>(formData.barcode);
+	let barcode = $derived<{ content: string } | undefined>(formData?.barcode);
+	let securityClassification = $derived<string | undefined>(formData?.security_classification);
 
 	function resetModalRuntime() {
 		modalMode = 'info';
@@ -250,10 +251,6 @@
 
 		if (printFooter) {
 			if (printFooter.parentElement != null) {
-				const originalFooterDisplay = getComputedStyle(printFooter.parentElement).display;
-				const originalFooterVisibility = getComputedStyle(printFooter.parentElement).visibility;
-				const originalFooterPosition = getComputedStyle(printFooter.parentElement).position;
-
 				printFooter.parentElement.style.display = 'block';
 				printFooter.parentElement.style.visibility = 'visible';
 				printFooter.parentElement.style.position = 'static';
@@ -261,14 +258,10 @@
 
 				fakeFooterHeight = Math.ceil(printFooter.parentElement.getBoundingClientRect().height);
 
-				printFooter.parentElement.style.display = originalFooterDisplay;
-				printFooter.parentElement.style.visibility = originalFooterVisibility;
-				printFooter.parentElement.style.position = originalFooterPosition;
+				printFooter.parentElement.style.display = '';
+				printFooter.parentElement.style.visibility = '';
+				printFooter.parentElement.style.position = '';
 			} else {
-				const originalFooterDisplay = getComputedStyle(printFooter).display;
-				const originalFooterVisibility = getComputedStyle(printFooter).visibility;
-				const originalFooterPosition = getComputedStyle(printFooter).position;
-
 				printFooter.style.display = 'block';
 				printFooter.style.visibility = 'visible';
 				printFooter.style.position = 'absolute';
@@ -277,9 +270,9 @@
 				fakeFooterHeight = Math.ceil(printFooter.getBoundingClientRect().height);
 
 				// Restore original styles
-				printFooter.style.display = originalFooterDisplay;
-				printFooter.style.visibility = originalFooterVisibility;
-				printFooter.style.position = originalFooterPosition;
+				printFooter.style.display = '';
+				printFooter.style.visibility = '';
+				printFooter.style.position = '';
 			}
 
 			// No extra padding - use actual measured height
@@ -578,8 +571,7 @@
 							`[data-attr-id="${id}"]`,
 							`[data-field-id="${id}"]`,
 							`#${CSS && CSS.escape ? CSS.escape(id) : id}`,
-							`[name="${CSS && CSS.escape ? CSS.escape(id) : id}"]`,
-							`#${CSS && CSS.escape ? CSS.escape(id + '-option-0') : id + '-option-0'}`
+							`[name="${CSS && CSS.escape ? CSS.escape(id) : id}"]`
 						].join(',');
 
 					Object.keys(errors || {}).forEach((id) => {
@@ -867,5 +859,5 @@
 			{/if}
 		</div>
 	</div>
-	<PrintFooter bind:this={printFooter} {barcode} />
+	<PrintFooter bind:this={printFooter} {barcode} {securityClassification} />
 </div>

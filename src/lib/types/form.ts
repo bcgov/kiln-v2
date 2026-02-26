@@ -8,7 +8,6 @@ export interface Item {
 	is_required?: boolean;
 	visible_web?: boolean;
 	visible_pdf?: boolean;
-  custom_visibility?: string;
 	is_read_only?: boolean | string;
 	save_on_submit?: boolean;
 	order?: number;
@@ -127,6 +126,43 @@ export interface ToggleField extends BaseFormField {
 export interface DateField extends BaseFormField {
   type: "date";
   value?: string | null;
+}
+
+export interface NumberField extends BaseFormField {
+  type: "number-input";
+  value?: string;
+  attributes: {
+    value?: string;
+    defaultValue?: string;
+    hideLabel?: boolean;
+    labelText?: string;
+    placeholder?: string;
+    enableVarSub?: boolean;
+    min?: number | string;
+    max?: number | string;
+    step?: number | string;
+    maskType?: "integer" | "decimal";
+    formatStyle?: string; // currently removed from klamm
+    error?: string;
+  }
+}
+
+export interface CurrencyField extends BaseFormField {
+  type: "currency-input";
+  value?: string;
+  attributes: {
+    // locale: string; // not yet, maska barely supports this
+    // currency: string; // will require custom mask processing
+    value?: string;
+    defaultValue?: string;
+    hideLabel?: boolean;
+    labelText?: string;
+    placeholder?: string;
+    enableVarSub?: boolean;
+    min?: number | string;
+    max?: number | string;
+    step?: number | string;
+  }
 }
 
 export interface GroupField extends BaseFormField {

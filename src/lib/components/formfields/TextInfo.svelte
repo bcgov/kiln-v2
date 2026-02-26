@@ -2,13 +2,22 @@
 	import type { Item } from '$lib/types/form';
 	import './fields.css';
 
-	const { item } = $props<{ item: Item }>();
+	const { item, printing = false } = $props<{
+		item: Item;
+		printing?: boolean;
+	}>();
+
 	const labelId = `${item.uuid}-info-label`;
 	const labelText = item.attributes?.labelText ?? item.attributes?.text ?? '';
+
+	const isVisible = $derived(
+		(!printing && item.visible_web !== false) || (printing && item.visible_pdf !== false)
+	);
 </script>
 
 <div
 	class="field-container text-info-field {item.class}"
+	class:visible={isVisible}
 	id={item.uuid}
 	role="note"
 	aria-labelledby={labelText ? labelId : undefined}

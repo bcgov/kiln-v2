@@ -22,6 +22,7 @@
 	let labelText = $state(getFieldLabel(item));
 	let readonly = $state(item.is_read_only ?? false);
 	let helperText = item.help_text ?? '';
+	let hideLabel = item.attributes?.hideLabel ?? false;
 	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let touched = $state(false);
 
@@ -102,7 +103,6 @@
 		class="web-input"
 		class:visible={!printing && item.visible_web !== false}
 		class:read-only={readonly}
-		class:moustache={enableVarSub}
 	>
 		<Checkbox
 			{...filterAttributes(filteredAttributes)}
@@ -110,6 +110,7 @@
 			class={item.class}
 			bind:checked
 			disabled={readonly}
+			{hideLabel}
 			{onchange}
 			{onblur}
 			role="checkbox"
@@ -117,15 +118,27 @@
 			{...a11y.ariaProps}
 			{...extAttrs as any}
 		>
-			<span slot="labelText" id={a11y.labelId} class:required={item.is_required}
-				>{@html labelText}</span
+			<span
+				slot="labelChildren"
+				id={a11y.labelId}
+				class:required={item.is_required}
+				class:moustache={enableVarSub}>{@html labelText}</span
 			>
 		</Checkbox>
 		{#if anyError}
-			<div id={a11y.errorId} class="bx--form-requirement" role="alert">{anyError}</div>
+			<div
+				id={a11y.errorId}
+				class="bx--form-requirement checkbox-error"
+				class:moustache={enableVarSub}
+				role="alert"
+			>
+				{anyError}
+			</div>
 		{/if}
 		{#if helperText}
-			<div id={a11y.helperId} class="bx--form__helper-text">{helperText}</div>
+			<div id={a11y.helperId} class="bx--form__helper-text" class:moustache={enableVarSub}>
+				{helperText}
+			</div>
 		{/if}
 	</div>
 </div>
@@ -144,5 +157,17 @@
 	:global(.web-input.read-only .bx--checkbox) {
 		border-color: black !important;
 		background-color: white !important;
+	}
+
+	.required::after {
+		content: ' *';
+		color: var(--cds-support-error);
+	}	
+	.bx--form-requirement.checkbox-error {
+		display: block;
+		overflow: visible;
+		max-height: 12.5rem;
+		font-weight: 400;
+		color: var(--cds-text-error, #da1e28);
 	}
 </style>

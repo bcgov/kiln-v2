@@ -1,6 +1,6 @@
 import { isFieldVisible,hydrateFormStateFromDOM,getDOMId } from './form';
 import type { FormDefinition, Item, FieldValue } from '../types/form';
-import { isClassSpecMask } from '$lib/utils/mask';
+import { isClassSpecMask, isRegexMask } from '$lib/utils/mask';
 
 export type ValueType = 'string' | 'number' | 'date' | 'boolean';
 
@@ -14,6 +14,7 @@ export type ValidationRules = {
   step?: number;
   pattern?: RegExp | string;
   mask?: string;
+  maskErrorMessage?: string;
   isInteger?: boolean;
   isEmail?: boolean;
   isUrl?: boolean;
@@ -160,6 +161,16 @@ export function validateMaskedValue(
     return null;
   }
 
+  // Postal Code: validate format (Canadian format A#A #A#)
+  if (maskType === 'postal') {
+    const postalCode = String(value).trim();
+    const postalRx = /^[A-Z]\d[A-Z]\s\d[A-Z]\d$/;
+    if (!postalRx.test(postalCode)) {
+      return buildErrorMessage('postal', {}, label);
+    }
+    return null;
+  }
+
   // Unknown maskType — treat as valid
   return null;
 }
@@ -187,11 +198,14 @@ function buildErrorMessage(key: string, params: Record<string, any>, label: stri
     case 'maxLength':
       return `${label} must be at most ${params.maxLength} characters.`;
     case 'pattern':
+      if (params.maskErrorMessage) return params.maskErrorMessage;
       return `${label} doesn't match the required format of ${params.mask}.`;
     case 'step':
       return `${label} must align to steps of ${params.step}${params.base !== undefined ? ` starting at ${params.base}` : ''}.`;
     case 'email':
       return `${label} must be a valid email address.`;
+    case 'postal':
+      return `${label} must be a valid postal code (e.g., A#A #A#).`;
     case 'url':
       return `${label} must be a valid URL.`;
     case 'after':
@@ -284,7 +298,7 @@ export function validateValue(
   }
   const rx = toRegExp(rules.pattern);
   if (rx && !rx.test(s)) {
-    errors.push(buildErrorMessage('pattern', { mask: rules.mask}, label));
+    errors.push(buildErrorMessage('pattern', { mask: rules.mask, maskErrorMessage: rules.maskErrorMessage }, label));
   }
   if (rules.isEmail) {
     const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -354,6 +368,12 @@ export function rulesFromAttributes(
       // Allowed-character spec => permissive regex (allows partial typing)
       const re = classSpecToRegex(raw);
       if (re) rules.pattern = re;
+    } else if (isRegexMask(raw)) {      
+      try {
+        rules.pattern = new RegExp(raw);
+      } catch {
+        console.warn("Invalid regex mask ignored:", raw);
+      }
     } else if (containsMaskTokens(raw)) {
       // Real formatting mask => compile a strict full-match regex
       rules.pattern = compileMaskToRegex(raw);
@@ -371,6 +391,11 @@ export function rulesFromAttributes(
   if (attrs.max != null && item?.type !== 'date') rules.max = Number(attrs.max);
   if (attrs.step != null) rules.step = Number(attrs.step);
   if (attrs.integer === true) rules.isInteger = true;
+
+  // Custom mask error message
+  if (typeof attrs.maskErrorMessage === 'string' && attrs.maskErrorMessage.trim()) {
+    rules.maskErrorMessage = attrs.maskErrorMessage.trim();
+  }
 
   // Convenience flags
   if (attrs.email === true) rules.isEmail = true;
@@ -415,6 +440,8 @@ export function validateAllFields(
         return 'date';
       case 'checkbox-input':
         return 'boolean';
+      case 'currency-input':
+        return 'number';
       case 'select-input':
       case 'radio-input':
       case 'text-input':
@@ -471,7 +498,7 @@ export function validateAllFields(
 
   function validateItem(item: Item, state: Record<string, FieldValue>, ctx?: { container?: Item; rowIndex?: number }) {
     
-    if (item.type === 'container' && item.children && isFieldVisible(item, 'web', state,true, ctx) ) {
+    if (item.type === 'container' && item.children && isFieldVisible(item, 'web', true, ctx) ) {
       const isRepeatable = item.attributes?.isRepeatable === true;
 
       if (isRepeatable) {
@@ -494,7 +521,7 @@ export function validateAllFields(
                 rowState &&
                 typeof rowState === 'object' &&
                 !Array.isArray(rowState) &&
-                isFieldVisible(child, 'web', rowState as Record<string, FieldValue>,true, { container: item, rowIndex: idx })
+                isFieldVisible(child, 'web')
               ) {
                 runValidation(child, rowState as Record<string, FieldValue>, {
                   container: item,
@@ -510,7 +537,7 @@ export function validateAllFields(
           if (child.type === 'container' && child.children) {
             validateItem(child, effectiveFormState, { container: item });
           } else {
-            if (isFieldVisible(child, 'web', effectiveFormState,true)) {
+            if (isFieldVisible(child, 'web', true)) {
               runValidation(child, effectiveFormState, { container: item });
             }
           }
@@ -520,7 +547,7 @@ export function validateAllFields(
     }
 
     // Leaf/simple field
-    if (isFieldVisible(item, 'web', state,true,ctx)) {
+    if (isFieldVisible(item, 'web', true, ctx)) {
       runValidation(item, state, ctx);
     }
   }

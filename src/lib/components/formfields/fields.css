@@ -41,7 +41,16 @@
 	font-weight: 300;
 }
 
+.container-group {
+	display: none;
+}
+
+.container-group.visible {
+	display: block;
+}
+
 .text-info-field {
+	display: none;
 	padding: 10px 0px;
 	font: initial;
 	font-weight: initial;
@@ -50,6 +59,10 @@
 	font-weight: normal;
 	font-family: var(--default-font-family);
 	font-size: var(--default-font-size);
+}
+
+.text-info-field.visible {
+	display: block;
 }
 
 .text-area-field .print-value {

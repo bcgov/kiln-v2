@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { NumberInput } from 'carbon-components-svelte';
-	import type { Item } from '$lib/types/form';
+	import { NumberInput, TextInput } from 'carbon-components-svelte';
+	import type { Item, NumberField } from '$lib/types/form';
 	import {
 		createValueSyncEffect,
 		parsers,
@@ -10,94 +10,79 @@
 	} from '$lib/utils/valueSync';
 	import './fields.css';
 	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
-	import { validateValue, rulesFromAttributes, parseNumericString } from '$lib/utils/validation';
-	import { filterInputByMaskType, normalizeDash } from '$lib/utils/mask';
+	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
+	import { preprocessDecimalInput, unmaskNumberString } from '$lib/utils/mask';
 	import PrintRow from './common/PrintRow.svelte';
+	import { MaskInput } from 'maska';
 
-	let { item, printing = false } = $props<{ item: Item; printing?: boolean }>();
+	let {
+		item,
+		printing = false
+	}: {
+		item: Omit<Item, 'value' | 'attributes'> & NumberField;
+		printing?: boolean;
+	} = $props();
 
-	let value = $state(
-		item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? null
+	let value: string = $state(
+		item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? ''
 	);
-	let error = $state(item.attributes?.error ?? '');
-	let readonly = $state(item.is_read_only ?? false);
-	let labelText = $state(getFieldLabel(item));
+	let unmaskedValue: string = $derived(unmaskNumberString(value));
+	let error = $state(item.attributes?.error ?? ''); // this seems unused or broken
+	let readonly = $derived(item.is_read_only === true || item.is_read_only === 'true' || false);
+	let labelText = $derived(getFieldLabel(item));
 	let helperText = item.help_text ?? '';
-	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
+	let hideLabel = item.attributes?.hideLabel ?? false;
+	let enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
+	let maskType = $derived(item.attributes?.maskType ?? 'integer');
+	let fractionDigits = $derived.by(() => {
+		return item.attributes?.step
+			? (item.attributes?.step.toString().split('.')[1]?.length ?? 0)
+			: 0;
+	});
+
+	// carbon's NumberInput has UX issues with decimal values, even with allowDecimal
+	// keep using it for integer for form script compatability
+	let FieldComponent = $derived(maskType === 'decimal' ? TextInput : NumberInput);
+
 	let touched = $state(false);
+	let ref = $state<HTMLInputElement | null>(null);
 
 	let extAttrs = $state<Record<string, any>>({});
 
-	const rules = $derived.by(() => {
-		const r = rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'number' });
+	let printValue = $derived.by(() => {
+		return value?.toString() || '';
+	});
+
+	let rules = $derived.by(() => {
+		const r = rulesFromAttributes(item.attributes, {
+			is_required: item.is_required,
+			type: 'number'
+		});
 		// If maskType indicates integer, enforce integer rule
-		if (item?.attributes?.maskType === 'integer') r.isInteger = true;
+		if (maskType === 'integer') r.isInteger = true;
 		return r;
 	});
-	const anyError = $derived.by(() => {
+	let anyError = $derived.by(() => {
 		if (!touched) return '';
-		if (error) return error;
+		if (error) return error; // would force display an error that can never change
 		if (readonly) return '';
 		return (
-			validateValue(value, rules, {
+			validateValue(unmaskedValue, rules, {
 				type: 'number',
 				fieldLabel: item.attributes?.labelText ?? item.name
 			}).firstError ?? ''
 		);
 	});
 
-	function handleInput(e: any) {
-		const raw = e?.detail?.value ?? e?.target?.value ?? '';
-		const maskType = item?.attributes?.maskType;
-		// Normalize special unicode dashes
-		let inputStr = normalizeDash(String(raw));
-		// Filter input characters by maskType (if set)
-		if (maskType) {
-			inputStr = filterInputByMaskType(inputStr, maskType);
-		}
-
-		if (!inputStr) {
-			value = null;
-		} else {
-			// Parse numeric from possibly-formatted string
-			const n = parseNumericString(inputStr);
-			// const n = Number(inputStr);
-			if (n === null) {
-				value = null;
-			} else {
-				value = n;
-			}
-		}
+	function handleInput() {
 		touched = true;
 	}
 
 	function handleKeyDown(e: KeyboardEvent) {
-		const maskType = item?.attributes?.maskType;
 		if (maskType === 'integer') {
 			// block decimal separator characters
 			if (e.key === '.' || e.key === ',') {
 				e.preventDefault();
-			}
-		}
-	}
-
-	function handlePaste(e: ClipboardEvent) {
-		const maskType = item?.attributes?.maskType;
-		if (maskType === 'integer') {
-			const paste = (e.clipboardData || (window as any).clipboardData)?.getData('text') ?? '';
-			if (paste.includes('.') || paste.includes(',')) {
-				e.preventDefault();
-				// insert filtered digits/minus only
-				const filtered = filterInputByMaskType(paste, 'integer');
-				const target = e.target as HTMLInputElement | null;
-				if (target) {
-					const start = target.selectionStart ?? 0;
-					const end = target.selectionEnd ?? 0;
-					const newVal = target.value.slice(0, start) + filtered + target.value.slice(end);
-					target.value = newVal;
-					// trigger input handling
-					handleInput({ target });
-				}
 			}
 		}
 	}
@@ -110,8 +95,8 @@
 				value = newValue;
 			},
 			componentName: 'NumberInput',
-			parser: parsers.number,
-			comparator: comparators.number
+			parser: parsers.string,
+			comparator: comparators.string
 		});
 	});
 
@@ -129,48 +114,94 @@
 		publishToGlobalFormState({ item, value });
 	});
 
-	const a11y = buildFieldAria({
-		uuid: item.uuid,
-		labelText,
-		helperText,
-		isRequired: item.is_required,
-		readOnly: readonly
+	const a11y = $derived.by(() =>
+		buildFieldAria({
+			uuid: item.uuid,
+			labelText,
+			helperText,
+			isRequired: item.is_required,
+			readOnly: readonly
+		})
+	);
+
+	const maskaOptions = $derived.by(() => ({
+		// If we want comma separators
+		// number: {
+		// 	locale: 'en-CA',
+		// 	fraction: fractionDigits
+		// },
+		preProcess: preprocessDecimalInput(fractionDigits)
+	}));
+	$effect(() => {
+		if (!ref) {
+			return;
+		}
+		const mask = new MaskInput(ref, maskaOptions);
+		return () => {
+			mask?.destroy();
+		};
 	});
 </script>
 
 <div class="field-container number-input-field">
-	<PrintRow
-		{item}
-		{printing}
-		{labelText}
-		value={value !== null && value !== undefined ? (value === 0 ? value.toString() : value) : ''}
-	/>
-	<div class="web-input" class:visible={!printing && item.visible_web !== false} class:moustache={enableVarSub}>
-		<NumberInput
+	<PrintRow {item} {printing} {labelText} value={printValue} />
+	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
+		<FieldComponent
 			{...filterAttributes(item?.attributes)}
+			{...a11y.ariaProps}
+			{...extAttrs as any}
 			id={item.uuid}
 			class={item.class}
+			bind:value
+			bind:ref
 			{readonly}
+			{hideLabel}
 			hideSteppers
 			allowEmpty
-			value={value ?? ''}
 			invalid={!!anyError}
 			invalidText={anyError}
-			{...a11y.ariaProps}
+			inputmode={maskType === 'decimal' ? 'decimal' : 'numeric'}
 			onchange={handleInput}
 			onblur={handleInput}
-			on:keydown={handleKeyDown}
-			on:paste={handlePaste}
-			{...extAttrs as any}
+			onkeydown={handleKeyDown}
+			data-raw-value={unmaskedValue}
 		>
-			<span slot="label" id={a11y.labelId} class:required={item.is_required}>{@html labelText}</span
+			<span
+				slot="labelChildren"
+				id={a11y.labelId}
+				class:required={item.is_required}
+				class:moustache={enableVarSub}>{@html labelText}</span
 			>
-		</NumberInput>
+		</FieldComponent>
 		{#if anyError}
-			<div id={a11y.errorId} class="bx--form-requirement" role="alert">{anyError}</div>
+			<div
+				id={a11y.errorId}
+				class="bx--form-requirement"
+				class:moustache={enableVarSub}
+				role="alert"
+			>
+				{anyError}
+			</div>
 		{/if}
 		{#if helperText}
-			<div id={a11y.helperId} class="bx--form__helper-text">{helperText}</div>
+			<div id={a11y.helperId} class="bx--form__helper-text" class:moustache={enableVarSub}>
+				{helperText}
+			</div>
 		{/if}
 	</div>
 </div>
+
+<style>
+	:global {
+		.bx--number {
+			input[type='number'],
+			input[type='text'] {
+				font-family: var(--default-font-family), sans-serif;
+				font-size: var(--cds-body-short-01-font-size, 0.875rem);
+				font-weight: var(--cds-body-short-01-font-weight, 400);
+				line-height: var(--cds-body-short-01-line-height, 1.25rem);
+				letter-spacing: 1px;
+			}
+		}
+	}
+</style>
