@@ -6,6 +6,8 @@
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
 	import './fields.css';
+	import CheckboxIcon from "carbon-icons-svelte/lib/Checkbox.svelte";
+	import CheckboxFilledIcon from "carbon-icons-svelte/lib/CheckboxCheckedFilled.svelte";
 
 	const { item, printing = false } = $props<{ item: Item; printing?: boolean }>();
 
@@ -53,19 +55,11 @@
 		);
 	});
 
-	const printValue = $derived(
-		options
-			.map((opt) => {
-				const prefix = selected.includes(opt.value) ? '☑ ' : '☐ ';
-				return prefix + (opt.label || opt.value);
-			})
-			.join('\n')
-	);
-
 	const filteredAttributes = $derived(() => {
 		const attrs = { ...(item.attributes ?? {}) };
 		delete attrs.defaultSelected;
 		delete attrs.disabled;
+		delete attrs.options;
 		return attrs;
 	});
 
@@ -109,7 +103,22 @@
 </script>
 
 <div class="field-container checkbox-group-field">
-	<PrintRow {item} {printing} {labelText} value={printValue} />
+	<PrintRow {item} {printing} {labelText}>
+		{#snippet value()}
+			{#each options as opt (opt.value)}
+				<div class="checkbox-print-option">
+					<span class="checkbox-icon">
+						{#if selected.includes(opt.value)}
+							<CheckboxFilledIcon aria-label="Checked" />
+						{:else}
+							<CheckboxIcon aria-label="Unchecked" />
+						{/if}
+					</span>
+					<span>{@html opt.label || opt.value}</span>
+				</div>
+			{/each}
+		{/snippet}
+	</PrintRow>
 
 	<div
 		class="web-input checkbox-group-wrapper"
@@ -194,5 +203,14 @@
 		max-height: 12.5rem;
 		font-weight: 400;
 		color: var(--cds-text-error, #da1e28);
+	}
+	.checkbox-print-option {
+		display: flex;
+		gap: 0.375rem;
+		align-items: center;
+	}
+	.checkbox-icon {
+		display: flex;
+		flex-shrink: 0;
 	}
 </style>

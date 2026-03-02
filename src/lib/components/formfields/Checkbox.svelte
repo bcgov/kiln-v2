@@ -12,6 +12,8 @@
 	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
+	import CheckboxIcon from 'carbon-icons-svelte/lib/Checkbox.svelte';
+	import CheckboxFilledIcon from 'carbon-icons-svelte/lib/CheckboxCheckedFilled.svelte';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -19,16 +21,16 @@
 	}>();
 
 	let checked = $state(item?.value ?? item.attributes?.defaultChecked ?? false);
-	let labelText = $state(getFieldLabel(item));
-	let readonly = $state(item.is_read_only ?? false);
-	let helperText = item.help_text ?? '';
-	let hideLabel = item.attributes?.hideLabel ?? false;
-	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
-	let touched = $state(false);
+	let labelText = $derived(getFieldLabel(item));
+	let readonly = $derived(item.is_read_only ?? false);
+	let helperText = $derived(item.help_text ?? '');
+	let hideLabel = $derived(item.attributes?.hideLabel ?? false);
+	let enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
 
+	let touched = $state(false);
 	let extAttrs = $state<Record<string, any>>({});
 
-	const filteredAttributes = $derived.by(() => {
+	let filteredAttributes = $derived.by(() => {
 		const attrs = { ...(item.attributes ?? {}) } as Record<string, any>;
 		delete attrs.checked;
 		delete attrs.defaultChecked;
@@ -36,10 +38,10 @@
 		return attrs;
 	});
 
-	const rules = $derived.by(() =>
+	let rules = $derived.by(() =>
 		rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'boolean' })
 	);
-	const anyError = $derived.by(() => {
+	let anyError = $derived.by(() => {
 		if (!touched) return '';
 		if (item.attributes?.error) return item.attributes.error;
 		if (readonly) return '';
@@ -87,17 +89,32 @@
 		publishToGlobalFormState({ item, value: checked });
 	});
 
-	const a11y = buildFieldAria({
-		uuid: item.uuid,
-		labelText,
-		helperText,
-		isRequired: item.is_required,
-		readOnly: readonly
-	});
+	let a11y = $derived(
+		buildFieldAria({
+			uuid: item.uuid,
+			labelText,
+			helperText,
+			isRequired: item.is_required,
+			readOnly: readonly
+		})
+	);
 </script>
 
 <div class="field-container checkbox-field">
-	<PrintRow {item} {printing} {labelText} value={checked ? '☑' : '☐'} />
+	<PrintRow item={{ ...item, is_required: false }} {printing} labelText="">
+		{#snippet value()}
+			<div class="checkbox-print-label">
+				<span class="checkbox-icon">
+					{#if checked}
+						<CheckboxFilledIcon aria-label="Checked" />
+					{:else}
+						<CheckboxIcon aria-label="Unchecked" />
+					{/if}
+				</span>
+				<span class:required={item.is_required}>{@html labelText}</span>
+			</div>
+		{/snippet}
+	</PrintRow>
 
 	<div
 		class="web-input"
@@ -162,12 +179,21 @@
 	.required::after {
 		content: ' *';
 		color: var(--cds-support-error);
-	}	
+	}
 	.bx--form-requirement.checkbox-error {
 		display: block;
 		overflow: visible;
 		max-height: 12.5rem;
 		font-weight: 400;
 		color: var(--cds-text-error, #da1e28);
+	}
+	.checkbox-print-label {
+		display: flex;
+		gap: 0.375rem;
+		align-items: center;
+	}
+	.checkbox-icon {
+		display: flex;
+		flex-shrink: 0;
 	}
 </style>
