@@ -22,12 +22,12 @@
 		item?.value ?? item.attributes?.selected ?? item.attributes?.defaultSelected ?? ''
 	);
 	let error = $state(item.attributes?.error ?? '');
-	let readonly = $state(item.is_read_only ?? false);
-	let labelText = $state(getFieldLabel(item));
-	let hideLabel = item.attributes?.hideLabel ?? false;
-	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
-	let helperText = item.help_text ?? '';
-	let options = item.options ?? [];
+	let readonly = $derived(item.is_read_only ?? false);
+	let labelText = $derived(getFieldLabel(item));
+	let hideLabel = $derived(item.attributes?.hideLabel ?? false);
+	let enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
+	let helperText = $derived(item.help_text ?? '');
+	let options = $derived(item.options ?? []);
 	let touched = $state(false);
 
 	let extAttrs = $state<Record<string, any>>({});
@@ -81,13 +81,15 @@
 		publishToGlobalFormState({ item, value: selected });
 	});
 
-	const a11y = buildFieldAria({
+	const a11y = $derived(
+		buildFieldAria({
 		uuid: item.uuid,
 		labelText,
 		helperText,
 		isRequired: item.is_required,
 		readOnly: readonly
-	});
+		})
+	);
 </script>
 
 {#snippet value()}
