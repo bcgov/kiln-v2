@@ -4,7 +4,9 @@
 	import type { Item } from '$lib/types/form';
 	import Button from './formfields/Button.svelte';
 	import Checkbox from './formfields/Checkbox.svelte';
+	import CheckboxGroup from './formfields/CheckboxGroup.svelte';
 	import Container from './formfields/Container.svelte';
+	import CurrencyInput from './formfields/CurrencyInput.svelte';
 	import DatePicker from './formfields/DatePicker.svelte';
 	import NumberInput from './formfields/NumberInput.svelte';
 	import RadioButton from './formfields/RadioButton.svelte';
@@ -26,6 +28,7 @@
 	const componentMap: Record<string, any> = {
 		'text-input': TextInput,
 		'checkbox-input': Checkbox,
+		'checkbox-group': CheckboxGroup,
 		'date-picker': DatePicker,
 		'date-select-input': DatePicker,
 		'text-area': TextArea,
@@ -35,6 +38,7 @@
 		'text-info': TextInfo,
 		'radio-input': RadioButton,
 		'select-input': Select,
+		'currency-input': CurrencyInput,
 		container: Container
 	};
 

@@ -1,4 +1,8 @@
 <script lang="ts">
+	import JsBarcode from 'jsbarcode';
+
+	let { barcode, securityClassification }: { barcode: { content: string } | undefined, securityClassification?: string | null } = $props();
+
 	export function setFooterText(text: string): void {
 		if (typeof document !== 'undefined') {
 			document.documentElement.setAttribute('data-form-id', text);
@@ -10,12 +14,85 @@
 			document.documentElement.removeAttribute('data-form-id');
 		}
 	}
+
+	function getPlaceholderValues(): Record<string, string> {
+		if (typeof sessionStorage === 'undefined') return {};
+		const raw = sessionStorage.getItem('formParams');
+		if (!raw) return {};
+		try {
+			return JSON.parse(raw) as Record<string, string>;
+		} catch {
+			return {};
+		}
+	}
+
+	function replacePlaceholders(template: string, values: Record<string, string>): string {
+		const lowerCaseMap: Record<string, string> = {};
+		for (const [key, val] of Object.entries(values)) {
+			lowerCaseMap[key.toLowerCase()] = val;
+		}
+
+		return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+			if (values[key] !== undefined) {
+				return values[key];
+			}
+			const lowerKey = key.toLowerCase();
+			if (lowerCaseMap[lowerKey] !== undefined) {
+				return lowerCaseMap[lowerKey];
+			}
+			return '';
+		});
+	}
+	$effect(() => {
+		if (!barcode) {
+			document.documentElement.style.setProperty('--barcode', '');
+			return;
+		}
+		const templateText = barcode?.content.trim() || '';
+		const resolvedBarcodeValue = replacePlaceholders(templateText, getPlaceholderValues());
+		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+		JsBarcode(svg, resolvedBarcodeValue, {
+			width: 1,
+			height: 20,
+			margin: 0,
+			format: 'CODE128A',
+			displayValue: false
+		});
+		const serializer = new XMLSerializer();
+		const svgString = serializer.serializeToString(svg);
+		const encoded = `data:image/svg+xml,${encodeURIComponent(svgString)}`;
+		document.documentElement.style.setProperty('--barcode', `url('${encoded}')`);
+	});
+
+	$effect(() => {
+		if (securityClassification && securityClassification.trim()) {
+			document.documentElement.style.setProperty('--security-classification', `"Security Classification: ${securityClassification.trim()}"`);
+		} else {
+			document.documentElement.style.setProperty('--security-classification', '""');
+		}
+	});
 </script>
 
-<div class="paged-page" data-footer-text=""></div>
-
 <style>
-	.paged-page {
-		display: none;
+	:root {
+		--barcode: '';
+		--security-classification: '';
+	}
+
+	@page {
+		@bottom-left {
+			content: attr(data-form-id) "\A" var(--security-classification);
+			white-space: pre-wrap;
+			font-size: 9pt;
+			line-height: 1.3;
+		}
+		@bottom-center {
+			content: var(--barcode);
+			margin: 0 0.5em;
+		}
+		@bottom-right {
+			content: "Page " counter(page) " of " counter(pages);
+			font-size: 9pt;
+		}
 	}
 </style>

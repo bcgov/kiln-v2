@@ -34,6 +34,11 @@ export function createValueSyncEffect<T = any>(options: ValueSyncOptions<T>) {
 		const target = event.target as HTMLInputElement;
 		if (!target) return;
 
+		const isTargetCheckboxOrRadio = target instanceof HTMLInputElement &&
+			(target.type === 'checkbox' || target.type === 'radio');
+
+		if (isTargetCheckboxOrRadio) return;
+
 		const parsedValue = parser(target.value);
 		const currentValue = getValue();
 
@@ -45,6 +50,8 @@ export function createValueSyncEffect<T = any>(options: ValueSyncOptions<T>) {
 	const handleExternalUpdate = (event: Event) => {
 		const customEvent = event as CustomEvent;
 		if (!customEvent.detail) return;
+
+		if ('checked' in customEvent.detail) return;
 
 		const parsedValue = parser(customEvent.detail.value);
 		const currentValue = getValue();
@@ -95,7 +102,17 @@ export const parsers = {
 		const num = parseFloat(value);
 		return isNaN(num) ? 0 : num;
 	},
-	boolean: (value: string) => value === 'true' || value === '1'
+	boolean: (value: string) => value === 'true' || value === '1',
+	array: (value: string): string[] => {
+		try {
+			// Try to parse as JSON array (e.g., from external update)
+			const parsed = JSON.parse(value);
+			return Array.isArray(parsed) ? parsed : [];
+		} catch {
+			// If not JSON, treat as comma-separated (fallback)
+			return value ? value.split(',').map(v => v.trim()).filter(v => v) : [];
+		}
+	}
 };
 
 // Predefined comparators
@@ -103,7 +120,21 @@ export const comparators = {
 	strict: <T>(a: T, b: T) => a !== b,
 	number: (a: number, b: number) => !isNaN(a) && a !== b,
 	string: (a: string, b: string) => a !== b,
-	date: (a: string | null, b: string | null) => (a ?? '') !== (b ?? '')
+	date: (a: string | null, b: string | null) => (a ?? '') !== (b ?? ''),
+	array: (a: any[], b: any[]): boolean => {
+		if (!Array.isArray(a) || !Array.isArray(b)) return true;
+		if (a.length !== b.length) return true;
+		
+		// Compare as sets (order doesn't matter for checkbox groups)
+		const setA = new Set(a);
+		const setB = new Set(b);
+		if (setA.size !== setB.size) return true;
+		
+		for (const item of setA) {
+			if (!setB.has(item)) return true;
+		}
+		return false; // arrays are equivalent
+	}
 };
 
 
@@ -205,7 +236,6 @@ export function initExternalUpdateBridge() {
 							composed: true
 						})
 					);
-					target.dispatchEvent(new Event('change', { bubbles: true }));
 				} else if (tag === 'SELECT') {
 					const el = target as HTMLSelectElement;
 					const valueStr = String(el.value ?? '');
@@ -216,7 +246,6 @@ export function initExternalUpdateBridge() {
 							composed: true
 						})
 					);
-					target.dispatchEvent(new Event('change', { bubbles: true }));
 				} else {
 					const el = target as HTMLInputElement | HTMLTextAreaElement;
 					const valueStr = String(el.value ?? '');
@@ -227,7 +256,6 @@ export function initExternalUpdateBridge() {
 							composed: true
 						})
 					);
-					target.dispatchEvent(new Event('input', { bubbles: true }));
 				}
 			} else {
 				const valueStr = String(target.textContent ?? '');

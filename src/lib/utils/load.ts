@@ -1,6 +1,8 @@
 import type { LoadDeps as Deps, LoadOptions } from '$lib/types/load';
 import { ensureFreshToken } from '$lib/utils/keycloak';
 
+const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
+
 /**
  * POST params to an endpoint and surface the parsed result via setJsonContent.
  * Handles auth/header injection, mock responses for tests, error parsing, and optional navigation.
@@ -40,7 +42,7 @@ try {
 
     const body: Record<string, any> = { ...params };
 
-    if (includeAuth) {
+    if (includeAuth && !isPortalIntegrated) {
       const username = getCookie("username");
       if (username && username.trim() !== "") {
         body.username = username.trim();
@@ -61,7 +63,7 @@ try {
       "Content-Type": "application/json",
     };
 
-    if (includeAuth) {
+    if (includeAuth && !isPortalIntegrated) {
       const token = keycloak?.token ?? (getCookie("token") as string | null) ?? null;
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;

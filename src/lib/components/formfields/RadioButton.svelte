@@ -24,6 +24,7 @@
 	let error = $state(item.attributes?.error ?? '');
 	let readonly = $state(item.is_read_only ?? false);
 	let labelText = $state(getFieldLabel(item));
+	let hideLabel = item.attributes?.hideLabel ?? false;
 	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let helperText = item.help_text ?? '';
 	let options = item.options ?? [];
@@ -47,6 +48,9 @@
 	});
 
 	function onchange() {
+		touched = true;
+	}
+	function onblur() {
 		touched = true;
 	}
 
@@ -99,10 +103,10 @@
 	<PrintRow {item} {printing} {labelText} {value} />
 
 	<div
-		class="web-input"
+		class="web-input radio-group-wrapper"
 		style={readonly ? 'pointer-events: none;' : ''}
 		class:visible={!printing && item.visible_web !== false}
-		class:moustache={enableVarSub}
+		data-selected={selected}
 	>
 		<RadioButtonGroup
 			{...filterAttributes(item?.attributes)}
@@ -110,25 +114,53 @@
 			class={item.class}
 			name={item.uuid}
 			bind:selected
+			hideLegend={hideLabel}
 			role="radiogroup"
-			data-selected={selected}
 			{...a11y.ariaProps}
 			{onchange}
 			{...extAttrs as any}
 		>
-			<span slot="legendText" id={a11y.labelId} class:required={item.is_required}
-				>{@html labelText}</span
+			<span
+				slot="legendChildren"
+				id={a11y.labelId}
+				class:required={item.is_required}
+				class:moustache={enableVarSub}>{@html labelText}</span
 			>
 
 			{#each options as opt, index (opt.id)}
-				<RadioButton value={opt.value} labelText={opt.label} id={`${item.uuid}-option-${index}`} />
+				<RadioButton
+					value={opt.value}
+					labelText={opt.label}
+					id={`${item.uuid}-option-${index}`}
+					{onblur}
+				/>
 			{/each}
 		</RadioButtonGroup>
-		{#if helperText}
-			<div id={a11y.helperId} class="helper-text">{helperText}</div>
-		{/if}
 		{#if anyError}
-			<div id={a11y.errorId} class="invalid-text" role="alert">{anyError}</div>
+			<div
+				id={a11y.errorId}
+				class="bx--form-requirement hack-visible"
+				class:moustache={enableVarSub}
+				role="alert"
+			>
+				{anyError}
+			</div>
+		{/if}
+		{#if helperText}
+			<div id={a11y.helperId} class="bx--form__helper-text" class:moustache={enableVarSub}>
+				{helperText}
+			</div>
 		{/if}
 	</div>
 </div>
+
+<style>
+	/* carbon components doesn't have a native way of adding errors to radio groups */
+	.bx--form-requirement.hack-visible {
+		display: block;
+		overflow: visible;
+		max-height: 12.5rem;
+		font-weight: 400;
+		color: var(--cds-text-error, #da1e28);
+	}
+</style>

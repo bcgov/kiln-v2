@@ -1,13 +1,7 @@
 <script lang="ts">
 	import { DatePicker, DatePickerInput } from 'carbon-components-svelte';
 	import type { Item } from '$lib/types/form';
-	import {
-		createValueSyncEffect,
-		parsers,
-		comparators,
-		createAttributeSyncEffect,
-		publishToGlobalFormState
-	} from '$lib/utils/valueSync';
+	import { createAttributeSyncEffect, publishToGlobalFormState } from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
 	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
@@ -21,6 +15,7 @@
 
 	let readOnly = $state(item.is_read_only ?? false);
 	let labelText = $state(getFieldLabel(item));
+	let hideLabel = item.attributes?.hideLabel ?? false;
 	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let helperText = item.help_text ?? '';
 	let touched = $state(false);
@@ -76,20 +71,22 @@
 	});
 
 	$effect(() => {
-		return createValueSyncEffect({
-			item,
-			getValue: () => value,
-			setValue: (newValue) => {
-				if (newValue == null || newValue === '') {
-					value = null;
-				} else {
-					value = newValue as string;
-				}
-			},
-			componentName: 'DatePicker',
-			parser: parsers.string,
-			comparator: comparators.date
-		});
+		const element = document.getElementById(item.uuid);
+		if (!element) return;
+
+		const handleExternalUpdate = (event: Event) => {
+			const ce = event as CustomEvent;
+			if (!ce.detail?.attr) return;
+			const newValue = (ce.detail.value as string) || null;
+			if ((newValue ?? '') !== (value ?? '')) {
+				value = newValue;
+			}
+		};
+
+		element.addEventListener('external-update', handleExternalUpdate);
+		return () => {
+			element.removeEventListener('external-update', handleExternalUpdate);
+		};
 	});
 
 	$effect(() => {
@@ -134,14 +131,25 @@
 		isRequired: item.is_required,
 		readOnly
 	});
+
+	// Filter out 'id' from attributes for the outer DatePicker wrapper to prevent
+	// duplicate IDs when inside a repeater (the wrapper div should not have an ID)
+	const datePickerWrapperAttrs = $derived.by(() => {
+		const attrs = filterAttributes(item.attributes);
+		if (attrs && typeof attrs === 'object') {
+			const { id, ...rest } = attrs;
+			return rest;
+		}
+		return attrs;
+	});
 </script>
 
 <div class="field-container date-picker-field">
 	<PrintRow {item} {printing} {labelText} value={value ?? ''} />
 
-	<div class="web-input" class:visible={!printing && item.visible_web !== false} class:moustache={enableVarSub}>
+	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<DatePicker
-			{...filterAttributes(item.attributes)}
+			{...datePickerWrapperAttrs}
 			{...extAttrs as any}
 			class={item.class}
 			datePickerType="single"
@@ -152,6 +160,7 @@
 				{...filterAttributes(item.attributes)}
 				id={item.uuid}
 				disabled={readOnly}
+				{hideLabel}
 				invalid={!!anyError}
 				invalidText={anyError}
 				{oninput}
@@ -161,14 +170,25 @@
 				data-kiln-date="true"
 				data-kiln-uuid={item.uuid}
 			>
-				<span slot="labelText" class:required={item.is_required}>{@html labelText}</span>
+				<span slot="labelChildren" class:required={item.is_required} class:moustache={enableVarSub}
+					>{@html labelText}</span
+				>
 			</DatePickerInput>
 		</DatePicker>
 		{#if anyError}
-			<div id={a11y.errorId} class="bx--form-requirement" role="alert">{anyError}</div>
+			<div
+				id={a11y.errorId}
+				class="bx--form-requirement"
+				class:moustache={enableVarSub}
+				role="alert"
+			>
+				{anyError}
+			</div>
 		{/if}
 		{#if helperText}
-			<div id={a11y.helperId} class="bx--form__helper-text">{helperText}</div>
+			<div id={a11y.helperId} class="bx--form__helper-text" class:moustache={enableVarSub}>
+				{helperText}
+			</div>
 		{/if}
 	</div>
 </div>

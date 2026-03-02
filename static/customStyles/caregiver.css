@@ -1,0 +1,15 @@
+[id='formIdDiv'] 
+{
+    display: none!important;
+}
+[id='formHeaderDiv']
+ {
+    display: none;
+}
+.header-section, .content-wrapper {
+    max-width: 1120px;
+    padding: 0 1rem;
+    @media (min-width: 820px) {
+        padding: 0 2rem;
+    }
+}

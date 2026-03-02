@@ -150,7 +150,15 @@
   }
 }
 
-.bx--radio-button-group,
-.cds--radio-button-group {
-  margin-top: 1.25rem !important;
+.bx--date-picker-container {
+  align-items: flex-start;
+}
+
+.bx--checkbox-label {
+  padding-top: 0;
+}
+
+.bx--checkbox-label-text {
+  display: inline-flex;
+  align-items: center;
 }

@@ -1,5 +1,6 @@
-import { isFieldVisible } from './form';
+import { isFieldVisible,hydrateFormStateFromDOM,getDOMId } from './form';
 import type { FormDefinition, Item, FieldValue } from '../types/form';
+import { isClassSpecMask, isRegexMask } from '$lib/utils/mask';
 
 export type ValueType = 'string' | 'number' | 'date' | 'boolean';
 
@@ -12,6 +13,8 @@ export type ValidationRules = {
   length?: number;
   step?: number;
   pattern?: RegExp | string;
+  mask?: string;
+  maskErrorMessage?: string;
   isInteger?: boolean;
   isEmail?: boolean;
   isUrl?: boolean;
@@ -34,16 +37,6 @@ function escapeRe(s: string) {
 const DASH_RX = /[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g;
 function normalizeMask(mask: string) {
   return mask?.normalize('NFKC').replace(DASH_RX, "-");
-}
-
-// Is this a simple "allowed characters" spec (not a formatting mask)?
-function isClassSpecMask(m: unknown): m is string {
-  if (typeof m !== 'string') return false;
-  const s = normalizeMask(m).trim();
-  return (
-    /^(?:a-z|A-Z|a-zA-Z|0-9|a-z0-9|A-Z0-9|a-zA-Z0-9)$/i.test(s) ||
-    /^\[[^\]]+\]$/.test(s)
-  );
 }
 
 // Convert allowed-class spec to a permissive regex that allows partial typing
@@ -80,9 +73,9 @@ export function compileMaskToRegex(mask: string): RegExp {
   const m = normalizeMask(mask);
   const pattern = Array.from(m)
     .map((ch) =>
-      ch === "9" ? "\\d"
-        : ch === "a" ? "[A-Za-z]"
-          : ch === "*" ? "[A-Za-z0-9]"
+      (ch === "9" || ch === "#" || ch === "N") ? "\\d"
+        : (ch === "a" || ch === "A" || ch === "@") ? "[A-Za-z]"
+          : (ch === "*" || ch === "X") ? "[A-Za-z0-9]"
             : escapeRe(ch)
     )
     .join("");
@@ -98,6 +91,87 @@ function nearInteger(n: number, step: number, base = 0): boolean {
   const eps = 1e-9;
   const q = (n - base) / step;
   return Math.abs(q - Math.round(q)) < eps;
+}
+
+/**
+ * Parse a numeric string that may contain currency symbols, commas, or spaces.
+ * Examples: "$1,234.56", "1,234.56", "1234.56" all become 1234.56
+ */
+export function parseNumericString(s: string): number | null {
+  if (!s || typeof s !== 'string') return null;
+  // Remove currency symbols, commas, spaces; keep only digits, decimal, and minus
+  const cleaned = s.replace(/[^\d.-]/g, '').trim();
+  if (!cleaned) return null;
+  const n = Number(cleaned);
+  return Number.isNaN(n) ? null : n;
+}
+
+/**
+ * Validate values that are entered as masked/formatted strings (currency, phone, email).
+ * Returns an error message string when invalid, or `null` when valid or not applicable.
+ */
+export function validateMaskedValue(
+  value: any,
+  attrs: Record<string, any> = {},
+  opts: { fieldLabel?: string; isRequired?: boolean } = {}
+): string | null {
+  const label = opts.fieldLabel ?? 'This field';
+  const isRequired = !!opts.isRequired;
+  const maskType = attrs?.maskType;
+  const mask = attrs?.mask;
+
+  const isEmpty = !value || String(value).trim() === '';
+
+  // Handle required check using standard message
+  if (isEmpty && isRequired) {
+    return buildErrorMessage('required', {}, label);
+  }
+
+  // If not required and empty, skip validation
+  if (isEmpty) {
+    return null;
+  }
+
+  // Phone: require at least 10 digits
+  if (maskType === 'phone') {
+    const digits = String(value).replace(/\D/g, '');
+    if (digits.length < 10) {
+      return buildErrorMessage('ten_digit_phone', {}, label);
+    }
+    return null;
+  }
+
+  // Email: validate format
+  if (maskType === 'email') {
+    // If a custom mask/pattern is provided, use it; otherwise use standard
+    let emailRx: RegExp;
+    if (typeof mask === 'string') {
+      try {
+        emailRx = new RegExp(mask);        
+      } catch {
+        emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      }
+    } else {
+      emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    }
+    if (!emailRx.test(String(value))) {
+      return buildErrorMessage('email', {}, label);
+    }
+    return null;
+  }
+
+  // Postal Code: validate format (Canadian format A#A #A#)
+  if (maskType === 'postal') {
+    const postalCode = String(value).trim();
+    const postalRx = /^[A-Z]\d[A-Z]\s\d[A-Z]\d$/;
+    if (!postalRx.test(postalCode)) {
+      return buildErrorMessage('postal', {}, label);
+    }
+    return null;
+  }
+
+  // Unknown maskType — treat as valid
+  return null;
 }
 
 function buildErrorMessage(key: string, params: Record<string, any>, label: string): string {
@@ -123,17 +197,22 @@ function buildErrorMessage(key: string, params: Record<string, any>, label: stri
     case 'maxLength':
       return `${label} must be at most ${params.maxLength} characters.`;
     case 'pattern':
-      return `${label} doesn't match the required format.`;
+      if (params.maskErrorMessage) return params.maskErrorMessage;
+      return `${label} doesn't match the required format of ${params.mask}.`;
     case 'step':
       return `${label} must align to steps of ${params.step}${params.base !== undefined ? ` starting at ${params.base}` : ''}.`;
     case 'email':
       return `${label} must be a valid email address.`;
+    case 'postal':
+      return `${label} must be a valid postal code (e.g., A#A #A#).`;
     case 'url':
       return `${label} must be a valid URL.`;
     case 'after':
       return `${label} must be on or after ${params.after}.`;
     case 'before':
       return `${label} must be on or before ${params.before}.`;
+    case 'ten_digit_phone':
+      return `${label} must have 10 digits.`;
     default:
       return `${label} is invalid.`;
   }
@@ -196,7 +275,7 @@ export function validateValue(
           errors.push(buildErrorMessage('max', { max: rules.max }, label));
         }
       }
-      if (typeof rules.step === 'number') {
+      if (typeof rules.step === 'number' && rules.step > 0) {
         const base = typeof rules.min === 'number' ? rules.min : 0;
         if (!nearInteger(n, rules.step, base)) {
           errors.push(buildErrorMessage('step', { step: rules.step, base }, label));
@@ -218,7 +297,7 @@ export function validateValue(
   }
   const rx = toRegExp(rules.pattern);
   if (rx && !rx.test(s)) {
-    errors.push(buildErrorMessage('pattern', {}, label));
+    errors.push(buildErrorMessage('pattern', { mask: rules.mask, maskErrorMessage: rules.maskErrorMessage }, label));
   }
   if (rules.isEmail) {
     const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -267,6 +346,8 @@ export function rulesFromAttributes(
   if (attrs.length != null) rules.length = Number(attrs.length);
   if (attrs.pattern != null) {
     const pRaw = normalizeMask(String(attrs.pattern).trim());
+    // Preserve the original pattern string for error messages
+    rules.mask = pRaw;
     if (isClassSpecMask(pRaw)) {
       const re = classSpecToRegex(pRaw); // -> ^[...]*$
       if (re) rules.pattern = re;
@@ -276,14 +357,22 @@ export function rulesFromAttributes(
     }
   }
 
-  // input-mask -> pattern
-  if (!rules.pattern && typeof attrs.mask === "string" && attrs.mask.trim()) {
+  // input-mask -> pattern (skip for number inputs; they validate numeric value, not formatted string)
+  if (!rules.pattern && typeof attrs.mask === "string" && attrs.mask.trim() && item?.type !== 'number') {
     const raw = normalizeMask(attrs.mask.trim());
+    // Preserve the original mask string for error messages and diagnostics
+    rules.mask = raw;
 
     if (isClassSpecMask(raw)) {
       // Allowed-character spec => permissive regex (allows partial typing)
       const re = classSpecToRegex(raw);
       if (re) rules.pattern = re;
+    } else if (isRegexMask(raw)) {      
+      try {
+        rules.pattern = new RegExp(raw);
+      } catch {
+        console.warn("Invalid regex mask ignored:", raw);
+      }
     } else if (containsMaskTokens(raw)) {
       // Real formatting mask => compile a strict full-match regex
       rules.pattern = compileMaskToRegex(raw);
@@ -301,6 +390,11 @@ export function rulesFromAttributes(
   if (attrs.max != null && item?.type !== 'date') rules.max = Number(attrs.max);
   if (attrs.step != null) rules.step = Number(attrs.step);
   if (attrs.integer === true) rules.isInteger = true;
+
+  // Custom mask error message
+  if (typeof attrs.maskErrorMessage === 'string' && attrs.maskErrorMessage.trim()) {
+    rules.maskErrorMessage = attrs.maskErrorMessage.trim();
+  }
 
   // Convenience flags
   if (attrs.email === true) rules.isEmail = true;
@@ -321,14 +415,15 @@ export function validateAllFields(
   errorList: string[];
   consolidatedMessage: string;
 } {
-  const win: any = typeof window !== 'undefined' ? window : undefined;
-
-  const effectiveFormState: Record<string, FieldValue> =
-    formState ?? (win?.__kilnFormState as Record<string, FieldValue>) ?? {};
+  const win: any = typeof window !== 'undefined' ? window : undefined;  
 
   const formDefinition: FormDefinition =
     (win?.__kilnFormDefinition as FormDefinition) ??
     (win?.formData as FormDefinition);
+
+  hydrateFormStateFromDOM(formDefinition);
+  const effectiveFormState: Record<string, FieldValue> =
+    formState ?? (win?.__kilnFormState as Record<string, FieldValue>) ?? {};  
 
   const effectiveItems: Item[] =
     items ?? ((formDefinition?.elements as Item[]) || []);
@@ -340,10 +435,12 @@ export function validateAllFields(
     switch (item.type) {
       case 'number-input':
         return 'number';
-      case 'date-picker':
+      case 'date-select-input':
         return 'date';
       case 'checkbox-input':
         return 'boolean';
+      case 'currency-input':
+        return 'number';
       case 'select-input':
       case 'radio-input':
       case 'text-input':
@@ -366,10 +463,11 @@ export function validateAllFields(
   function inferRowsFromState(container: Item, state: Record<string, FieldValue>) {
     const rows: Record<string, FieldValue>[] = [];
     const childUuids = new Set((container.children || []).map((c) => c.uuid));
-    const prefix = `${container.uuid}-`;
+    const containerKey = (container as any)._containerInstanceKey ?? container.uuid;
+    const prefix = `${containerKey}-`;
 
     // NEW: respect active group IDs if provided by Container.svelte
-    const activeList: string[] | undefined = win?.__kilnActiveGroups?.[container.uuid];
+    const activeList: string[] | undefined = win?.__kilnActiveGroups?.[containerKey];
     const active = Array.isArray(activeList) && activeList.length ? new Set(activeList) : undefined;
 
     const byGroupId = new Map<string, Record<string, FieldValue>>();
@@ -378,7 +476,7 @@ export function validateAllFields(
       if (!key.startsWith(prefix)) continue;
       const matchedChildUuid = [...childUuids].find((cu) => key.endsWith(`-${cu}`));
       if (!matchedChildUuid) continue;
-
+    
       const rest = key.slice(prefix.length); // "<groupId>-<childUuid>"
       const suffix = `-${matchedChildUuid}`;
       const groupId = rest.slice(0, rest.length - suffix.length);
@@ -398,27 +496,31 @@ export function validateAllFields(
   }
 
   function validateItem(item: Item, state: Record<string, FieldValue>, ctx?: { container?: Item; rowIndex?: number }) {
-    if (item.type === 'container' && item.children) {
+    
+    if (item.type === 'container' && item.children && isFieldVisible(item, 'web', true, ctx) ) {
       const isRepeatable = item.attributes?.isRepeatable === true;
 
       if (isRepeatable) {
         // Prefer explicit groupState rows when provided
-        const explicitRows = effectiveGroupState[item.uuid];
-        const rows = Array.isArray(explicitRows) && explicitRows.length > 0
-          ? explicitRows
-          : inferRowsFromState(item, effectiveFormState);
+        const containerKey = (item as any)._containerInstanceKey ?? item.uuid;
+        
+        let rows = inferRowsFromState(item, effectiveFormState);
+        // NEW: force validation when container is visible but empty
+        if (rows.length === 0) {
+          rows = [{}];
+        }
 
         rows.forEach((rowState, idx) => {
           for (const child of item.children || []) {
             if (child.type === 'container' && child.children) {
               // nested container: recurse passing rowState
-              validateItem(child, rowState as Record<string, FieldValue>, { container: item, rowIndex: idx });
+              validateItem(child, rowState, { container: item, rowIndex: idx });
             } else {
               if (
                 rowState &&
                 typeof rowState === 'object' &&
                 !Array.isArray(rowState) &&
-                isFieldVisible(child, 'web', rowState as Record<string, FieldValue>)
+                isFieldVisible(child, 'web')
               ) {
                 runValidation(child, rowState as Record<string, FieldValue>, {
                   container: item,
@@ -434,7 +536,7 @@ export function validateAllFields(
           if (child.type === 'container' && child.children) {
             validateItem(child, effectiveFormState, { container: item });
           } else {
-            if (isFieldVisible(child, 'web', effectiveFormState)) {
+            if (isFieldVisible(child, 'web', true)) {
               runValidation(child, effectiveFormState, { container: item });
             }
           }
@@ -444,7 +546,7 @@ export function validateAllFields(
     }
 
     // Leaf/simple field
-    if (isFieldVisible(item, 'web', state)) {
+    if (isFieldVisible(item, 'web', true, ctx)) {
       runValidation(item, state, ctx);
     }
   }
@@ -466,10 +568,7 @@ export function validateAllFields(
       isValid = false;
 
       // Create a unique key (handles repeatable rows without clobbering)
-      const errorKey = ctx?.rowIndex != null
-        ? `${item.uuid}__row_${ctx.rowIndex}`
-        : item.uuid;
-
+      const errorKey = getDOMId(item, ctx);
       // Surface only the first message per key (keep concise)
       if (!errors[errorKey]) {
         errors[errorKey] = firstError;
