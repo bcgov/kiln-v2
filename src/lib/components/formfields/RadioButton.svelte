@@ -12,6 +12,8 @@
 	import './fields.css';
 	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
 	import PrintRow from './common/PrintRow.svelte';
+	import RadioIcon from 'carbon-icons-svelte/lib/RadioButton.svelte';
+	import RadioFilledIcon from 'carbon-icons-svelte/lib/RadioButtonChecked.svelte';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -83,22 +85,30 @@
 
 	const a11y = $derived(
 		buildFieldAria({
-		uuid: item.uuid,
-		labelText,
-		helperText,
-		isRequired: item.is_required,
-		readOnly: readonly
+			uuid: item.uuid,
+			labelText,
+			helperText,
+			isRequired: item.is_required,
+			readOnly: readonly
 		})
 	);
 </script>
 
 {#snippet value()}
-	{#each options as opt (opt.id)}
-		<div class="bx--radio-button-wrapper" style="display: flex; align-items: center; gap: 10px;">
-			<div>{selected === opt.value ? '◉' : '○'}</div>
-			<div>{opt.label}</div>
-		</div>
-	{/each}
+	<div class="radio-print-options" class:horizontal={item.attributes?.orientation === 'horizontal'}>
+		{#each options as opt (opt.id)}
+			<div class="radio-print-option">
+				<span class="radio-icon">
+					{#if selected.includes(opt.value)}
+						<RadioFilledIcon aria-label="Selected" />
+					{:else}
+						<RadioIcon aria-label="Not selected" />
+					{/if}
+				</span>
+				<span>{@html opt.label || opt.value}</span>
+			</div>
+		{/each}
+	</div>
 {/snippet}
 
 <div class="field-container radio-button-field">
@@ -164,5 +174,19 @@
 		max-height: 12.5rem;
 		font-weight: 400;
 		color: var(--cds-text-error, #da1e28);
+	}
+	.radio-print-options.horizontal {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 1rem;
+	}
+	.radio-print-option {
+		display: flex;
+		gap: 0.375rem;
+		align-items: center;
+	}
+	.radio-icon {
+		display: flex;
+		flex-shrink: 0;
 	}
 </style>

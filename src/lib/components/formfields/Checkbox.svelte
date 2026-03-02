@@ -12,6 +12,8 @@
 	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
+	import CheckboxIcon from 'carbon-icons-svelte/lib/Checkbox.svelte';
+	import CheckboxFilledIcon from 'carbon-icons-svelte/lib/CheckboxCheckedFilled.svelte';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -87,17 +89,32 @@
 		publishToGlobalFormState({ item, value: checked });
 	});
 
-	const a11y = buildFieldAria({
-		uuid: item.uuid,
-		labelText,
-		helperText,
-		isRequired: item.is_required,
-		readOnly: readonly
-	});
+	let a11y = $derived(
+		buildFieldAria({
+			uuid: item.uuid,
+			labelText,
+			helperText,
+			isRequired: item.is_required,
+			readOnly: readonly
+		})
+	);
 </script>
 
 <div class="field-container checkbox-field">
-	<PrintRow {item} {printing} {labelText} value={checked ? '☑' : '☐'} />
+	<PrintRow item={{ ...item, is_required: false }} {printing} labelText="">
+		{#snippet value()}
+			<div class="checkbox-print-label">
+				<span class="checkbox-icon">
+					{#if checked}
+						<CheckboxFilledIcon aria-label="Checked" />
+					{:else}
+						<CheckboxIcon aria-label="Unchecked" />
+					{/if}
+				</span>
+				<span class:required={item.is_required}>{@html labelText}</span>
+			</div>
+		{/snippet}
+	</PrintRow>
 
 	<div
 		class="web-input"
@@ -162,12 +179,21 @@
 	.required::after {
 		content: ' *';
 		color: var(--cds-support-error);
-	}	
+	}
 	.bx--form-requirement.checkbox-error {
 		display: block;
 		overflow: visible;
 		max-height: 12.5rem;
 		font-weight: 400;
 		color: var(--cds-text-error, #da1e28);
+	}
+	.checkbox-print-label {
+		display: flex;
+		gap: 0.375rem;
+		align-items: center;
+	}
+	.checkbox-icon {
+		display: flex;
+		flex-shrink: 0;
 	}
 </style>
