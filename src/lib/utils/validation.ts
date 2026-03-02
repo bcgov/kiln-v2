@@ -147,8 +147,7 @@ export function validateMaskedValue(
     let emailRx: RegExp;
     if (typeof mask === 'string') {
       try {
-        emailRx = new RegExp(mask);
-        console.log("mask", mask, emailRx)
+        emailRx = new RegExp(mask);        
       } catch {
         emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       }
