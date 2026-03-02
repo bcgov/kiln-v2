@@ -19,16 +19,16 @@
 	}>();
 
 	let checked = $state(item?.value ?? item.attributes?.defaultChecked ?? false);
-	let labelText = $state(getFieldLabel(item));
-	let readonly = $state(item.is_read_only ?? false);
-	let helperText = item.help_text ?? '';
-	let hideLabel = item.attributes?.hideLabel ?? false;
-	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
-	let touched = $state(false);
+	let labelText = $derived(getFieldLabel(item));
+	let readonly = $derived(item.is_read_only ?? false);
+	let helperText = $derived(item.help_text ?? '');
+	let hideLabel = $derived(item.attributes?.hideLabel ?? false);
+	let enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
 
+	let touched = $state(false);
 	let extAttrs = $state<Record<string, any>>({});
 
-	const filteredAttributes = $derived.by(() => {
+	let filteredAttributes = $derived.by(() => {
 		const attrs = { ...(item.attributes ?? {}) } as Record<string, any>;
 		delete attrs.checked;
 		delete attrs.defaultChecked;
@@ -36,10 +36,10 @@
 		return attrs;
 	});
 
-	const rules = $derived.by(() =>
+	let rules = $derived.by(() =>
 		rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'boolean' })
 	);
-	const anyError = $derived.by(() => {
+	let anyError = $derived.by(() => {
 		if (!touched) return '';
 		if (item.attributes?.error) return item.attributes.error;
 		if (readonly) return '';
