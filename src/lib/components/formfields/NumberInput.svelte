@@ -9,11 +9,19 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
+	import {
+		filterAttributes,
+		buildFieldAria,
+		getFieldLabel,
+		computeIsRequired,
+		computeIsReadOnly
+	} from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import { preprocessDecimalInput, unmaskNumberString } from '$lib/utils/mask';
 	import PrintRow from './common/PrintRow.svelte';
 	import { MaskInput } from 'maska';
+
+	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
 	let {
 		item,
@@ -28,7 +36,13 @@
 	);
 	let unmaskedValue: string = $derived(unmaskNumberString(value));
 	let error = $state(item.attributes?.error ?? ''); // this seems unused or broken
-	let readonly = $derived(item.is_read_only === true || item.is_read_only === 'true' || false);
+
+	// Compute effective required/read-only from enum values
+	const isRequired = $derived.by(() => computeIsRequired(item.is_required, isPortalIntegrated));
+	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only, isPortalIntegrated));
+
+	// Use computed isReadOnly for local state
+	let readonly = $state(computeIsReadOnly(item.is_read_only, isPortalIntegrated));
 	let labelText = $derived(getFieldLabel(item));
 	let helperText = item.help_text ?? '';
 	let hideLabel = item.attributes?.hideLabel ?? false;
@@ -55,7 +69,7 @@
 
 	let rules = $derived.by(() => {
 		const r = rulesFromAttributes(item.attributes, {
-			is_required: item.is_required,
+			is_required: isRequired,
 			type: 'number'
 		});
 		// If maskType indicates integer, enforce integer rule
@@ -119,8 +133,8 @@
 			uuid: item.uuid,
 			labelText,
 			helperText,
-			isRequired: item.is_required,
-			readOnly: readonly
+			isRequired,
+			readOnly: isReadOnly
 		})
 	);
 
@@ -169,7 +183,7 @@
 			<span
 				slot="labelChildren"
 				id={a11y.labelId}
-				class:required={item.is_required}
+				class:required={isRequired}
 				class:moustache={enableVarSub}>{@html labelText}</span
 			>
 		</FieldComponent>

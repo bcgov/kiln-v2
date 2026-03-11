@@ -5,10 +5,10 @@ export interface Item {
 	name: string;
 	description?: string;
 	help_text?: string;
-	is_required?: boolean;
+	is_required?: 'always' | 'portal';
 	visible_web?: boolean;
 	visible_pdf?: boolean;
-	is_read_only?: boolean | string;
+	is_read_only?: 'always' | 'portal';
 	save_on_submit?: boolean;
 	order?: number;
 	options?: FormOption[] | any[];

@@ -4,16 +4,29 @@
 	import { createAttributeSyncEffect, publishToGlobalFormState } from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
-	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
+	import {
+		filterAttributes,
+		buildFieldAria,
+		getFieldLabel,
+		computeIsRequired,
+		computeIsReadOnly
+	} from '$lib/utils/helpers';
 	import { toFlatpickrFormat } from '$lib/utils/dateFormats';
 	import PrintRow from './common/PrintRow.svelte';
+
+	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
 	const { item, printing = false } = $props<{ item: Item; printing?: boolean }>();
 	let value: string | null = $state(
 		(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? null) || null
 	);
 
-	let readOnly = $state(item.is_read_only ?? false);
+	// Compute effective required/read-only from enum values
+	const isRequired = $derived.by(() => computeIsRequired(item.is_required, isPortalIntegrated));
+	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only, isPortalIntegrated));
+
+	// Use computed isReadOnly for local state
+	let readOnly = $state(computeIsReadOnly(item.is_read_only, isPortalIntegrated));
 	let labelText = $state(getFieldLabel(item));
 	let hideLabel = item.attributes?.hideLabel ?? false;
 	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
@@ -35,7 +48,7 @@
 	);
 
 	const rules = $derived.by(() =>
-		rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'date' })
+		rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'date' })
 	);
 	const anyError = $derived.by(() => {
 		if (!touched) return '';
@@ -124,13 +137,15 @@
 		state[key] = v;
 	});
 
-	const a11y = buildFieldAria({
-		uuid: item.uuid,
-		labelText,
-		helperText,
-		isRequired: item.is_required,
-		readOnly
-	});
+	const a11y = $derived.by(() =>
+		buildFieldAria({
+			uuid: item.uuid,
+			labelText,
+			helperText,
+			isRequired,
+			readOnly: isReadOnly
+		})
+	);
 
 	// Filter out 'id' from attributes for the outer DatePicker wrapper to prevent
 	// duplicate IDs when inside a repeater (the wrapper div should not have an ID)
@@ -170,7 +185,7 @@
 				data-kiln-date="true"
 				data-kiln-uuid={item.uuid}
 			>
-				<span slot="labelChildren" class:required={item.is_required} class:moustache={enableVarSub}
+				<span slot="labelChildren" class:required={isRequired} class:moustache={enableVarSub}
 					>{@html labelText}</span
 				>
 			</DatePickerInput>

@@ -9,10 +9,18 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
+	import {
+		filterAttributes,
+		buildFieldAria,
+		getFieldLabel,
+		computeIsRequired,
+		computeIsReadOnly
+	} from '$lib/utils/helpers';
 	import { normalizeDash, filterInputByMaskType, applyMaskaWithTokens } from '$lib/utils/mask';
 	import { validateValue, rulesFromAttributes, validateMaskedValue } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
+
+	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -21,7 +29,6 @@
 
 	let value = $state(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? '');
 	let error = $state(item.attributes?.error ?? '');
-	let readOnly = $state(item.is_read_only ?? false);
 	let labelText = $state(getFieldLabel(item));
 	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let placeholder = item.attributes?.placeholder ?? '';
@@ -39,9 +46,17 @@
 	let touched = $state(false);
 	let extAttrs = $state<Record<string, any>>({});
 
+	// Compute effective required/read-only from enum values
+	const isRequired = $derived.by(() => computeIsRequired(item.is_required, isPortalIntegrated));
+	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only, isPortalIntegrated));
+
+	// Use computed isReadOnly for local state (bindings, UI)
+	let readOnly = $state(computeIsReadOnly(item.is_read_only, isPortalIntegrated));
+
 	const rules = $derived.by(() =>
-		rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'string' })
+		rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'string' })
 	);
+
 	const anyError = $derived.by(() => {
 		if (!touched) return '';
 		if (error) return error;
@@ -49,7 +64,6 @@
 
 		const maskType = item?.attributes?.maskType;
 		const label = item.attributes?.labelText ?? item.name;
-		const isRequired = item.is_required === true;
 
 		// Delegate mask-aware checks (phone, email, postal code) to shared helper
 		const maskErr = validateMaskedValue(value, item.attributes, { fieldLabel: label, isRequired });
@@ -114,15 +128,16 @@
 		publishToGlobalFormState({ item, value });
 	});
 
-	const a11y = buildFieldAria({
-		uuid: item.uuid,
-		labelText,
-		helperText,
-		isRequired: item.is_required,
-		readOnly: readOnly
-	});
+	const a11y = $derived.by(() =>
+		buildFieldAria({
+			uuid: item.uuid,
+			labelText,
+			helperText,
+			isRequired,
+			readOnly: isReadOnly
+		})
+	);
 
-	// Apply mask to the real input element once it exists
 	let maskApplied = false;
 	$effect(() => {
 		if (maskApplied || typeof document === 'undefined') return;
@@ -166,7 +181,7 @@
 			<span
 				slot="labelChildren"
 				id={a11y.labelId}
-				class:required={item.is_required}
+				class:required={isRequired}
 				class:moustache={enableVarSub}>{@html labelText}</span
 			>
 		</TextInput>
