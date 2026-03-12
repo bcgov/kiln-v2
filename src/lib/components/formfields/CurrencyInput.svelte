@@ -9,11 +9,19 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
+	import {
+		filterAttributes,
+		buildFieldAria,
+		getFieldLabel,
+		computeIsRequired,
+		computeIsReadOnly
+	} from '$lib/utils/helpers';
 	import { preprocessDecimalInput, unmaskNumberString } from '$lib/utils/mask';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
 	import { MaskInput } from 'maska';
+
+	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
 	let {
 		item,
@@ -28,7 +36,12 @@
 	);
 	let unmaskedValue: string = $derived(unmaskNumberString(value));
 
-	let readOnly = $derived(item.is_read_only === true || item.is_read_only === 'true' || false);
+	// Compute effective required/read-only from enum values
+	const isRequired = $derived.by(() => computeIsRequired(item.is_required, isPortalIntegrated));
+	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only, isPortalIntegrated));
+
+	// Use computed isReadOnly for local state
+	let readOnly = $state(computeIsReadOnly(item.is_read_only, isPortalIntegrated));
 	let labelText = $derived(getFieldLabel(item));
 	let enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
 	let placeholder = $derived(item.attributes?.placeholder ?? '');
@@ -42,7 +55,7 @@
 	let ref = $state<HTMLInputElement | null>(null);
 
 	let rules = $derived.by(() => ({
-		...rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'number' }),
+		...rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'number' }),
 		isInteger: false
 	}));
 	let anyError = $derived.by(() => {
@@ -98,13 +111,13 @@
 		publishToGlobalFormState({ item, value: unmaskedValue });
 	});
 
-	const a11y = $derived(
+	const a11y = $derived.by(() =>
 		buildFieldAria({
 			uuid: item.uuid,
 			labelText,
 			helperText,
-			isRequired: item.is_required,
-			readOnly: readOnly
+			isRequired,
+			readOnly: isReadOnly
 		})
 	);
 
@@ -156,7 +169,7 @@
 			<span
 				slot="labelChildren"
 				id={a11y.labelId}
-				class:required={item.is_required}
+				class:required={isRequired}
 				class:moustache={enableVarSub}>{@html labelText}</span
 			>
 		</TextInput>

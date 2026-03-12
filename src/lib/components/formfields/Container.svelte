@@ -3,6 +3,7 @@
 	import { Add, TrashCan } from 'carbon-icons-svelte';
 	import FieldRenderer from '../FieldRenderer.svelte';
 	import type { Item } from '$lib/types/form';
+	import { computeIsReadOnly } from '$lib/utils/helpers';
 
 	let {
 		item,
@@ -13,6 +14,11 @@
 		mode: string;
 		printing?: boolean;
 	} = $props();
+
+	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
+
+	// Compute effective read-only from enum value
+	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only, isPortalIntegrated));
 
 	// Fall back for crypto.randomUUID (not available in insecure contexts like host.docker.internal)
 	function generateUUID(): string {
@@ -276,7 +282,7 @@
 							>{repeaterItemLabel}
 							{repeaterItemLabel ? idx + 1 : ' '}</span
 						>
-						{#if groupCount > 1 && !item.is_read_only}
+						{#if groupCount > 1 && !isReadOnly}
 							<Button
 								kind="ghost"
 								onclick={() => removeGroup(idx)}
@@ -320,7 +326,7 @@
 				</div>
 			</div>
 		{/each}
-		{#if !printing && !item.is_read_only && isRepeatable}
+		{#if !printing && !isReadOnly && isRepeatable}
 			<div class="custom-buttons-only">
 				<Button kind="ghost" onclick={addGroup} icon={Add} class="no-print">Add another</Button>
 			</div>

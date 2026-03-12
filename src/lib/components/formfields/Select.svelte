@@ -9,9 +9,17 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
+	import {
+		filterAttributes,
+		buildFieldAria,
+		getFieldLabel,
+		computeIsRequired,
+		computeIsReadOnly
+	} from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
+
+	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -22,7 +30,13 @@
 		item?.value ?? item.attributes?.selected ?? item.attributes?.defaultSelected ?? ''
 	);
 	let error = $state(item.attributes?.error ?? '');
-	let readOnly = $state(item.is_read_only ?? false);
+
+	// Compute effective required/read-only from enum values
+	const isRequired = $derived.by(() => computeIsRequired(item.is_required, isPortalIntegrated));
+	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only, isPortalIntegrated));
+
+	// Use computed isReadOnly for local state (bindings, UI)
+	let readOnly = $state(computeIsReadOnly(item.is_read_only, isPortalIntegrated));
 	let labelText = $state(getFieldLabel(item));
 	let helperText = item.help_text ?? '';
 	let hideLabel = item.attributes?.hideLabel ?? false;
@@ -38,7 +52,7 @@
 	});
 
 	const rules = $derived.by(() =>
-		rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'string' })
+		rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'string' })
 	);
 	const anyError = $derived.by(() => {
 		if (!touched) return '';
@@ -91,8 +105,8 @@
 			uuid: item.uuid,
 			labelText,
 			helperText,
-			isRequired: item.is_required,
-			readOnly: readOnly
+			isRequired,
+			readOnly: isReadOnly
 		})
 	);
 </script>
@@ -118,7 +132,7 @@
 			<span
 				slot="labelChildren"
 				id={a11y.labelId}
-				class:required={item.is_required}
+				class:required={isRequired}
 				class:moustache={enableVarSub}>{@html labelText}</span
 			>
 			<SelectItem value="" text="Please select an option" />
@@ -127,7 +141,12 @@
 			{/each}
 		</Select>
 		{#if anyError}
-			<div id={a11y.errorId} class="bx--form-requirement" class:moustache={enableVarSub} role="alert">
+			<div
+				id={a11y.errorId}
+				class="bx--form-requirement"
+				class:moustache={enableVarSub}
+				role="alert"
+			>
 				{anyError}
 			</div>
 		{/if}
