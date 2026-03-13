@@ -10,10 +10,18 @@
 	} from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
-	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
+	import {
+		filterAttributes,
+		buildFieldAria,
+		getFieldLabel,
+		computeIsRequired,
+		computeIsReadOnly
+	} from '$lib/utils/helpers';
 	import PrintRow from './common/PrintRow.svelte';
 	import RadioIcon from 'carbon-icons-svelte/lib/RadioButton.svelte';
 	import RadioFilledIcon from 'carbon-icons-svelte/lib/RadioButtonChecked.svelte';
+
+	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -24,18 +32,24 @@
 		item?.value ?? item.attributes?.selected ?? item.attributes?.defaultSelected ?? ''
 	);
 	let error = $state(item.attributes?.error ?? '');
-	let readonly = $derived(item.is_read_only ?? false);
-	let labelText = $derived(getFieldLabel(item));
-	let hideLabel = $derived(item.attributes?.hideLabel ?? false);
-	let enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
-	let helperText = $derived(item.help_text ?? '');
-	let options = $derived(item.options ?? []);
+
+	// Compute effective required/read-only from enum values
+	const isRequired = $derived.by(() => computeIsRequired(item.is_required, isPortalIntegrated));
+	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only, isPortalIntegrated));
+
+	// Use computed isReadOnly for local state
+	let readonly = $state(computeIsReadOnly(item.is_read_only, isPortalIntegrated));
+	let labelText = $state(getFieldLabel(item));
+	let hideLabel = item.attributes?.hideLabel ?? false;
+	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
+	let helperText = item.help_text ?? '';
+	let options = item.options ?? [];
 	let touched = $state(false);
 
 	let extAttrs = $state<Record<string, any>>({});
 
 	const rules = $derived.by(() =>
-		rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'string' })
+		rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'string' })
 	);
 	const anyError = $derived.by(() => {
 		if (!touched) return '';
@@ -83,13 +97,13 @@
 		publishToGlobalFormState({ item, value: selected });
 	});
 
-	const a11y = $derived(
+	const a11y = $derived.by(() =>
 		buildFieldAria({
 			uuid: item.uuid,
 			labelText,
 			helperText,
-			isRequired: item.is_required,
-			readOnly: readonly
+			isRequired,
+			readOnly: isReadOnly
 		})
 	);
 </script>
@@ -135,7 +149,7 @@
 			<span
 				slot="legendChildren"
 				id={a11y.labelId}
-				class:required={item.is_required}
+				class:required={isRequired}
 				class:moustache={enableVarSub}>{@html labelText}</span
 			>
 

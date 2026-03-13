@@ -2,12 +2,20 @@
 	import { Checkbox, CheckboxGroup } from 'carbon-components-svelte';
 	import type { FormOption, Item } from '$lib/types/form';
 	import { publishToGlobalFormState, syncExternalAttributes } from '$lib/utils/valueSync';
-	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
+	import {
+		filterAttributes,
+		buildFieldAria,
+		getFieldLabel,
+		computeIsRequired,
+		computeIsReadOnly
+	} from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
 	import './fields.css';
 	import CheckboxIcon from "carbon-icons-svelte/lib/Checkbox.svelte";
 	import CheckboxFilledIcon from "carbon-icons-svelte/lib/CheckboxCheckedFilled.svelte";
+
+	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
 	const { item, printing = false } = $props<{ item: Item; printing?: boolean }>();
 
@@ -23,7 +31,12 @@
 	let error = $state(item.attributes?.error ?? '');
 	let extAttrs = $state<Record<string, any>>({});
 
-	let readOnly = $derived(item.is_read_only ?? false);
+	// Compute effective required/read-only from enum values
+	const isRequired = $derived.by(() => computeIsRequired(item.is_required, isPortalIntegrated));
+	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only, isPortalIntegrated));
+
+	// Use computed isReadOnly for local state
+	let readOnly = $state(computeIsReadOnly(item.is_read_only, isPortalIntegrated));
 	// Derived
 	const options = $derived((item.options ?? []) as FormOption[]);
 	const labelText = $derived(getFieldLabel(item));
@@ -31,18 +44,18 @@
 	const helperText = $derived(item.help_text ?? '');
 	const enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
 
-	const a11y = $derived(
+	const a11y = $derived.by(() =>
 		buildFieldAria({
 			uuid: item.uuid,
 			labelText,
 			helperText,
-			isRequired: item.is_required,
-			readOnly
+			isRequired,
+			readOnly: isReadOnly
 		})
 	);
 
 	const rules = $derived(
-		rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'string' })
+		rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'string' })
 	);
 
 	const anyError = $derived.by(() => {
@@ -139,7 +152,7 @@
 			<span
 				slot="legendChildren"
 				id={a11y.labelId}
-				class:required={item.is_required}
+				class:required={isRequired}
 				class:moustache={enableVarSub}>{@html labelText}</span
 			>
 
