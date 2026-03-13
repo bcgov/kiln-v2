@@ -42,7 +42,6 @@
 	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let touched = $state(false);
 
-	let touched = $state(false);
 	let extAttrs = $state<Record<string, any>>({});
 
 	let filteredAttributes = $derived.by(() => {
