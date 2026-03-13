@@ -18,6 +18,8 @@
 	} from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
+	import CheckboxIcon from 'carbon-icons-svelte/lib/Checkbox.svelte';
+	import CheckboxFilledIcon from 'carbon-icons-svelte/lib/CheckboxCheckedFilled.svelte';
 
 	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
@@ -42,7 +44,7 @@
 
 	let extAttrs = $state<Record<string, any>>({});
 
-	const filteredAttributes = $derived.by(() => {
+	let filteredAttributes = $derived.by(() => {
 		const attrs = { ...(item.attributes ?? {}) } as Record<string, any>;
 		delete attrs.checked;
 		delete attrs.defaultChecked;
@@ -53,7 +55,7 @@
 	const rules = $derived.by(() =>
 		rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'boolean' })
 	);
-	const anyError = $derived.by(() => {
+	let anyError = $derived.by(() => {
 		if (!touched) return '';
 		if (item.attributes?.error) return item.attributes.error;
 		if (readonly) return '';
@@ -113,7 +115,20 @@
 </script>
 
 <div class="field-container checkbox-field">
-	<PrintRow {item} {printing} {labelText} value={checked ? '☑' : '☐'} />
+	<PrintRow item={{ ...item, is_required: false }} {printing} labelText="">
+		{#snippet value()}
+			<div class="checkbox-print-label">
+				<span class="checkbox-icon">
+					{#if checked}
+						<CheckboxFilledIcon aria-label="Checked" />
+					{:else}
+						<CheckboxIcon aria-label="Unchecked" />
+					{/if}
+				</span>
+				<span class:required={item.is_required}>{@html labelText}</span>
+			</div>
+		{/snippet}
+	</PrintRow>
 
 	<div
 		class="web-input"
@@ -185,5 +200,14 @@
 		max-height: 12.5rem;
 		font-weight: 400;
 		color: var(--cds-text-error, #da1e28);
+	}
+	.checkbox-print-label {
+		display: flex;
+		gap: 0.375rem;
+		align-items: center;
+	}
+	.checkbox-icon {
+		display: flex;
+		flex-shrink: 0;
 	}
 </style>
