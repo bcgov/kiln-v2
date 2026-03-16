@@ -37,14 +37,14 @@
 
 	// Use computed isReadOnly for local state (bindings, UI)
 	let readonly = $state(computeIsReadOnly(item.is_read_only, isPortalIntegrated));
-	let helperText = item.help_text ?? '';
-	let hideLabel = item.attributes?.hideLabel ?? false;
+	const helperText = item.help_text ?? '';
+	const hideLabel = item.attributes?.hideLabel ?? false;
 	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let touched = $state(false);
 
 	let extAttrs = $state<Record<string, any>>({});
 
-	let filteredAttributes = $derived.by(() => {
+	const filteredAttributes = $derived.by(() => {
 		const attrs = { ...(item.attributes ?? {}) } as Record<string, any>;
 		delete attrs.checked;
 		delete attrs.defaultChecked;
@@ -52,10 +52,11 @@
 		return attrs;
 	});
 
-	const rules = $derived.by(() =>
+	const rules = $derived(
 		rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'boolean' })
 	);
-	let anyError = $derived.by(() => {
+
+	const anyError = $derived.by(() => {
 		if (!touched) return '';
 		if (item.attributes?.error) return item.attributes.error;
 		if (readonly) return '';

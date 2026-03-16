@@ -1,8 +1,11 @@
-import { isFieldVisible,hydrateFormStateFromDOM,getDOMId } from './form';
+import { isFieldVisible, hydrateFormStateFromDOM, getDOMId } from './form';
 import type { FormDefinition, Item, FieldValue } from '../types/form';
 import { isClassSpecMask, isRegexMask } from '$lib/utils/mask';
+import { computeIsRequired } from '$lib/utils/helpers';
 
-export type ValueType = 'string' | 'number' | 'date' | 'boolean';
+const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
+
+export type ValueType = 'string' | 'number' | 'date' | 'boolean' | 'container';
 
 export type ValidationRules = {
   required?: boolean;
@@ -10,6 +13,7 @@ export type ValidationRules = {
   max?: number;
   minLength?: number;
   maxLength?: number;
+  maxRepeats?: number;
   length?: number;
   step?: number;
   pattern?: RegExp | string;
@@ -18,6 +22,7 @@ export type ValidationRules = {
   isInteger?: boolean;
   isEmail?: boolean;
   isUrl?: boolean;
+  isRepeatable?: boolean;
   custom?:
   | ((value: any) => string | null | undefined)
   | Array<(value: any) => string | null | undefined>;
@@ -147,7 +152,7 @@ export function validateMaskedValue(
     let emailRx: RegExp;
     if (typeof mask === 'string') {
       try {
-        emailRx = new RegExp(mask);        
+        emailRx = new RegExp(mask);
       } catch {
         emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       }
@@ -213,6 +218,8 @@ function buildErrorMessage(key: string, params: Record<string, any>, label: stri
       return `${label} must be on or before ${params.before}.`;
     case 'ten_digit_phone':
       return `${label} must have 10 digits.`;
+    case 'maxRepeats':
+      return `${label} cannot have more than ${params.maxRepeats} repeater instances.`;
     default:
       return `${label} is invalid.`;
   }
@@ -226,6 +233,18 @@ export function validateValue(
   const type: ValueType = opts.type ?? 'string';
   const label = opts.fieldLabel ?? 'This field';
   const errors: string[] = [];
+
+  if (type === 'container') {
+    // If container is not a repeater, skip validation
+    if (!rules.isRepeatable) {
+      return { valid: true, errors: [], firstError: null };
+    }
+
+    const hasMax = typeof rules.maxRepeats === 'number';
+    if (hasMax && value > (rules.maxRepeats as number)) {
+      errors.push(buildErrorMessage('maxRepeats', { maxRepeats: rules.maxRepeats }, label));
+    }
+  }
 
   const isEmpty = (() => {
     if (type === 'boolean') return value === undefined || value === null || value === false;
@@ -367,7 +386,7 @@ export function rulesFromAttributes(
       // Allowed-character spec => permissive regex (allows partial typing)
       const re = classSpecToRegex(raw);
       if (re) rules.pattern = re;
-    } else if (isRegexMask(raw)) {      
+    } else if (isRegexMask(raw)) {
       try {
         rules.pattern = new RegExp(raw);
       } catch {
@@ -400,6 +419,10 @@ export function rulesFromAttributes(
   if (attrs.email === true) rules.isEmail = true;
   if (attrs.url === true) rules.isUrl = true;
 
+  // Container-specific
+  if (attrs.isRepeatable === true) rules.isRepeatable = true;
+  if (attrs.maxRepeats != null) rules.maxRepeats = Number(attrs.maxRepeats);
+
   return rules;
 }
 
@@ -415,7 +438,7 @@ export function validateAllFields(
   errorList: string[];
   consolidatedMessage: string;
 } {
-  const win: any = typeof window !== 'undefined' ? window : undefined;  
+  const win: any = typeof window !== 'undefined' ? window : undefined;
 
   const formDefinition: FormDefinition =
     (win?.__kilnFormDefinition as FormDefinition) ??
@@ -423,7 +446,7 @@ export function validateAllFields(
 
   hydrateFormStateFromDOM(formDefinition);
   const effectiveFormState: Record<string, FieldValue> =
-    formState ?? (win?.__kilnFormState as Record<string, FieldValue>) ?? {};  
+    formState ?? (win?.__kilnFormState as Record<string, FieldValue>) ?? {};
 
   const effectiveItems: Item[] =
     items ?? ((formDefinition?.elements as Item[]) || []);
@@ -433,14 +456,15 @@ export function validateAllFields(
 
   const getType = (item: Item): ValueType => {
     switch (item.type) {
+      case 'container':
+        return 'container';
+      case 'currency-input':
       case 'number-input':
         return 'number';
       case 'date-select-input':
         return 'date';
       case 'checkbox-input':
         return 'boolean';
-      case 'currency-input':
-        return 'number';
       case 'select-input':
       case 'radio-input':
       case 'text-input':
@@ -476,7 +500,7 @@ export function validateAllFields(
       if (!key.startsWith(prefix)) continue;
       const matchedChildUuid = [...childUuids].find((cu) => key.endsWith(`-${cu}`));
       if (!matchedChildUuid) continue;
-    
+
       const rest = key.slice(prefix.length); // "<groupId>-<childUuid>"
       const suffix = `-${matchedChildUuid}`;
       const groupId = rest.slice(0, rest.length - suffix.length);
@@ -496,19 +520,24 @@ export function validateAllFields(
   }
 
   function validateItem(item: Item, state: Record<string, FieldValue>, ctx?: { container?: Item; rowIndex?: number }) {
-    
-    if (item.type === 'container' && item.children && isFieldVisible(item, 'web', true, ctx) ) {
+
+    if (item.type === 'container' && item.children && isFieldVisible(item, 'web', true, ctx)) {
       const isRepeatable = item.attributes?.isRepeatable === true;
 
       if (isRepeatable) {
         // Prefer explicit groupState rows when provided
         const containerKey = (item as any)._containerInstanceKey ?? item.uuid;
-        
+
         let rows = inferRowsFromState(item, effectiveFormState);
+
+        runValidation(
+          item,
+          { [item.uuid]: rows.length },
+          { container: ctx?.container }
+        );
+
         // NEW: force validation when container is visible but empty
-        if (rows.length === 0) {
-          rows = [{}];
-        }
+        rows = rows.length === 0 ? [{}] : rows;
 
         rows.forEach((rowState, idx) => {
           for (const child of item.children || []) {
@@ -553,12 +582,13 @@ export function validateAllFields(
 
   function runValidation(item: Item, state: Record<string, FieldValue>, ctx?: { container?: Item; rowIndex?: number }) {
     const type = getType(item);
-    const rules = rulesFromAttributes(item.attributes, { is_required: item.is_required, type });
+    const isRequired = computeIsRequired(item.is_required, isPortalIntegrated);
+    const rules = rulesFromAttributes(item.attributes, { is_required: isRequired, type });
     const fieldLabel = labelOf(item);
 
     // Use state first; if missing, fall back to item-provided value (e.g., preloaded/bound)
     let value = state[item.uuid];
-    if (value === undefined || value === null ) {
+    if (value === undefined || value === null) {
       const fallback = item.attributes?.value ?? (item as any).value;
       if (fallback !== undefined) value = fallback;
     }
@@ -609,6 +639,6 @@ export function validateAllFields(
   } catch (e) {
     console.log('validation broadcast error:', e);
   }
-  
+
   return { isValid, errors, errorList, consolidatedMessage };
 }

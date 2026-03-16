@@ -25,6 +25,7 @@ function normalizeDate(v: any): any {
 type FieldType =
 	| 'text-input'
 	| 'textarea-input'
+	| 'currency-input'
 	| 'number-input'
 	| 'checkbox-input'
 	| 'select-input'
@@ -81,6 +82,7 @@ function setInjectedValueByType(newItem: any, rawValue: any) {
 			};
 			break;
 		}
+		case 'currency-input':
 		case 'textarea-input':
 		case 'text-input': {
 			const strVal = rawValue == null ? '' : String(rawValue);

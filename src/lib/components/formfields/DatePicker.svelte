@@ -28,8 +28,8 @@
 	// Use computed isReadOnly for local state
 	let readOnly = $state(computeIsReadOnly(item.is_read_only, isPortalIntegrated));
 	let labelText = $state(getFieldLabel(item));
-	let hideLabel = item.attributes?.hideLabel ?? false;
-	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
+	const hideLabel = item.attributes?.hideLabel ?? false;
+	const enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let helperText = item.help_text ?? '';
 	let touched = $state(false);	
 	let formatError = $state('');
@@ -60,7 +60,7 @@
 		)
 	);
 
-	const rules = $derived.by(() =>
+	const rules = $derived(
 		rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'date' })
 	);
 	const anyError = $derived.by(() => {
