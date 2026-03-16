@@ -32,19 +32,39 @@
 		});
 	}
 
-	// Initialize groups based on existing data or create one empty group
+	const minRepeats = $derived(item.attributes?.minRepeats ?? 1);
+	const maxRepeats = $derived(item.attributes?.maxRepeats ?? Infinity);
+
+	// Initialize groups based on existing data or create the minimum required empty groups
 	let groups = $state(initializeGroups());
 
 	function initializeGroups() {
-		// Check for save data
+		// Use saved data if present
 		if (item.repeaterData && Array.isArray(item.repeaterData) && item.repeaterData.length > 0) {
-			return item.repeaterData.map((data, index) => ({
+			const loaded = item.repeaterData.map((data, index) => ({
 				id: generateUUID(),
-				data: data,
-				index: index
+				data,
+				index
 			}));
+
+			// If saved data is fewer than minRepeats, auto-add extra blank groups
+			while (loaded.length < minRepeats) {
+				loaded.push({
+					id: generateUUID(),
+					data: {},
+					index: loaded.length
+				});
 		}
-		return [{ id: generateUUID(), data: {}, index: 0 }];
+
+			return loaded;
+		}
+
+		// Otherwise create minRepeats empty groups
+		return Array.from({ length: minRepeats }, (_, i) => ({
+			id: generateUUID(),
+			data: {},
+			index: i
+		}));
 	}
 
 	let isRepeatable = $derived(item.attributes?.isRepeatable === true);
@@ -131,6 +151,8 @@
 	}
 
 	function addGroup() {
+		if (groups.length >= maxRepeats) return; // prevent exceeding max
+
 		const newGroup = {
 			id: generateUUID(),
 			data: {},
@@ -138,14 +160,17 @@
 		};
 		groups.push(newGroup);
 		groups = groups;
+
 		// keep registry in sync
 		syncActiveGroupsRegistry();
 	}
 
 	function removeGroup(index: number) {
-		if (groups.length <= 1) return;
+		if (groups.length <= minRepeats) return; // prevent going below min
+
 		groups.splice(index, 1);
 		groups = groups.map((group, idx) => ({ ...group, index: idx }));
+
 		// update registry and purge any stale keys that belonged to the removed group
 		syncActiveGroupsRegistry();
 		cleanupStaleFormState();
@@ -282,7 +307,7 @@
 							>{repeaterItemLabel}
 							{repeaterItemLabel ? idx + 1 : ' '}</span
 						>
-						{#if groupCount > 1 && !isReadOnly}
+						{#if groupCount > minRepeats && !item.is_read_only}
 							<Button
 								kind="ghost"
 								onclick={() => removeGroup(idx)}
@@ -328,7 +353,13 @@
 		{/each}
 		{#if !printing && !isReadOnly && isRepeatable}
 			<div class="custom-buttons-only">
-				<Button kind="ghost" onclick={addGroup} icon={Add} class="no-print">Add another</Button>
+				<Button
+					kind="ghost"
+					onclick={addGroup}
+					icon={Add}
+					class="no-print"
+					disabled={groups.length >= maxRepeats}>Add another</Button
+				>
 			</div>
 		{/if}
 	</fieldset>
