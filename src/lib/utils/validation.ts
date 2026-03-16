@@ -1,8 +1,11 @@
 import { isFieldVisible,hydrateFormStateFromDOM,getDOMId } from './form';
 import type { FormDefinition, Item, FieldValue } from '../types/form';
 import { isClassSpecMask, isRegexMask } from '$lib/utils/mask';
+import { computeIsRequired } from '$lib/utils/helpers';
 
-export type ValueType = 'string' | 'number' | 'date' | 'boolean';
+const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
+
+export type ValueType = 'string' | 'number' | 'date' | 'boolean' | 'container';
 
 export type ValidationRules = {
   required?: boolean;
@@ -10,6 +13,7 @@ export type ValidationRules = {
   max?: number;
   minLength?: number;
   maxLength?: number;
+  maxRepeats?: number;
   length?: number;
   step?: number;
   pattern?: RegExp | string;
@@ -18,6 +22,7 @@ export type ValidationRules = {
   isInteger?: boolean;
   isEmail?: boolean;
   isUrl?: boolean;
+  isRepeatable?: boolean;
   custom?:
   | ((value: any) => string | null | undefined)
   | Array<(value: any) => string | null | undefined>;
@@ -213,6 +218,8 @@ function buildErrorMessage(key: string, params: Record<string, any>, label: stri
       return `${label} must be on or before ${params.before}.`;
     case 'ten_digit_phone':
       return `${label} must have 10 digits.`;
+    case 'maxRepeats':
+      return `${label} cannot have more than ${params.maxRepeats} repeater instances.`;
     default:
       return `${label} is invalid.`;
   }
@@ -226,6 +233,18 @@ export function validateValue(
   const type: ValueType = opts.type ?? 'string';
   const label = opts.fieldLabel ?? 'This field';
   const errors: string[] = [];
+
+  if (type === 'container') {
+    // If container is not a repeater, skip validation
+    if (!rules.isRepeatable) {
+      return { valid: true, errors: [], firstError: null };
+    }
+
+    const hasMax = typeof rules.maxRepeats === 'number';
+    if (hasMax && value > (rules.maxRepeats as number)) {
+      errors.push(buildErrorMessage('maxRepeats', { maxRepeats: rules.maxRepeats }, label));
+    }
+  }
 
   const isEmpty = (() => {
     if (type === 'boolean') return value === undefined || value === null || value === false;
@@ -399,6 +418,10 @@ export function rulesFromAttributes(
   // Convenience flags
   if (attrs.email === true) rules.isEmail = true;
   if (attrs.url === true) rules.isUrl = true;
+
+  // Container-specific
+  if (attrs.isRepeatable === true) rules.isRepeatable = true;
+  if (attrs.maxRepeats != null) rules.maxRepeats = Number(attrs.maxRepeats);
 
   return rules;
 }

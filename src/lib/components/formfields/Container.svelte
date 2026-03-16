@@ -4,6 +4,7 @@
 	import FieldRenderer from '../FieldRenderer.svelte';
 	import type { Item } from '$lib/types/form';
 	import { computeIsReadOnly } from '$lib/utils/helpers';
+	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 
 	let {
 		item,
@@ -67,13 +68,19 @@
 		}));
 	}
 
-	let isRepeatable = $derived(item.attributes?.isRepeatable === true);
-	let legend = $derived(item.attributes?.legend ?? '');
-	let level = $derived(item.attributes?.level ?? 2);
-	let enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
-	let repeaterItemLabel = $derived(item.attributes?.repeaterItemLabel ?? null);
-	let children = $derived(item.children ?? []);
-	let groupCount = $derived(groups.length);
+
+	const rules = $derived({
+		...rulesFromAttributes(item.attributes, { type: 'container' })
+	});
+
+	const anyError = $derived.by(() => {
+		return (
+			validateValue(groups.length, rules, {
+				type: 'container',
+				fieldLabel: item.attributes?.labelText ?? item.name
+			}).firstError ?? ''
+		);
+	});
 
 	function win(): any | undefined {
 		return typeof window === 'undefined' ? undefined : (window as any);
@@ -275,6 +282,7 @@
 	let containerStyle = $derived(containerTypeStyleMap[containerType] ?? '');
 
 	const legendId = `${item.uuid}-legend`;
+	const errorId = `${item.uuid}-error`;
 
 	const isVisible = $derived(
 		(!printing && item.visible_web !== false) || (printing && item.visible_pdf !== false)
@@ -360,6 +368,17 @@
 					class="no-print"
 					disabled={groups.length >= maxRepeats}>Add another</Button
 				>
+
+				{#if anyError}
+					<div
+						id={errorId}
+						class="bx--form-requirement"
+						class:moustache={enableVarSub}
+						role="alert"
+					>
+						{anyError}
+					</div>
+				{/if}
 			</div>
 		{/if}
 	</fieldset>
@@ -404,6 +423,9 @@
 		border: none;
 		padding: 0;
 		margin-bottom: 20px;
+	}
+	:global(.bx--btn--ghost:disabled) {
+		opacity: 0.5;
 	}
 
 	@media print {
