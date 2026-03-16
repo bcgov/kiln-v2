@@ -31,8 +31,8 @@
 	let error = $state(item.attributes?.error ?? '');
 	let labelText = $state(getFieldLabel(item));
 	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
-	let placeholder = item.attributes?.placeholder ?? '';
-	let helperText = item.help_text ?? item.description ?? '';
+	const placeholder = item.attributes?.placeholder ?? '';
+	const helperText = item.help_text ?? item.description ?? '';
 
 	//maska patterns:
 	// 	{
@@ -41,8 +41,8 @@
 	//   '*': { pattern: /[a-zA-Z0-9]/ }, // letters & digits
 	// }
 
-	let hideLabel = item.attributes?.hideLabel ?? false;
-	let maxCount = item.attributes?.maxCount ?? undefined;
+	const hideLabel = item.attributes?.hideLabel ?? false;
+	const maxCount = item.attributes?.maxCount ?? undefined;
 	let touched = $state(false);
 	let extAttrs = $state<Record<string, any>>({});
 
@@ -53,7 +53,7 @@
 	// Use computed isReadOnly for local state (bindings, UI)
 	let readOnly = $state(computeIsReadOnly(item.is_read_only, isPortalIntegrated));
 
-	const rules = $derived.by(() =>
+	const rules = $derived(
 		rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'string' })
 	);
 

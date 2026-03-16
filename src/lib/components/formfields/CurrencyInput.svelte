@@ -34,7 +34,7 @@
 	let value: string = $state(
 		item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? ''
 	);
-	let unmaskedValue: string = $derived(unmaskNumberString(value));
+	const unmaskedValue: string = $derived(unmaskNumberString(value));
 
 	// Compute effective required/read-only from enum values
 	const isRequired = $derived.by(() => computeIsRequired(item.is_required, isPortalIntegrated));
@@ -42,23 +42,24 @@
 
 	// Use computed isReadOnly for local state
 	let readOnly = $state(computeIsReadOnly(item.is_read_only, isPortalIntegrated));
-	let labelText = $derived(getFieldLabel(item));
-	let enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
-	let placeholder = $derived(item.attributes?.placeholder ?? '');
-	let helperText = $derived(item.help_text ?? item.description ?? '');
+	const labelText = $derived(getFieldLabel(item));
+	const enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
+	const placeholder = $derived(item.attributes?.placeholder ?? '');
+	const helperText = $derived(item.help_text ?? item.description ?? '');
 
-	let hideLabel = $derived(item.attributes?.hideLabel ?? false);
+	const hideLabel = $derived(item.attributes?.hideLabel ?? false);
 
 	let touched = $state(false);
 	let extAttrs = $state<Record<string, any>>({});
 
 	let ref = $state<HTMLInputElement | null>(null);
 
-	let rules = $derived.by(() => ({
+	const rules = $derived({
 		...rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'number' }),
 		isInteger: false
-	}));
-	let anyError = $derived.by(() => {
+	});
+
+	const anyError = $derived.by(() => {
 		if (!touched) return '';
 		if (readOnly) return '';
 		return (

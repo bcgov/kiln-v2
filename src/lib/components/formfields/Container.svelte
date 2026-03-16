@@ -6,7 +6,7 @@
 	import { computeIsReadOnly } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 
-	let {
+	const {
 		item,
 		mode,
 		printing = false
@@ -55,7 +55,7 @@
 					data: {},
 					index: loaded.length
 				});
-		}
+			}
 
 			return loaded;
 		}
@@ -68,6 +68,13 @@
 		}));
 	}
 
+	const isRepeatable = $derived(item.attributes?.isRepeatable === true);
+	const legend = $derived(item.attributes?.legend ?? '');
+	const level = $derived(item.attributes?.level ?? 2);
+	const enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
+	const repeaterItemLabel = $derived(item.attributes?.repeaterItemLabel ?? null);
+	const children = $derived(item.children ?? []);
+	const groupCount = $derived(groups.length);
 
 	const rules = $derived({
 		...rulesFromAttributes(item.attributes, { type: 'container' })
@@ -275,11 +282,11 @@
 
 	type ContainerType = keyof typeof containerTypeClassMap;
 
-	let containerType: ContainerType = $derived(
+	const containerType: ContainerType = $derived(
 		(item.attributes?.containerType as ContainerType) ?? 'section'
 	);
-	let containerClass = $derived(containerTypeClassMap[containerType] ?? 'container-section');
-	let containerStyle = $derived(containerTypeStyleMap[containerType] ?? '');
+	const containerClass = $derived(containerTypeClassMap[containerType] ?? 'container-section');
+	const containerStyle = $derived(containerTypeStyleMap[containerType] ?? '');
 
 	const legendId = `${item.uuid}-legend`;
 	const errorId = `${item.uuid}-error`;

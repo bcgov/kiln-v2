@@ -34,7 +34,7 @@
 	let value: string = $state(
 		item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? ''
 	);
-	let unmaskedValue: string = $derived(unmaskNumberString(value));
+	const unmaskedValue: string = $derived(unmaskNumberString(value));
 	let error = $state(item.attributes?.error ?? ''); // this seems unused or broken
 
 	// Compute effective required/read-only from enum values
@@ -43,11 +43,11 @@
 
 	// Use computed isReadOnly for local state
 	let readonly = $state(computeIsReadOnly(item.is_read_only, isPortalIntegrated));
-	let labelText = $derived(getFieldLabel(item));
-	let helperText = item.help_text ?? '';
-	let hideLabel = item.attributes?.hideLabel ?? false;
-	let enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
-	let maskType = $derived(item.attributes?.maskType ?? 'integer');
+	const labelText = $derived(getFieldLabel(item));
+	const helperText = item.help_text ?? '';
+	const hideLabel = item.attributes?.hideLabel ?? false;
+	const enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
+	const maskType = $derived(item.attributes?.maskType ?? 'integer');
 	let fractionDigits = $derived.by(() => {
 		return item.attributes?.step
 			? (item.attributes?.step.toString().split('.')[1]?.length ?? 0)
@@ -56,7 +56,7 @@
 
 	// carbon's NumberInput has UX issues with decimal values, even with allowDecimal
 	// keep using it for integer for form script compatability
-	let FieldComponent = $derived(maskType === 'decimal' ? TextInput : NumberInput);
+	const FieldComponent = $derived(maskType === 'decimal' ? TextInput : NumberInput);
 
 	let touched = $state(false);
 	let ref = $state<HTMLInputElement | null>(null);
@@ -67,7 +67,7 @@
 		return value?.toString() || '';
 	});
 
-	let rules = $derived.by(() => {
+	const rules = $derived.by(() => {
 		const r = rulesFromAttributes(item.attributes, {
 			is_required: isRequired,
 			type: 'number'
@@ -76,7 +76,8 @@
 		if (maskType === 'integer') r.isInteger = true;
 		return r;
 	});
-	let anyError = $derived.by(() => {
+
+	const anyError = $derived.by(() => {
 		if (!touched) return '';
 		if (error) return error; // would force display an error that can never change
 		if (readonly) return '';

@@ -1,16 +1,24 @@
 <script lang="ts">
 	import { Button } from 'carbon-components-svelte';
 	import type { Item } from '$lib/types/form';
-	import { filterAttributes, getFieldLabel, computeIsReadOnly } from '$lib/utils/helpers';
+	import {
+		filterAttributes,
+		getFieldLabel,
+		computeIsReadOnly,
+		buildFieldAria
+	} from '$lib/utils/helpers';
 	import { syncExternalAttributes } from '$lib/utils/valueSync';
-	import { buildFieldAria } from '$lib/utils/helpers';
 
 	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
-	let { item, printing = false } = $props<{ item: Item; printing?: boolean; [key: string]: any }>();
-	let labelText = $derived(getFieldLabel(item));
-	let enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
-	let readonly = $state(computeIsReadOnly(item.is_read_only, isPortalIntegrated));
+	const { item, printing = false } = $props<{
+		item: Item;
+		printing?: boolean;
+		[key: string]: any;
+	}>();
+	const labelText = $derived(getFieldLabel(item));
+	const enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
+	const readonly = $state(computeIsReadOnly(item.is_read_only, isPortalIntegrated));
 
 	let extAttrs = $state<Record<string, any>>({});
 	let ariaLabel = $derived(labelText || item.name || 'button');

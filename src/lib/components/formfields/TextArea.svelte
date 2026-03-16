@@ -36,16 +36,16 @@
 	// Use computed isReadOnly for local state
 	let readOnly = $state(computeIsReadOnly(item.is_read_only, isPortalIntegrated));
 	let labelText = $state(getFieldLabel(item));
-	let placeholder = item.attributes?.placeholder ?? '';
-	let helperText = item.help_text ?? '';
-	let hideLabel = item.attributes?.hideLabel ?? false;
+	const placeholder = item.attributes?.placeholder ?? '';
+	const helperText = item.help_text ?? '';
+	const hideLabel = item.attributes?.hideLabel ?? false;
 	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
-	let maxlength = item.attributes?.maxCount ?? undefined;
+	const maxlength = item.attributes?.maxCount ?? undefined;
 	let touched = $state(false);
 
 	let extAttrs = $state<Record<string, any>>({});
 
-	const rules = $derived.by(() =>
+	const rules = $derived(
 		rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'string' })
 	);
 	const anyError = $derived.by(() => {
