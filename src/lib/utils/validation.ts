@@ -576,7 +576,8 @@ export function validateAllFields(
 
   function runValidation(item: Item, state: Record<string, FieldValue>, ctx?: { container?: Item; rowIndex?: number }) {
     const type = getType(item);
-    const rules = rulesFromAttributes(item.attributes, { is_required: item.is_required, type });
+    const isRequired = computeIsRequired(item.is_required, isPortalIntegrated);
+    const rules = rulesFromAttributes(item.attributes, { is_required: isRequired, type });
     const fieldLabel = labelOf(item);
 
     // Use state first; if missing, fall back to item-provided value (e.g., preloaded/bound)
