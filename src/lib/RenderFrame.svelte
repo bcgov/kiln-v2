@@ -578,10 +578,11 @@
 						const root = document.querySelector<HTMLElement>(selectors(id));
 						if (!root) return;
 
-						const focusable =
-							(root.matches?.('input,select,textarea')
+						const focusable = root.matches?.('fieldset')
+							? root.querySelector('.custom-buttons-only button') || root
+							: root.matches?.('input,select,textarea')
 								? root
-								: root.querySelector('input,select,textarea')) || root;
+								: root.querySelector('input,select,textarea') || root;
 
 						try {
 							focusable.dispatchEvent(new Event('focus', { bubbles: true }));

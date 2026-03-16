@@ -1,4 +1,4 @@
-import { isFieldVisible,hydrateFormStateFromDOM,getDOMId } from './form';
+import { isFieldVisible, hydrateFormStateFromDOM, getDOMId } from './form';
 import type { FormDefinition, Item, FieldValue } from '../types/form';
 import { isClassSpecMask, isRegexMask } from '$lib/utils/mask';
 import { computeIsRequired } from '$lib/utils/helpers';
@@ -152,7 +152,7 @@ export function validateMaskedValue(
     let emailRx: RegExp;
     if (typeof mask === 'string') {
       try {
-        emailRx = new RegExp(mask);        
+        emailRx = new RegExp(mask);
       } catch {
         emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       }
@@ -386,7 +386,7 @@ export function rulesFromAttributes(
       // Allowed-character spec => permissive regex (allows partial typing)
       const re = classSpecToRegex(raw);
       if (re) rules.pattern = re;
-    } else if (isRegexMask(raw)) {      
+    } else if (isRegexMask(raw)) {
       try {
         rules.pattern = new RegExp(raw);
       } catch {
@@ -438,7 +438,7 @@ export function validateAllFields(
   errorList: string[];
   consolidatedMessage: string;
 } {
-  const win: any = typeof window !== 'undefined' ? window : undefined;  
+  const win: any = typeof window !== 'undefined' ? window : undefined;
 
   const formDefinition: FormDefinition =
     (win?.__kilnFormDefinition as FormDefinition) ??
@@ -446,7 +446,7 @@ export function validateAllFields(
 
   hydrateFormStateFromDOM(formDefinition);
   const effectiveFormState: Record<string, FieldValue> =
-    formState ?? (win?.__kilnFormState as Record<string, FieldValue>) ?? {};  
+    formState ?? (win?.__kilnFormState as Record<string, FieldValue>) ?? {};
 
   const effectiveItems: Item[] =
     items ?? ((formDefinition?.elements as Item[]) || []);
@@ -456,14 +456,15 @@ export function validateAllFields(
 
   const getType = (item: Item): ValueType => {
     switch (item.type) {
+      case 'container':
+        return 'container';
+      case 'currency-input':
       case 'number-input':
         return 'number';
       case 'date-select-input':
         return 'date';
       case 'checkbox-input':
         return 'boolean';
-      case 'currency-input':
-        return 'number';
       case 'select-input':
       case 'radio-input':
       case 'text-input':
@@ -499,7 +500,7 @@ export function validateAllFields(
       if (!key.startsWith(prefix)) continue;
       const matchedChildUuid = [...childUuids].find((cu) => key.endsWith(`-${cu}`));
       if (!matchedChildUuid) continue;
-    
+
       const rest = key.slice(prefix.length); // "<groupId>-<childUuid>"
       const suffix = `-${matchedChildUuid}`;
       const groupId = rest.slice(0, rest.length - suffix.length);
@@ -519,19 +520,24 @@ export function validateAllFields(
   }
 
   function validateItem(item: Item, state: Record<string, FieldValue>, ctx?: { container?: Item; rowIndex?: number }) {
-    
-    if (item.type === 'container' && item.children && isFieldVisible(item, 'web', true, ctx) ) {
+
+    if (item.type === 'container' && item.children && isFieldVisible(item, 'web', true, ctx)) {
       const isRepeatable = item.attributes?.isRepeatable === true;
 
       if (isRepeatable) {
         // Prefer explicit groupState rows when provided
         const containerKey = (item as any)._containerInstanceKey ?? item.uuid;
-        
+
         let rows = inferRowsFromState(item, effectiveFormState);
+
+        runValidation(
+          item,
+          { [item.uuid]: rows.length },
+          { container: ctx?.container }
+        );
+
         // NEW: force validation when container is visible but empty
-        if (rows.length === 0) {
-          rows = [{}];
-        }
+        rows = rows.length === 0 ? [{}] : rows;
 
         rows.forEach((rowState, idx) => {
           for (const child of item.children || []) {
@@ -582,7 +588,7 @@ export function validateAllFields(
 
     // Use state first; if missing, fall back to item-provided value (e.g., preloaded/bound)
     let value = state[item.uuid];
-    if (value === undefined || value === null ) {
+    if (value === undefined || value === null) {
       const fallback = item.attributes?.value ?? (item as any).value;
       if (fallback !== undefined) value = fallback;
     }
@@ -633,6 +639,6 @@ export function validateAllFields(
   } catch (e) {
     console.log('validation broadcast error:', e);
   }
-  
+
   return { isValid, errors, errorList, consolidatedMessage };
 }
