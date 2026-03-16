@@ -31,7 +31,8 @@
 	const hideLabel = item.attributes?.hideLabel ?? false;
 	const enableVarSub = $state(item.attributes?.enableVarSub ?? false);
 	let helperText = item.help_text ?? '';
-	let touched = $state(false);
+	let touched = $state(false);	
+	let formatError = $state('');
 
 	let extAttrs = $state<Record<string, any>>({});
 
@@ -39,11 +40,23 @@
 		return typeof window === 'undefined' ? undefined : (window as any);
 	}
 
+	function isStrictDateMatch(input: string, format: string) {
+		const w= win();
+		if (!w.flatpickr) return false;
+
+		const parsed = w.flatpickr.parseDate(input, format);
+		if (!parsed) return false;
+
+		const reformatted = w.flatpickr.formatDate(parsed, format);
+
+		return reformatted === input;
+	}	
+		
 	const dateFormat = $derived(
 		toFlatpickrFormat(
 			(item.attributes?.dateFormat || item.attributes?.displayFormat || item.attributes?.format) as
 				| string
-				| undefined
+				| undefined			
 		)
 	);
 
@@ -52,6 +65,7 @@
 	);
 	const anyError = $derived.by(() => {
 		if (!touched) return '';
+		if (formatError) return formatError;
 		if (item.attributes?.error) return item.attributes.error;
 		if (readOnly) return '';
 		return (
@@ -61,12 +75,45 @@
 			}).firstError ?? ''
 		);
 	});
+	
 
-	function oninput() {
+	function oninput(event: Event) {
 		touched = true;
+
+		const el = event.currentTarget as HTMLInputElement;
+		const input = el.value;
+
+		if (!input) {
+			formatError = '';
+			return;
+		}
+
+		if (isStrictDateMatch(input, dateFormat)) {
+			formatError = '';
+		} else {
+			formatError = `Date does not  match the format `;
+		}
 	}
-	function onblur() {
-		touched = true;
+	
+	function onblur(event: FocusEvent) {
+		touched=true;
+		const el = event.currentTarget as HTMLInputElement;
+
+		if (formatError) {
+			el.value = '';
+			value = '';
+		}
+	}
+
+	function onpaste(event: ClipboardEvent) {
+		const text = event.clipboardData?.getData("text")?.trim();
+		if (!text) return;
+
+		if (!isStrictDateMatch(text, dateFormat)) {
+			event.preventDefault();
+			formatError = `Date does not  match the format`;
+			touched = true;
+		}
 	}
 
 	// On pre, seed __kilnFormState with initial date (from bindings/repeaterData) once
@@ -178,8 +225,9 @@
 				{hideLabel}
 				invalid={!!anyError}
 				invalidText={anyError}
-				{oninput}
-				{onblur}
+				on:input={oninput}
+				on:blur={onblur}
+				on:paste={onpaste}
 				{...a11y.ariaProps}
 				{...extAttrs as any}
 				data-kiln-date="true"
