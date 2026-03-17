@@ -244,6 +244,10 @@ export function validateValue(
     if (hasMax && value > (rules.maxRepeats as number)) {
       errors.push(buildErrorMessage('maxRepeats', { maxRepeats: rules.maxRepeats }, label));
     }
+
+
+    return { valid: errors.length === 0, errors, firstError: errors[0] ?? null };
+
   }
 
   const isEmpty = (() => {
@@ -532,7 +536,7 @@ export function validateAllFields(
 
         runValidation(
           item,
-          { [item.uuid]: rows.length },
+          { __containerCount: rows.length },
           { container: ctx?.container }
         );
 
@@ -583,14 +587,22 @@ export function validateAllFields(
   function runValidation(item: Item, state: Record<string, FieldValue>, ctx?: { container?: Item; rowIndex?: number }) {
     const type = getType(item);
     const isRequired = computeIsRequired(item.is_required, isPortalIntegrated);
+    const isRepeatable = item.attributes?.isRepeatable === true;
     const rules = rulesFromAttributes(item.attributes, { is_required: isRequired, type });
     const fieldLabel = labelOf(item);
 
     // Use state first; if missing, fall back to item-provided value (e.g., preloaded/bound)
-    let value = state[item.uuid];
-    if (value === undefined || value === null) {
-      const fallback = item.attributes?.value ?? (item as any).value;
-      if (fallback !== undefined) value = fallback;
+    let value: any;
+
+    if (getType(item) === 'container' && isRepeatable) {
+      value = state.__containerCount;
+    } else {
+      value = state[item.uuid];
+
+      if (value === undefined || value === null) {
+        const fallback = item.attributes?.value ?? (item as any).value;
+        if (fallback !== undefined) value = fallback;
+      }
     }
 
     const { firstError } = validateValue(value, rules, { type, fieldLabel });
