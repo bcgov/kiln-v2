@@ -8,6 +8,7 @@
 	import Container from './formfields/Container.svelte';
 	import CurrencyInput from './formfields/CurrencyInput.svelte';
 	import DatePicker from './formfields/DatePicker.svelte';
+	import FileUpload from './formfields/FileUpload.svelte';
 	import NumberInput from './formfields/NumberInput.svelte';
 	import RadioButton from './formfields/RadioButton.svelte';
 	import Select from './formfields/Select.svelte';
@@ -39,6 +40,7 @@
 		'radio-input': RadioButton,
 		'select-input': Select,
 		'currency-input': CurrencyInput,
+		'file-upload-input': FileUpload,
 		container: Container
 	};
 

@@ -165,6 +165,27 @@ export interface CurrencyField extends BaseFormField {
   }
 }
 
+export interface FileUploadField extends BaseFormField {
+  type: "file-upload-input";
+  value: {
+    url: string;
+    id: string;
+    size: number;
+    fileType: string;
+    originalName: string;
+  }[];
+  attributes: {
+    fileTypes: {
+      label: string;
+      value: string;
+    }[];
+    multiple: boolean;
+    maxFileSize: number | string; // bytes or human readable (ex: 10MB)
+    labelText?: string;
+    enableVarSub?: boolean;
+  }
+}
+
 export interface GroupField extends BaseFormField {
   type: "group";
   groupId?: string;
