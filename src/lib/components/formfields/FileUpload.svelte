@@ -10,12 +10,12 @@
 	import PrintRow from './common/PrintRow.svelte';
 	import { rulesFromAttributes } from '$lib/utils/validation';
 	import type { Attachment } from 'svelte/attachments';
+	import { ensureUpload, fileStore, getFileKey, type UploadFileData } from '$lib/utils/fileStore';
 
 	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
-	type UploadFileData = FileUploadField['value'][number];
 	type UploadFile = {
-		id: string;
+		id: string; // client-side id
 		file: File;
 		data: Promise<UploadFileData> | UploadFileData;
 	};
@@ -28,10 +28,7 @@
 		printing?: boolean;
 	} = $props();
 
-	let uploadedFiles: UploadFile[] = $state(
-		(item?.value ?? []).map((f) => ({ id: f.id, file: new File([], f.originalName), data: f }))
-	);
-	const uploadedFileKeys = $derived(uploadedFiles.map((f) => getFileKey(f.file)));
+	let files: File[] = $state([]);
 
 	let touched = $state(false);
 
@@ -70,46 +67,34 @@
 		touched = true;
 	}
 
-	async function uploadFile(file: File, id: string): Promise<UploadFileData> {
-		if (file.size > maxFileSize) {
-			throw new Error(`Exceeds ${fileSizeToString(maxFileSize)} limit`);
+	const uploadedFiles: UploadFile[] = $derived.by(() => {
+		const prefilledFiles = (item?.value ?? []).map((f) => ({
+			id: f.id,
+			file: new File([], f.originalName),
+			data: f
+		}));
+		const newFiles = files
+			.map((file) => ({
+				id: getFileKey(file),
+				file,
+				data: $fileStore.get(getFileKey(file))
+			}))
+			.filter((f): f is { id: string; file: File; data: Promise<UploadFileData> } => !!f.data);
+		return [...prefilledFiles, ...newFiles];
+	});
+
+	$effect(() => {
+		for (const file of files) {
+			ensureUpload(file, maxFileSize);
 		}
-		const waitTime = Math.random() * 1000;
-		await new Promise((f) => setTimeout(f, waitTime));
-		return {
-			id,
-			url: '',
-			size: file.size,
-			fileType: file.type,
-			originalName: file.name
-		};
-	}
+	})
 
 	async function deleteFile(id: string) {
-		uploadedFiles = uploadedFiles.filter((f) => f.id !== id);
-	}
-
-	function getFileKey(file: File): string {
-		return `${file.name}-${file.size}-${file.lastModified}`;
-	}
-
-	function onchange({ detail: files }: { detail: ReadonlyArray<File> }) {
-		const existingFiles = new Set(uploadedFileKeys);
-		for (const file of files) {
-			if (existingFiles.has(getFileKey(file))) {
-				continue;
-			}
-			const id = crypto.randomUUID();
-			uploadedFiles.push({
-				id,
-				file,
-				data: uploadFile(file, id)
-			});
-		}
+		files = files.filter((f) => getFileKey(f) !== id);
 	}
 
 	function validateFiles(files: ReadonlyArray<File>) {
-		const existingFiles = new Set(uploadedFileKeys);
+		const existingFiles = new Set(uploadedFiles.map((f) => f.id));
 		return files.filter((file) => !existingFiles.has(getFileKey(file)));
 	}
 
@@ -145,30 +130,13 @@
 		return [Math.round(number * units[unit]), undefined];
 	}
 
-	function fileSizeToString(bytes: number, decimals = 2): string {
-		if (bytes === 0) return '0 B';
-		if (bytes < 0) return 'Invalid size';
-
-		const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-		const k = 1024;
-		const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-		if (i >= units.length) {
-			return (
-				(bytes / Math.pow(k, units.length - 1)).toFixed(decimals) + ' ' + units[units.length - 1]
-			);
-		}
-
-		return (bytes / Math.pow(k, i)).toFixed(decimals) + ' ' + units[i];
-	}
-
 	// Should probably be an async $derived once experimental.async is stable
 	const rawValue: Attachment = (element) => {
-		Promise.allSettled(uploadedFiles.map((f) => f.data)).then(saveDataResult => {
-			const saveData = saveDataResult.filter(s => s.status === 'fulfilled').map(s => s.value);
+		Promise.allSettled(uploadedFiles.map((f) => f.data)).then((saveDataResult) => {
+			const saveData = saveDataResult.filter((s) => s.status === 'fulfilled').map((s) => s.value);
 			element.setAttribute('data-raw-value', JSON.stringify(saveData));
 		});
-	}
+	};
 </script>
 
 <div class="field-container text-input-field">
@@ -195,6 +163,7 @@
 		{/if}
 		{#if !isReadOnly}
 			<FileUploaderDropContainer
+				bind:files
 				id={item.uuid}
 				data-kiln-uuid={item.uuid}
 				class={item.class}
@@ -204,7 +173,6 @@
 				{validateFiles}
 				{oninput}
 				{onblur}
-				on:change={onchange}
 				{@attach rawValue}
 			/>
 		{/if}
