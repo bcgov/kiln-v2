@@ -156,13 +156,22 @@
 			mask?.destroy();
 		};
 	});
+
+	const numberInputAttrs = $derived.by(() => {
+		const attrs = filterAttributes(item.attributes);
+		if (attrs && typeof attrs === 'object') {
+			const { min, max, ...rest } = attrs;
+			return rest;
+		}
+		return attrs;
+	});
 </script>
 
 <div class="field-container number-input-field">
 	<PrintRow {item} {printing} {labelText} value={printValue} />
 	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
 		<FieldComponent
-			{...filterAttributes(item?.attributes)}
+			{...numberInputAttrs}
 			{...a11y.ariaProps}
 			{...extAttrs as any}
 			id={item.uuid}
