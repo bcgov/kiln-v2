@@ -298,6 +298,12 @@
     margin: 0 !important;
     padding: 0 !important;
   }
+  
+  .page-start {
+    padding-top: calc(
+      var(--page-margin-top) - var(--page-margin-top-first)
+      ) !important;
+  }
 
   #barcode-placeholder {
     display: block !important;

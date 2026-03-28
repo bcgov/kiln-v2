@@ -213,6 +213,10 @@
 		const pageBreak = document.createElement('div');
 		pageBreak.className = 'page-break';
 		el.parentNode?.insertBefore(pageBreak, el);
+		// Add page-start marker to first el after page break
+		// Used for non-first page top margin adjustment via top padding
+		// Only way this can be done since first page margin is smaller than other pages
+		el.classList.add('page-start');
 	}
 
 	function paginateContentForPrint(): () => void {
@@ -422,7 +426,13 @@
 		letterContent.style.width = originalStyles.width;
 
 		return () => {
+			// Remove inserted page break elements
 			document.querySelectorAll('.page-break').forEach((el) => el.remove());
+
+			// Remove page-start markers
+			document.querySelectorAll('.page-start').forEach((el) => {
+				el.classList.remove('page-start');
+			});
 		};
 	}
 
