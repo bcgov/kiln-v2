@@ -11,6 +11,7 @@
 	import { rulesFromAttributes } from '$lib/utils/validation';
 	import type { Attachment } from 'svelte/attachments';
 	import { ensureUpload, fileStore, getFileKey, type UploadFileData } from '$lib/utils/fileStore';
+	import type { FORM_MODE } from '$lib/constants/formMode';
 
 	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
@@ -22,10 +23,12 @@
 
 	let {
 		item,
-		printing = false
+		printing = false,
+		mode
 	}: {
 		item: Omit<Item, 'value' | 'attributes'> & FileUploadField;
 		printing?: boolean;
+		mode: FORM_MODE
 	} = $props();
 
 	let files: File[] = $state([]);
@@ -85,7 +88,7 @@
 
 	$effect(() => {
 		for (const file of files) {
-			ensureUpload(file, maxFileSize);
+			ensureUpload(file, item.name, maxFileSize, mode);
 		}
 	})
 
@@ -169,6 +172,7 @@
 				class={item.class}
 				aria-label={labelText}
 				multiple={item.attributes.multiple}
+				name={item.name}
 				{...a11y.ariaProps}
 				{validateFiles}
 				{oninput}

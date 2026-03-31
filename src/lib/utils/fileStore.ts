@@ -1,5 +1,8 @@
+import type { FORM_MODE } from '$lib/constants/formMode';
 import type { FileUploadField } from '$lib/types/form';
 import { writable, get } from 'svelte/store';
+import { API } from './api';
+import { getAuthHeader, getCookie } from './keycloak';
 
 export type UploadFileData = FileUploadField['value'][number];
 
@@ -26,7 +29,54 @@ function fileSizeToString(bytes: number, decimals = 2): string {
 	return (bytes / Math.pow(k, i)).toFixed(decimals) + ' ' + units[i];
 }
 
-async function uploadFile(file: File, maxFileSize: number): Promise<UploadFileData> {
+async function uploadFile(file: File, fieldName: string, maxFileSize: number) {
+	if (file.size > maxFileSize) {
+		throw new Error(`Exceeds ${fileSizeToString(maxFileSize)} limit`);
+	}
+	try {
+		const endpoint = API.uploadFile;
+		const state = sessionStorage.getItem('formParams');
+		const sessionParams = state ? (JSON.parse(state) as Record<string, string>) : {};
+		if (!sessionParams.attachmentId) {
+			throw new Error('AttachmentId not set');
+		}
+		const username = getCookie('username');
+		// const authHeader = await getAuthHeader();
+		const form = new FormData();
+		form.append(fieldName, file);
+		const response = await fetch(
+			`${endpoint}?attachmentId=${sessionParams.attachmentId}&username=${username}`,
+			{
+				method: 'POST',
+				// headers: authHeader,
+				body: form
+			}
+		);
+
+		if (response.ok) {
+			const result = await response.json();
+			return {
+				id: result.fileId,
+				url: '',
+				size: result.size,
+				fileType: file.type,
+				originalName: result.originalName
+			};
+		} else {
+			const errorResult = await response.json();
+			throw new Error(errorResult.error);
+		}
+	} catch (error) {
+		console.error(error);
+		throw error;
+	}
+}
+
+async function mockUploadFile(
+	file: File,
+	_fieldName: string,
+	maxFileSize: number
+): Promise<UploadFileData> {
 	if (file.size > maxFileSize) {
 		throw new Error(`Exceeds ${fileSizeToString(maxFileSize)} limit`);
 	}
@@ -41,12 +91,19 @@ async function uploadFile(file: File, maxFileSize: number): Promise<UploadFileDa
 	};
 }
 
-export function ensureUpload(file: File, maxFileSize: number) {
-    const key = getFileKey(file);
-    fileStore.update(map => {
-        if (!map.has(key)) {
-            map.set(key, uploadFile(file, maxFileSize));
-        }
-        return map;
-    });
+export function ensureUpload(
+	file: File,
+	fieldName: string,
+	maxFileSize: number,
+	formMode: FORM_MODE
+) {
+	const key = getFileKey(file);
+	const upload = formMode === 'edit' ? uploadFile : mockUploadFile;
+	// const upload = uploadFile;
+	fileStore.update((map) => {
+		if (!map.has(key)) {
+			map.set(key, upload(file, fieldName, maxFileSize));
+		}
+		return map;
+	});
 }
