@@ -114,7 +114,7 @@
 		{#each options as opt (opt.id)}
 			<div class="radio-print-option">
 				<span class="radio-icon">
-					{#if selected.includes(opt.value)}
+					{#if selected === opt.value}
 						<RadioFilledIcon aria-label="Selected" />
 					{:else}
 						<RadioIcon aria-label="Not selected" />
