@@ -20,6 +20,7 @@
 	import { preprocessDecimalInput, unmaskNumberString } from '$lib/utils/mask';
 	import PrintRow from './common/PrintRow.svelte';
 	import { MaskInput } from 'maska';
+	import { scriptErrors } from "$lib/utils/scriptErrors";
 
 	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
@@ -77,10 +78,14 @@
 		return r;
 	});
 
+	const scriptError = $derived.by(() => $scriptErrors?.[item.uuid] ?? "");
+
 	const anyError = $derived.by(() => {
 		if (!touched) return '';
-		if (error) return error; // would force display an error that can never change
+		//if (error) return error; // would force display an error that can never change
 		if (readonly) return '';
+		 // script-driven error from global store
+ 		if (scriptError) return scriptError;
 		return (
 			validateValue(unmaskedValue, rules, {
 				type: 'number',
