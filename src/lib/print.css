@@ -54,6 +54,21 @@
     display: block !important;
     page-break-inside: avoid;
   }
+  .group-item-container {
+    border: 0 !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  .group-item-child-container,
+  .group-item-child-field {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
 
   /* Overall print page container */
   /* height 792 ( 11in @ 72dpi (approx), adjust per template ) */
