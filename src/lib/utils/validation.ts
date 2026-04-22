@@ -458,6 +458,9 @@ export function validateAllFields(
   const effectiveGroupState: Record<string, FieldValue[]> =
     groupState ?? (win?.__kilnGroupState as Record<string, FieldValue[]>) ?? {};
 
+  const scriptErrMap: Record<string, string> =
+  (win?.__kilnScriptErrors as Record<string, string>) ?? {};  
+
   const getType = (item: Item): ValueType => {
     switch (item.type) {
       case 'container':
@@ -606,14 +609,19 @@ export function validateAllFields(
     }
 
     const { firstError } = validateValue(value, rules, { type, fieldLabel });
-    if (firstError) {
+
+    const errorKey = getDOMId(item, ctx);
+    // NEW: merge script validation errors
+    const scriptError = scriptErrMap[errorKey];
+    const finalError = scriptError || firstError;
+    if (finalError) {
       isValid = false;
 
       // Create a unique key (handles repeatable rows without clobbering)
-      const errorKey = getDOMId(item, ctx);
+     
       // Surface only the first message per key (keep concise)
       if (!errors[errorKey]) {
-        errors[errorKey] = firstError;
+        errors[errorKey] = finalError;
 
         const pathParts: string[] = [];
         if (ctx?.container) {
@@ -625,7 +633,7 @@ export function validateAllFields(
           }
         }
         const pathPrefix = pathParts.length ? `${pathParts.join(' > ')}: ` : '';
-        errorList.push(`${pathPrefix}${fieldLabel} - ${firstError}`);
+        errorList.push(`${pathPrefix}${fieldLabel} - ${finalError}`);
       }
     }
   }
