@@ -168,17 +168,24 @@
 			modalOpen = true;
 		});
 	}
+	
+	let originalFormDefinition = $derived.by(() => {
+		if (!formData) return null;
+		return formData?.formversion ? formData.formversion : formData;
+	});
 
 	let mergedFormData = $derived.by(() => {
 		if (!formData) return null;
 
+		const formDefinitionForRender = JSON.parse(JSON.stringify(originalFormDefinition));
+
 		if (mode === 'view' || mode === 'portalView') {
-			setReadOnlyFields(formData);
+			setReadOnlyFields(formDefinitionForRender);
 		}
 
 		return bindDataToForm({
-			data: saveData,
-			form_definition: formData?.formversion ? formData.formversion : formData
+			data:  saveData?.data ?? saveData,
+			form_definition: formDefinitionForRender
 		}).mappedFormDef;
 	});
 
@@ -689,8 +696,8 @@
 
 	// Expose current form definition and init form state for createSavedData
 	$effect(() => {
-		if (typeof window !== 'undefined' && mergedFormData) {
-			(window as any).__kilnFormDefinition = mergedFormData;
+		if (typeof window !== 'undefined' && originalFormDefinition) {
+			(window as any).__kilnFormDefinition = originalFormDefinition;
 			(window as any).__kilnFormState = (window as any).__kilnFormState || {};
 		}
 	});

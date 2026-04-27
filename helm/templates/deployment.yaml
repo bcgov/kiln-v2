@@ -23,6 +23,3 @@ spec:
           envFrom:
             - secretRef:
                 name: kiln-secrets
-      restartPolicy: Always
-  strategy:
-    type: Recreate
