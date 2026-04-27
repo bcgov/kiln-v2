@@ -20,6 +20,7 @@
 	import PrintRow from './common/PrintRow.svelte';
 	import RadioIcon from 'carbon-icons-svelte/lib/RadioButton.svelte';
 	import RadioFilledIcon from 'carbon-icons-svelte/lib/RadioButtonChecked.svelte';
+	import { scriptErrors } from "$lib/utils/scriptErrors";
 
 	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
@@ -52,10 +53,14 @@
 		rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'string' })
 	);
 
+	const scriptError = $derived.by(() => $scriptErrors?.[item.uuid] ?? "");
+
 	const anyError = $derived.by(() => {
 		if (!touched) return '';
 		if (error) return error;
 		if (readonly) return '';
+		 // script-driven error from global store
+ 		if (scriptError) return scriptError;
 		return (
 			validateValue(selected, rules, {
 				type: 'string',

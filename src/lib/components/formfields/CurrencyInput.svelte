@@ -20,6 +20,7 @@
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
 	import { MaskInput } from 'maska';
+	import { scriptErrors } from "$lib/utils/scriptErrors";
 
 	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
@@ -59,9 +60,13 @@
 		isInteger: false
 	});
 
+	const scriptError = $derived.by(() => $scriptErrors?.[item.uuid] ?? "");
+
 	const anyError = $derived.by(() => {
 		if (!touched) return '';
 		if (readOnly) return '';
+		 // script-driven error from global store
+ 		if (scriptError) return scriptError;
 		return (
 			validateValue(unmaskedValue, rules, {
 				type: 'number',

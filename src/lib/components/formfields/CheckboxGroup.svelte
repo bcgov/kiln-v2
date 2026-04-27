@@ -14,6 +14,8 @@
 	import './fields.css';
 	import CheckboxIcon from "carbon-icons-svelte/lib/Checkbox.svelte";
 	import CheckboxFilledIcon from "carbon-icons-svelte/lib/CheckboxCheckedFilled.svelte";
+	import { scriptErrors } from "$lib/utils/scriptErrors";
+
 
 	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
@@ -58,8 +60,12 @@
 		rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'string' })
 	);
 
+	const scriptError = $derived.by(() => $scriptErrors?.[item.uuid] ?? "");
+
 	const anyError = $derived.by(() => {
 		if (!touched || readOnly) return error || '';
+		 // script-driven error from global store
+ 		if (scriptError) return scriptError;
 		return (
 			validateValue(selected, rules, {
 				type: 'string',

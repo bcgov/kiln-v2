@@ -19,6 +19,7 @@
 	import { normalizeDash, filterInputByMaskType, applyMaskaWithTokens } from '$lib/utils/mask';
 	import { validateValue, rulesFromAttributes, validateMaskedValue } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
+	import { scriptErrors } from "$lib/utils/scriptErrors";
 
 	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
@@ -57,6 +58,8 @@
 		rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'string' })
 	);
 
+	const scriptError = $derived.by(() => $scriptErrors?.[item.uuid] ?? "");
+
 	const anyError = $derived.by(() => {
 		if (!touched) return '';
 		if (error) return error;
@@ -73,6 +76,8 @@
 			return '';
 		}
 
+		// script-driven error from global store
+ 		if (scriptError) return scriptError;
 		// For custom or other masks: use standard string validation
 		return (
 			validateValue(value, rules, {

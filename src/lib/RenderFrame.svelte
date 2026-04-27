@@ -24,6 +24,11 @@
 	import { bindDataToForm } from './utils/databinder';
 	import { formatWithAppTokens } from '$lib/utils/dateFormats';
 	import OriginStyleOverride from './components/OriginStyleOverride.svelte';
+	import {
+		setScriptError,
+		clearScriptError,
+		clearAllScriptErrors
+		} from "$lib/utils/scriptErrorApi";
 
 	let {
 		saveData = undefined,
@@ -49,6 +54,10 @@
 
 	let barcode = $derived<{ content: string } | undefined>(formData?.barcode);
 	let securityClassification = $derived<string | undefined>(formData?.security_classification);
+
+	(window as any).setScriptError = setScriptError;
+	(window as any).clearScriptError = clearScriptError;
+	(window as any).clearAllScriptErrors = clearAllScriptErrors;
 
 	function resetModalRuntime() {
 		modalMode = 'info';

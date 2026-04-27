@@ -13,6 +13,7 @@
 	} from '$lib/utils/helpers';
 	import { toFlatpickrFormat } from '$lib/utils/dateFormats';
 	import PrintRow from './common/PrintRow.svelte';
+	import { scriptErrors } from "$lib/utils/scriptErrors";
 
 	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 
@@ -63,10 +64,14 @@
 	const rules = $derived(
 		rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'date' })
 	);
+
+	const scriptError = $derived.by(() => $scriptErrors?.[item.uuid] ?? "");
 	const anyError = $derived.by(() => {
 		if (!touched) return '';
 		if (formatError) return formatError;
 		if (item.attributes?.error) return item.attributes.error;
+		 // script-driven error from global store
+ 		if (scriptError) return scriptError;
 		if (readOnly) return '';
 		return (
 			validateValue(value ?? '', rules, {
