@@ -26,5 +26,3 @@ spec:
             - secretRef:
                 name: kiln-secrets
       restartPolicy: Always
-  strategy:
-    type: RollingUpdate
