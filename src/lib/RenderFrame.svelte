@@ -346,13 +346,16 @@
 			display: contentRoot.style.display,
 			visibility: contentRoot.style.visibility,
 			position: contentRoot.style.position,
-			width: contentRoot.style.width
+			width: contentRoot.style.width,
+			opacity: contentRoot.style.opacity,
+			pointerEvents: contentRoot.style.pointerEvents
 		};
 
 		// Make content visible for measurement:
 		const contentWidth = LETTER_WIDTH_PX - PAGE_MARGIN_LEFT_PX - PAGE_MARGIN_RIGHT_PX;
 		contentRoot.style.display = 'block';
-		contentRoot.style.visibility = 'hidden';
+		contentRoot.style.opacity = '0';
+		contentRoot.style.pointerEvents = 'none';
 		contentRoot.style.position = 'absolute';
 		contentRoot.style.width = `${contentWidth}px`;
 		contentRoot.offsetHeight; // Force reflow
@@ -391,7 +394,7 @@
 			const allMatches = Array.from(contentRoot.querySelectorAll(formBreakableSelector)).filter(
 				(el) => {
 					const label = ((el as Element).id || (el as Element).className || '').toLowerCase();
-					return !el.closest('.print-footer') && !label.includes('footer');
+					return isActuallyVisible(el) && !el.closest('.print-footer') && !label.includes('footer');
 				}
 			);
 			// Keep only outermost matches (no nested duplicates)
@@ -415,10 +418,32 @@
 			}
 			return current;
 		}
+		function isActuallyVisible(el: Element): boolean {
+			const htmlEl = el as HTMLElement;
+			const style = window.getComputedStyle(htmlEl);
+			const rect = htmlEl.getBoundingClientRect();
+
+			if (style.display === 'none') return false;
+			if (style.visibility === 'hidden') return false;
+			if (htmlEl.hidden) return false;
+
+			const hasBox = rect.width > 0 || rect.height > 0;
+			const hasVisibleChild = Array.from(el.children).some((child) => {
+				const childRect = child.getBoundingClientRect();
+				const childStyle = window.getComputedStyle(child as HTMLElement);
+				return (
+				childStyle.display !== 'none' &&
+				childStyle.visibility !== 'hidden' &&
+				(childRect.width > 0 || childRect.height > 0)
+				);
+			});
+
+			return hasBox || hasVisibleChild;
+		}
 
 		function getBreakableChildren(el: Element): Element[] {
 			const children = Array.from(el.children).filter(
-				(child): child is Element => child instanceof Element
+				(child): child is Element => child instanceof Element && isActuallyVisible(child)
 			);
 
 			const groupContainers = children.filter((child) =>
@@ -429,7 +454,7 @@
 			const grid = children.find((child) => child.matches('.container-fields-grid'));
 			if (grid) {
 				const gridChildren = Array.from(grid.children).filter(
-					(child): child is Element => child instanceof Element
+					(child): child is Element => child instanceof Element && isActuallyVisible(child)
 				);
 
 				const gridContainers = gridChildren.filter((child) =>
@@ -491,7 +516,7 @@
 
 		function getRepeaterChildren(el: Element): Element[] {
 			const children = Array.from(el.children).filter(
-				(child): child is Element => child instanceof Element
+				(child): child is Element => child instanceof Element && isActuallyVisible(child)
 			);
 
 			const fieldBlocks = children.filter((child) => child.matches('.group-item-child-field'));
@@ -555,6 +580,10 @@
 			const totalElementHeight = elHeight + marginTop + marginBottom;
 			// Skip empty/hidden elements
 			if (totalElementHeight <= 0) {
+				return;
+			}
+
+			if (!isLetter && !isActuallyVisible(el)) {
 				return;
 			}
 
@@ -686,6 +715,8 @@
 		contentRoot.style.visibility = originalStyles.visibility;
 		contentRoot.style.position = originalStyles.position;
 		contentRoot.style.width = originalStyles.width;
+		contentRoot.style.opacity = originalStyles.opacity;
+contentRoot.style.pointerEvents = originalStyles.pointerEvents;
 
 		return () => {
 			// Remove inserted page break elements
