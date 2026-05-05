@@ -214,7 +214,9 @@
 <div class="field-container date-picker-field">
 	<PrintRow {item} {printing} {labelText} value={value ?? ''} />
 
-	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
+	<div class="web-input" 
+	class:readonly={readOnly} 
+	class:visible={!printing && item.visible_web !== false} >
 		<DatePicker
 			{...datePickerWrapperAttrs}
 			{...extAttrs as any}
@@ -262,20 +264,5 @@
 </div>
 
 <style>
-	:global(
-			input:disabled,
-			textarea:disabled,
-			select:disabled,
-			button:disabled,
-			checkbox:disabled,
-			textinput:disabled
-		) {
-		background-color: white !important;
-		color: black !important;
-		cursor: text !important;
-	}
-	:global(input:disabled::placeholder, textarea:disabled::placeholder) {
-		color: black !important;
-		opacity: 1 !important;
-	}
+	
 </style>

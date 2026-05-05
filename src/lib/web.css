@@ -162,3 +162,54 @@
   display: inline-flex;
   align-items: center;
 }
+
+/* The following contains the css for the read-only  */
+.bx--text-input__readonly-icon {
+	display: none;
+}
+
+.bx--text-input-wrapper--readonly .bx--text-input {
+    background: #EDEBE9 !important;
+    border: 1px solid #8D8D8D !important;
+}
+.bx--date-picker .bx--date-picker__input:disabled {
+  background:#EDEBE9 !important;
+  cursor: text !important;
+  color: black !important;
+}
+
+.web-input.readonly .bx--date-picker__icon {
+  color: #c6c6c6 !important;
+  fill: #c6c6c6 !important;
+  cursor: not-allowed !important;
+} 
+.bx--text-area:read-only {
+  background:#EDEBE9 !important;
+}
+.bx--select-input:disabled {
+  background:#EDEBE9 !important;
+  color: black !important;
+	cursor: text !important;
+}
+
+.bx--checkbox-group .bx--checkbox-label-text {
+  font-weight: 400;
+  color: #161616 !important;
+  cursor: text !important;
+}
+
+.bx--radio-button:disabled+.bx--radio-button__label {
+    color:  #161616 !important;
+   
+}
+.radio-group-wrapper.readonly .bx--radio-button__appearance {
+  cursor: not-allowed !important;
+}
+
+
+.bx--checkbox-label-text,
+.bx--label--disabled, .bx--form__helper-text--disabled,
+fieldset[disabled] .bx--label, fieldset[disabled] .bx--form__helper-text {
+  color: #525252 !important;
+}
+/* css for the read-only ends here */

@@ -136,7 +136,7 @@
 
 	<div
 		class="web-input radio-group-wrapper"
-		style={readonly ? 'pointer-events: none;' : ''}
+		class:readonly={readonly}
 		class:visible={!printing && item.visible_web !== false}
 		data-selected={selected}
 	>
@@ -148,6 +148,7 @@
 			bind:selected
 			hideLegend={hideLabel}
 			role="radiogroup"
+			disabled={readonly}
 			{...a11y.ariaProps}
 			{onchange}
 			{...extAttrs as any}

@@ -165,21 +165,5 @@
 </div>
 
 <style>
-	:global(
-			input:disabled,
-			textarea:disabled,
-			select:disabled,
-			button:disabled,
-			checkbox:disabled,
-			textinput:disabled
-		) {
-		background-color: white !important;
-		color: black !important;
-		cursor: text !important;
-	}
-
-	:global(input:disabled::placeholder, textarea:disabled::placeholder) {
-		color: black !important;
-		opacity: 1 !important;
-	}
+	
 </style>
