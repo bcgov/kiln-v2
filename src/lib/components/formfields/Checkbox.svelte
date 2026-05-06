@@ -181,14 +181,7 @@
 </div>
 
 <style>
-	/* Scope to only checkboxes inside a read-only web-input container */
-	:global(.web-input.read-only .bx--checkbox-wrapper),
-	:global(.web-input.read-only .bx--checkbox-label),
-	:global(.web-input.read-only .bx--checkbox-label-text) {
-		color: black !important;
-		cursor: default !important;
-		opacity: 1 !important;
-	}
+	
 
 	/* If Carbon dims the checkbox box itself */
 	:global(.web-input.read-only .bx--checkbox) {
