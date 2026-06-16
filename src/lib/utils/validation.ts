@@ -3,8 +3,6 @@ import type { FormDefinition, Item, FieldValue } from '../types/form';
 import { isClassSpecMask, isRegexMask } from '$lib/utils/mask';
 import { computeIsRequired } from '$lib/utils/helpers';
 
-const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
-
 export type ValueType = 'string' | 'number' | 'date' | 'boolean' | 'container';
 
 export type ValidationRules = {
@@ -589,7 +587,7 @@ export function validateAllFields(
 
   function runValidation(item: Item, state: Record<string, FieldValue>, ctx?: { container?: Item; rowIndex?: number }) {
     const type = getType(item);
-    const isRequired = computeIsRequired(item.is_required, isPortalIntegrated);
+    const isRequired = computeIsRequired(item.is_required);
     const isRepeatable = item.attributes?.isRepeatable === true;
     const rules = rulesFromAttributes(item.attributes, { is_required: isRequired, type });
     const fieldLabel = labelOf(item);

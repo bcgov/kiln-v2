@@ -15,11 +15,10 @@
 		mode: string;
 		printing?: boolean;
 	} = $props();
-
-	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
+	
 
 	// Compute effective read-only from enum value
-	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only, isPortalIntegrated));
+	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only));
 
 	// Fall back for crypto.randomUUID (not available in insecure contexts like host.docker.internal)
 	function generateUUID(): string {
@@ -322,7 +321,7 @@
 							>{repeaterItemLabel}
 							{repeaterItemLabel ? idx + 1 : ' '}</span
 						>
-						{#if groupCount > minRepeats && !item.is_read_only}
+						{#if groupCount > minRepeats && !isReadOnly}
 							<Button
 								kind="ghost"
 								onclick={() => removeGroup(idx)}
