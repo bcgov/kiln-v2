@@ -14,10 +14,7 @@
 	import './fields.css';
 	import CheckboxIcon from "carbon-icons-svelte/lib/Checkbox.svelte";
 	import CheckboxFilledIcon from "carbon-icons-svelte/lib/CheckboxCheckedFilled.svelte";
-	import { scriptErrors } from "$lib/utils/scriptErrors";
-
-
-	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
+	import { scriptErrors } from "$lib/utils/scriptErrors";	
 
 	const { item, printing = false } = $props<{ item: Item; printing?: boolean }>();
 
@@ -34,11 +31,11 @@
 	let extAttrs = $state<Record<string, any>>({});
 
 	// Compute effective required/read-only from enum values
-	const isRequired = $derived.by(() => computeIsRequired(item.is_required, isPortalIntegrated));
-	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only, isPortalIntegrated));
+	const isRequired = $derived.by(() => computeIsRequired(item.is_required));
+	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only));
 
 	// Use computed isReadOnly for local state
-	let readOnly = $state(computeIsReadOnly(item.is_read_only, isPortalIntegrated));
+	let readOnly = $state(computeIsReadOnly(item.is_read_only));
 	// Derived
 	const options = $derived((item.options ?? []) as FormOption[]);
 	const labelText = $derived(getFieldLabel(item));

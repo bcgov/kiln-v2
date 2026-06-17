@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Item } from '$lib/types/form';
 	import type { Snippet } from 'svelte';
-	import { buildFieldAria } from '$lib/utils/helpers';
+	import { buildFieldAria, computeIsRequired } from '$lib/utils/helpers';
 
 	const {
 		item,
@@ -31,6 +31,7 @@
 
 	const isTextArea = item.type === 'text-area' || item.type === 'textarea-input';
 	const printRows = isTextArea ? (rows ?? Number(item.attributes?.rows ?? 4)) : undefined;
+	const isRequired = computeIsRequired( item.is_required);
 </script>
 
 <div
@@ -41,7 +42,7 @@
 	{...groupAria}
 	aria-hidden={!printing || item.visible_pdf === false}
 >
-	<div class="print-label" class:required={item.is_required} id={a11y.labelId}>
+	<div class="print-label" class:required={isRequired} id={a11y.labelId}>
 		{@html labelText}
 	</div>
 	<div class="print-value" class:textarea={isTextArea} style:--textarea-rows={printRows} id={valueId}>

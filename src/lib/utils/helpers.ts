@@ -1,3 +1,4 @@
+const isPortalIntegrated =  import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
 /**
  * Resolve an API URL considering dev overrides and hosted path prefixes.
  */
@@ -23,33 +24,33 @@ export function getApiUrl(path: string, envVar?: string): string {
 
 /**
  * Compute effective isRequired boolean from enum value.
- * @param value - The is_required enum value ('always', 'portal', true, false, or null)
+ * @param value - The is_required enum value ('always', 'portal', 'icm', true, false, or null)
  * @param isPortalIntegrated - Whether portal integration is enabled
  */
 export function computeIsRequired(
-	value: boolean | 'always' | 'portal' | null | undefined,
-	isPortalIntegrated: boolean
+	value: boolean | 'always' | 'portal' | 'icm' | null | undefined
 ): boolean {
 	if (!value) return false;
 	if (value === 'always') return true;
 	if (value === 'portal') return isPortalIntegrated;
 	if (value === true) return true;
+	if (value === 'icm') return !isPortalIntegrated;
 	return false;
 }
 
 /**
  * Compute effective isReadOnly boolean from enum value.
- * @param value - The is_read_only enum value ('always', 'portal', true, false, or null)
+ * @param value - The is_read_only enum value ('always', 'portal','icm', true, false, or null)
  * @param isPortalIntegrated - Whether portal integration is enabled
  */
 export function computeIsReadOnly(
-	value: boolean | 'always' | 'portal' | string | null | undefined,
-	isPortalIntegrated: boolean
+	value: boolean | 'always' | 'portal'| 'icm' | string | null | undefined
 ): boolean {
 	if (!value) return false;
 	if (value === 'always') return true;
 	if (value === 'portal') return isPortalIntegrated;
 	if (value === true) return true;
+	if (value === 'icm') return !isPortalIntegrated;
 	return false;
 }
 

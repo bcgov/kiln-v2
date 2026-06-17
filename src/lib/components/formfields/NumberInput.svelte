@@ -22,8 +22,6 @@
 	import { MaskInput } from 'maska';
 	import { scriptErrors } from "$lib/utils/scriptErrors";
 
-	const isPortalIntegrated = import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
-
 	let {
 		item,
 		printing = false
@@ -39,11 +37,11 @@
 	let error = $state(item.attributes?.error ?? ''); // this seems unused or broken
 
 	// Compute effective required/read-only from enum values
-	const isRequired = $derived.by(() => computeIsRequired(item.is_required, isPortalIntegrated));
-	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only, isPortalIntegrated));
+	const isRequired = $derived.by(() => computeIsRequired(item.is_required));
+	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only));
 
 	// Use computed isReadOnly for local state
-	let readonly = $state(computeIsReadOnly(item.is_read_only, isPortalIntegrated));
+	let readonly = $state(computeIsReadOnly(item.is_read_only));
 	const labelText = $derived(getFieldLabel(item));
 	const helperText = item.help_text ?? '';
 	const hideLabel = item.attributes?.hideLabel ?? false;

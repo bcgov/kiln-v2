@@ -8,7 +8,7 @@ export interface Item {
 	is_required?: 'always' | 'portal';
 	visible_web?: boolean;
 	visible_pdf?: boolean;
-	is_read_only?: 'always' | 'portal';
+	is_read_only?: 'always' | 'portal' | 'icm';
 	save_on_submit?: boolean;
 	order?: number;
 	options?: FormOption[] | any[];
