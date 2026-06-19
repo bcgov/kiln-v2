@@ -54,6 +54,26 @@ export function computeIsReadOnly(
 	return false;
 }
 
+export function computeIsVisible(value: boolean | 'always' | 'portal'| 'icm' | string | null | undefined): boolean {
+
+	console.log("visible_vallue",value);
+  if (value == null || value === false) return false;
+
+  if (value === true || value === 'always') {
+    return true;
+  }
+
+  if (value === 'portal') {
+    return isPortalIntegrated;
+  }
+
+  if (value === 'icm') {
+    return !isPortalIntegrated;
+  }
+
+  return false;
+}
+
 /** Set is_read_only on all items under formData.elements. */
 export function setReadOnlyFields(formData: any) {
 		function recurse(items: any[]) {

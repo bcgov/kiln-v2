@@ -21,6 +21,7 @@
 	import PrintRow from './common/PrintRow.svelte';
 	import { MaskInput } from 'maska';
 	import { scriptErrors } from "$lib/utils/scriptErrors";
+	import { isFieldVisible } from '$lib/utils/form';
 
 	let {
 		item,
@@ -39,6 +40,7 @@
 	// Compute effective required/read-only from enum values
 	const isRequired = $derived.by(() => computeIsRequired(item.is_required));
 	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only));
+	const isVisible = $derived(isFieldVisible(item));
 
 	// Use computed isReadOnly for local state
 	let readonly = $state(computeIsReadOnly(item.is_read_only));
@@ -172,7 +174,7 @@
 
 <div class="field-container number-input-field">
 	<PrintRow {item} {printing} {labelText} value={printValue} />
-	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
+	<div class="web-input" class:visible={!printing && isVisible}>
 		<FieldComponent
 			{...numberInputAttrs}
 			{...a11y.ariaProps}

@@ -5,6 +5,7 @@
 	import type { Item } from '$lib/types/form';
 	import { computeIsReadOnly } from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
+	import { isFieldVisible } from '$lib/utils/form';
 
 	const {
 		item,
@@ -18,7 +19,7 @@
 	
 
 	// Compute effective read-only from enum value
-	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only));
+	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only));	
 
 	// Fall back for crypto.randomUUID (not available in insecure contexts like host.docker.internal)
 	function generateUUID(): string {
@@ -33,7 +34,7 @@
 	}
 
 	const minRepeats = $derived(item.attributes?.minRepeats ?? 1);
-	const maxRepeats = $derived(item.attributes?.maxRepeats ?? Infinity);
+	const maxRepeats = $derived(item.attributes?.maxRepeats ?? Infinity);	
 
 	// Initialize groups based on existing data or create the minimum required empty groups
 	let groups = $state(initializeGroups());
@@ -291,7 +292,7 @@
 	const errorId = `${item.uuid}-error`;
 
 	const isVisible = $derived(
-		(!printing && item.visible_web !== false) || (printing && item.visible_pdf !== false)
+		(!printing && isFieldVisible(item)) || (printing && isFieldVisible(item,'pdf'))
 	);
 </script>
 

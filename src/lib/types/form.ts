@@ -5,9 +5,9 @@ export interface Item {
 	name: string;
 	description?: string;
 	help_text?: string;
-	is_required?: 'always' | 'portal';
-	visible_web?: boolean;
-	visible_pdf?: boolean;
+	is_required?: 'always' | 'portal'| 'icm';
+	visible_web?: 'always' | 'portal'| 'icm';
+	visible_pdf?: 'always' | 'portal'| 'icm';
 	is_read_only?: 'always' | 'portal' | 'icm';
 	save_on_submit?: boolean;
 	order?: number;

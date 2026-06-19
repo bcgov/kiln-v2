@@ -11,10 +11,11 @@
 		computeIsRequired,
 		computeIsReadOnly
 	} from '$lib/utils/helpers';
+	import { isFieldVisible } from '$lib/utils/form';
 	import { toFlatpickrFormat } from '$lib/utils/dateFormats';
 	import PrintRow from './common/PrintRow.svelte';
 	import { scriptErrors } from "$lib/utils/scriptErrors";
-	
+
 	const { item, printing = false } = $props<{ item: Item; printing?: boolean }>();
 	let value: string | null = $state(
 		(item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? null) || null
@@ -23,6 +24,7 @@
 	// Compute effective required/read-only from enum values
 	const isRequired = $derived.by(() => computeIsRequired(item.is_required));
 	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only));
+	const isVisible = $derived.by(() => isFieldVisible(item));
 
 	// Use computed isReadOnly for local state
 	let readOnly = $state(computeIsReadOnly(item.is_read_only));
@@ -214,7 +216,7 @@
 
 	<div class="web-input" 
 	class:readonly={readOnly} 
-	class:visible={!printing && item.visible_web !== false} >
+	class:visible={!printing && isVisible} >
 		<DatePicker
 			{...datePickerWrapperAttrs}
 			{...extAttrs as any}
