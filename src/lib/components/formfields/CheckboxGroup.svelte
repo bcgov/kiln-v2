@@ -141,7 +141,7 @@
 
 	<div
 		class="web-input checkbox-group-wrapper"
-		class:visible={!printing && item.visible_web !== false}
+		class:visible={!printing && isVisible}
 		data-selected={selected}
 	>
 		<CheckboxGroup

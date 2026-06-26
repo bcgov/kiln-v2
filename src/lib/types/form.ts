@@ -342,3 +342,12 @@ export interface FetchFormOptions {
 	usePortal?: boolean;
 	parseSaveData?: boolean;
 }
+
+export type ConditionalFlag =
+  | boolean
+  | 'always'
+  | 'never'
+  | 'portal'
+  | 'icm'
+  | null
+  | undefined;
