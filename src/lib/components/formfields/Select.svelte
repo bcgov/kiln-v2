@@ -19,6 +19,8 @@
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
 	import { scriptErrors } from "$lib/utils/scriptErrors";
+	import { isFieldVisible } from '$lib/utils/form';
+
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -33,6 +35,7 @@
 	// Compute effective required/read-only from enum values
 	const isRequired = $derived.by(() => computeIsRequired(item.is_required));
 	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only));
+	const isVisible = $derived(isFieldVisible(item));
 
 	// Use computed isReadOnly for local state (bindings, UI)
 	let readOnly = $state(computeIsReadOnly(item.is_read_only));
@@ -118,7 +121,7 @@
 <div class="field-container select-field">
 	<PrintRow {item} {printing} {labelText} value={selectedLabel || ''} />
 
-	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
+	<div class="web-input" class:visible={!printing && isVisible}>
 		<Select
 			{...filterAttributes(item?.attributes)}
 			id={item.uuid}

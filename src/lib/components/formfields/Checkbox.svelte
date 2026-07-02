@@ -21,6 +21,7 @@
 	import CheckboxIcon from 'carbon-icons-svelte/lib/Checkbox.svelte';
 	import CheckboxFilledIcon from 'carbon-icons-svelte/lib/CheckboxCheckedFilled.svelte';
 	import { scriptErrors } from "$lib/utils/scriptErrors";	
+	import { isFieldVisible } from '$lib/utils/form';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -33,6 +34,7 @@
 	// Compute effective required/read-only from enum values
 	const isRequired = $derived.by(() => computeIsRequired(item.is_required));
 	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only));
+	const isVisible = $derived(isFieldVisible(item));
 
 	// Use computed isReadOnly for local state (bindings, UI)
 	let readonly = $state(computeIsReadOnly(item.is_read_only));
@@ -136,7 +138,7 @@
 
 	<div
 		class="web-input"
-		class:visible={!printing && item.visible_web !== false}
+		class:visible={!printing && isVisible}
 		class:read-only={readonly}
 	>
 		<Checkbox

@@ -21,6 +21,7 @@
 	import RadioIcon from 'carbon-icons-svelte/lib/RadioButton.svelte';
 	import RadioFilledIcon from 'carbon-icons-svelte/lib/RadioButtonChecked.svelte';
 	import { scriptErrors } from "$lib/utils/scriptErrors";
+	import { isFieldVisible } from '$lib/utils/form';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -35,6 +36,7 @@
 	// Compute effective required/read-only from enum values
 	const isRequired = $derived.by(() => computeIsRequired(item.is_required));
 	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only));
+	const isVisible = $derived(isFieldVisible(item));
 
 	// Use computed isReadOnly for local state
 	let readonly = $state(computeIsReadOnly(item.is_read_only));
@@ -135,7 +137,7 @@
 	<div
 		class="web-input radio-group-wrapper"
 		class:readonly={readonly}
-		class:visible={!printing && item.visible_web !== false}
+		class:visible={!printing && isVisible}
 		data-selected={selected}
 	>
 		<RadioButtonGroup

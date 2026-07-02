@@ -8,6 +8,7 @@
 		buildFieldAria
 	} from '$lib/utils/helpers';
 	import { syncExternalAttributes } from '$lib/utils/valueSync';
+	import { isFieldVisible } from '$lib/utils/form';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -17,6 +18,7 @@
 	const labelText = $derived(getFieldLabel(item));
 	const enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
 	const readonly = $state(computeIsReadOnly(item.is_read_only));
+	const isVisible = $derived(isFieldVisible(item));
 
 	let extAttrs = $state<Record<string, any>>({});
 	let ariaLabel = $derived(labelText || item.name || 'button');
@@ -41,7 +43,7 @@
 
 <div
 	class="field-container button-field no-print"
-	class:visible={!printing && item.visible_web !== false && !readonly}
+	class:visible={!printing && isVisible && !readonly}
 	class:moustache={enableVarSub}
 >
 	<Button
