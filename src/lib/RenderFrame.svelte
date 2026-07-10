@@ -232,7 +232,15 @@
 		const letterContent = document.querySelector(
 			'.letter-content, [id^="letter-content-"]'
 		) as HTMLElement;
-		if (!letterContent) {
+		
+		const formContent = document.querySelector(
+			'.content-wrapper .form'
+		) as HTMLElement;
+		
+		const isLetter = !!letterContent;
+		const contentRoot = (letterContent || formContent) as HTMLElement;
+
+		if (!contentRoot) {
 			return () => {};
 		}
 
@@ -344,19 +352,22 @@
 		const SAFETY_MARGIN_PX = 0;
 
 		const originalStyles = {
-			display: letterContent.style.display,
-			visibility: letterContent.style.visibility,
-			position: letterContent.style.position,
-			width: letterContent.style.width
+			display: contentRoot.style.display,
+			visibility: contentRoot.style.visibility,
+			position: contentRoot.style.position,
+			width: contentRoot.style.width,
+			opacity: contentRoot.style.opacity,
+			pointerEvents: contentRoot.style.pointerEvents
 		};
 
 		// Make content visible for measurement:
 		const contentWidth = LETTER_WIDTH_PX - PAGE_MARGIN_LEFT_PX - PAGE_MARGIN_RIGHT_PX;
-		letterContent.style.display = 'block';
-		letterContent.style.visibility = 'hidden';
-		letterContent.style.position = 'absolute';
-		letterContent.style.width = `${contentWidth}px`;
-		letterContent.offsetHeight; // Force reflow
+		contentRoot.style.display = 'block';
+		contentRoot.style.opacity = '0';
+		contentRoot.style.pointerEvents = 'none';
+		contentRoot.style.position = 'absolute';
+		contentRoot.style.width = `${contentWidth}px`;
+		contentRoot.offsetHeight; // Force reflow
 
 		const breakableTags = [
 			'p',
@@ -377,12 +388,192 @@
 		];
 		const breakableSelector = breakableTags.join(', ');
 
-		const breakableElements = letterContent.querySelectorAll(breakableSelector);
+		const formBreakableSelector = [
+			'fieldset', '.container-group', '.container-repeatable',
+			'.group-item-child-container', '.group-item-container',
+			'.container-fields-grid > .group-item-child-container', 'table',
+			'.print-row.visible', '.field-container.text-info-field.visible'
+		].join(', ');
+
+		let breakableElements: Element[];
+
+		if (isLetter) {
+			breakableElements = Array.from(contentRoot.querySelectorAll(breakableSelector));
+		} else {
+			const allMatches = Array.from(contentRoot.querySelectorAll(formBreakableSelector)).filter(
+				(el) => {
+					const label = ((el as Element).id || (el as Element).className || '').toLowerCase();
+					return isActuallyVisible(el) && !el.closest('.print-footer') && !label.includes('footer');
+				}
+			);
+			// Keep only outermost matches (no nested duplicates)
+			breakableElements = allMatches.filter((el) => {
+				const parentMatch = el.parentElement?.closest(formBreakableSelector);
+				return !parentMatch || !contentRoot.contains(parentMatch);
+			});
+		}
+
+		// Helpers for finding children container/elements
+		function unwrapContainers(children: Element[]): Element[] {
+			let current = children;
+			while (
+				current.length === 1 &&
+				current[0] instanceof Element &&
+				current[0].matches('.group-item-child-container')
+			) {
+				const next = getBreakableChildren(current[0]);
+				if (next.length === 0) break;
+				current = next;
+			}
+			return current;
+		}
+		function isActuallyVisible(el: Element): boolean {
+			const htmlEl = el as HTMLElement;
+			const style = window.getComputedStyle(htmlEl);
+			const rect = htmlEl.getBoundingClientRect();
+
+			if (style.display === 'none') return false;
+			if (style.visibility === 'hidden') return false;
+			if (htmlEl.hidden) return false;
+
+			const hasBox = rect.width > 0 || rect.height > 0;
+			const hasVisibleChild = Array.from(el.children).some((child) => {
+				const childRect = child.getBoundingClientRect();
+				const childStyle = window.getComputedStyle(child as HTMLElement);
+				return (
+				childStyle.display !== 'none' &&
+				childStyle.visibility !== 'hidden' &&
+				(childRect.width > 0 || childRect.height > 0)
+				);
+			});
+
+			return hasBox || hasVisibleChild;
+		}
+
+		function getBreakableChildren(el: Element): Element[] {
+			const children = Array.from(el.children).filter(
+				(child): child is Element => child instanceof Element && isActuallyVisible(child)
+			);
+
+			const groupContainers = children.filter((child) =>
+				child.matches('.group-item-child-container, .group-item-container')
+			);
+			if (groupContainers.length > 0) return unwrapContainers(groupContainers);
+
+			const grid = children.find((child) => child.matches('.container-fields-grid'));
+			if (grid) {
+				const gridChildren = Array.from(grid.children).filter(
+					(child): child is Element => child instanceof Element && isActuallyVisible(child)
+				);
+
+				const gridContainers = gridChildren.filter((child) =>
+					child.matches('.group-item-child-container')
+				);
+				if (gridContainers.length > 0) return unwrapContainers(gridContainers);
+
+				const gridSections = gridChildren.filter((child) =>
+					child.matches('fieldset, .container-group, .container-repeatable, table')
+				);
+				if (gridSections.length > 0) return unwrapContainers(gridSections);
+
+				const gridRows = gridChildren.flatMap((child) => {
+					if (child.matches('.group-item-child-field')) {
+						return Array.from(
+							child.querySelectorAll(':scope .print-row.visible, :scope .field-container.text-info-field.visible')
+						).filter((n): n is Element => n instanceof Element);
+					}
+					return [];
+				});
+				if (gridRows.length > 0) return gridRows;
+			}
+
+			const sections = children.filter((child) =>
+				child.matches('fieldset, .container-group, .container-repeatable, table')
+			);
+			if (sections.length > 0) return unwrapContainers(sections);
+
+			return children.filter((child) =>
+				child.matches('.print-row.visible, .field-container.text-info-field.visible')
+			);
+		}
+
+		function getGroupChildren(el: Element): Element[] {
+			const ownedFields = Array.from(
+				el.querySelectorAll('.group-item-child-field')
+			).filter((child): child is Element => {
+				if (!(child instanceof Element)) return false;
+				const owner = child.parentElement?.closest(
+					'.group-item-container, .group-item-child-container'
+				);
+				return owner === el;
+			});
+			if (ownedFields.length > 0) return ownedFields;
+
+			const ownedRows = Array.from(
+				el.querySelectorAll('.print-row.visible, .field-container.text-info-field.visible')
+			).filter((child): child is Element => {
+				if (!(child instanceof Element)) return false;
+				const owner = child.parentElement?.closest(
+					'.group-item-container, .group-item-child-container'
+				);
+				return owner === el;
+			});
+			if (ownedRows.length > 0) return ownedRows;
+
+			return getBreakableChildren(el);
+		}
+
+		function getRepeaterChildren(el: Element): Element[] {
+			const children = Array.from(el.children).filter(
+				(child): child is Element => child instanceof Element && isActuallyVisible(child)
+			);
+
+			const fieldBlocks = children.filter((child) => child.matches('.group-item-child-field'));
+			if (fieldBlocks.length > 0) return fieldBlocks;
+
+			const grid = children.find((child) => child.matches('.container-fields-grid'));
+			if (grid) {
+				const gridChildren = Array.from(grid.children).filter(
+					(child): child is Element => child instanceof Element
+				);
+
+				const gridFields = gridChildren.filter((child) => child.matches('.group-item-child-field'));
+				if (gridFields.length > 0) return gridFields;
+
+				const gridContainers = gridChildren.filter((child) =>
+					child.matches('.group-item-child-container, .group-item-container')
+				);
+				if (gridContainers.length > 0) return gridContainers;
+			}
+
+			return getBreakableChildren(el);
+		}
+
+		// Overhead calculations
+		function getContainerOverhead(el: Element, children: Element[]): number {
+			if (children.length === 0) return 0;
+			const parentRect = el.getBoundingClientRect();
+			const firstRect = children[0].getBoundingClientRect();
+			const lastRect = children[children.length - 1].getBoundingClientRect();
+			const rawOverhead =
+				Math.max(0, Math.round(firstRect.top - parentRect.top)) +
+				Math.max(0, Math.round(parentRect.bottom - lastRect.bottom));
+			return Math.min(rawOverhead, 80);
+		}
+
+		function getGroupOverhead(el: Element, children: Element[]): number {
+			if (children.length === 0) return 0;
+			const parentHeight = Math.ceil(el.getBoundingClientRect().height);
+			const childHeightSum = children.reduce(
+				(sum, child) => sum + Math.ceil(child.getBoundingClientRect().height), 0
+			);
+			return Math.min(Math.max(0, parentHeight - childHeightSum), 40);
+		}
 
 		let accumulatedHeight = 0;
 		let maxHeightForPage = Math.ceil(firstPageContentHeight - SAFETY_MARGIN_PX);
 
-		breakableElements.forEach((el) => {
+		function paginateNode(el: Element): void {
 			// Skip elements inside the footer (they shouldn't trigger page breaks)
 			if (el.closest('.print-footer')) {
 				return;
@@ -401,12 +592,44 @@
 				return;
 			}
 
-			// Skip element with breakable child elements
-			if (el.childElementCount > 0) {
+			if (!isLetter && !isActuallyVisible(el)) {
+				return;
+			}
+
+			// Skip element with breakable child elements (letter mode only)
+			if (isLetter && el.childElementCount > 0) {
 				for (const child of el.children) {
 					if (breakableTags.includes(child.tagName.toLowerCase())) {
 						return;
 					}
+				}
+			}
+
+			const pageBuffer = isLetter ? 0 : 4;
+			let remainingSpace = maxHeightForPage - accumulatedHeight - pageBuffer;
+
+			// Repeater handling (form mode only)
+			if (!isLetter && el.matches('.container-repeatable')) {
+				const children = getRepeaterChildren(el);
+				if (children.length > 0) {
+					const allGrouped = children.every((child) =>
+						child.matches('.group-item-container, .group-item-child-container, fieldset, .container-group')
+					);
+					const overhead = !allGrouped ? getContainerOverhead(el, children) : 0;
+
+					if (!el.hasAttribute('data-pagination-overhead-applied')) {
+						if (accumulatedHeight > 0 && accumulatedHeight + overhead > maxHeightForPage - pageBuffer) {
+							insertPageBreak(el);
+							maxHeightForPage = Math.ceil(subsequentPageContentHeight - SAFETY_MARGIN_PX);
+							accumulatedHeight = 0;
+						}
+						accumulatedHeight += overhead;
+						remainingSpace = maxHeightForPage - accumulatedHeight - pageBuffer;
+						el.setAttribute('data-pagination-overhead-applied', 'true');
+					}
+
+					children.forEach((child) => paginateNode(child));
+					return;
 				}
 			}
 
@@ -415,6 +638,72 @@
 				// Only insert page break if we have content on current page
 				// (prevents empty first page)
 				if (accumulatedHeight > 0) {
+
+					// Grouped container handling (form mode only)
+					if (!isLetter && el.matches('.group-item-container, .group-item-child-container')) {
+						const children = getGroupChildren(el);
+						if (children.length > 0 && !(children.length === 1 && children[0] === el)) {
+							const isInsideRepeater = !!el.closest('.container-repeatable');
+							const hasRepeatableChild = children.some((c) => c.matches('.container-repeatable'));
+							const elHeight = Math.ceil(el.getBoundingClientRect().height);
+							const splitIsWorthIt = remainingSpace >= elHeight * 0.4;
+
+							if (!splitIsWorthIt && !hasRepeatableChild) {
+								insertPageBreak(el);
+								maxHeightForPage = Math.ceil(subsequentPageContentHeight - SAFETY_MARGIN_PX);
+								accumulatedHeight = 0;
+							}
+
+							const overhead = getGroupOverhead(el, children);
+							if (!isInsideRepeater && overhead > 0 && !el.hasAttribute('data-grouped-overhead-applied')) {
+								const firstChildH = Math.ceil(children[0].getBoundingClientRect().height);
+								const spaceAfterOverhead = maxHeightForPage - (accumulatedHeight + overhead) - pageBuffer;
+								const overheadOrphansContent = firstChildH > 0
+									&& spaceAfterOverhead < firstChildH
+									&& firstChildH <= (maxHeightForPage - pageBuffer);
+
+								if (accumulatedHeight + overhead > maxHeightForPage - pageBuffer || overheadOrphansContent) {
+									insertPageBreak(el);
+									maxHeightForPage = Math.ceil(subsequentPageContentHeight - SAFETY_MARGIN_PX);
+									accumulatedHeight = 0;
+								}
+								accumulatedHeight += overhead;
+								el.setAttribute('data-grouped-overhead-applied', 'true');
+							}
+
+							children.forEach((child) => paginateNode(child));
+							return;
+						}
+					}
+
+					// Group item field handling (form mode only)
+					if (!isLetter && el.matches('.group-item-child-field')) {
+						insertPageBreak(el);
+						maxHeightForPage = Math.ceil(subsequentPageContentHeight - SAFETY_MARGIN_PX);
+						accumulatedHeight = Math.min(totalElementHeight, maxHeightForPage - pageBuffer);
+						return;
+					}
+
+					// try splitting via children (form mode only)
+					if (!isLetter) {
+						const children = getBreakableChildren(el);
+						if (children.length > 0) {
+							const firstChildHeight = Math.ceil(children[0].getBoundingClientRect().height);
+							const isInsideRepeater = !!el.closest('.container-repeatable');
+							const firstChildTallerThanPage = firstChildHeight > (maxHeightForPage - pageBuffer);
+							const splitIsWorthIt = firstChildTallerThanPage || (remainingSpace >= firstChildHeight * 0.3);
+
+							if (!isInsideRepeater && firstChildHeight > remainingSpace && !splitIsWorthIt) {
+								insertPageBreak(el);
+								maxHeightForPage = Math.ceil(subsequentPageContentHeight - SAFETY_MARGIN_PX);
+								accumulatedHeight = 0;
+								remainingSpace = maxHeightForPage - pageBuffer;
+							}
+							children.forEach((child) => paginateNode(child));
+							return;
+						}
+					}
+
 					insertPageBreak(el);
 					// Subsequent pages have more space (no header)
 					maxHeightForPage = Math.ceil(subsequentPageContentHeight - SAFETY_MARGIN_PX);
@@ -426,13 +715,17 @@
 			} else {
 				accumulatedHeight += totalElementHeight;
 			}
-		});
+		}
+
+		breakableElements.forEach((el) => paginateNode(el));
 
 		// Return original styles:
-		letterContent.style.display = originalStyles.display;
-		letterContent.style.visibility = originalStyles.visibility;
-		letterContent.style.position = originalStyles.position;
-		letterContent.style.width = originalStyles.width;
+		contentRoot.style.display = originalStyles.display;
+		contentRoot.style.visibility = originalStyles.visibility;
+		contentRoot.style.position = originalStyles.position;
+		contentRoot.style.width = originalStyles.width;
+		contentRoot.style.opacity = originalStyles.opacity;
+contentRoot.style.pointerEvents = originalStyles.pointerEvents;
 
 		return () => {
 			// Remove inserted page break elements
@@ -441,6 +734,16 @@
 			// Remove page-start markers
 			document.querySelectorAll('.page-start').forEach((el) => {
 				el.classList.remove('page-start');
+			});
+
+			// Remove group wrapper overhead
+			document.querySelectorAll('[data-grouped-overhead-applied]').forEach((el) => {
+				el.removeAttribute('data-grouped-overhead-applied');
+			});
+
+			// Remove repeater wrapper overhead
+			document.querySelectorAll('[data-pagination-overhead-applied]').forEach((el) => {
+				el.removeAttribute('data-pagination-overhead-applied');
 			});
 		};
 	}
