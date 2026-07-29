@@ -1,3 +1,12 @@
+export type ConditionalFlag =
+  | boolean
+  | 'always'
+  | 'never'
+  | 'portal'
+  | 'icm'
+  | null
+  | undefined;
+
 export interface Item {
 	uuid: string;
   class?: string;
@@ -5,10 +14,10 @@ export interface Item {
 	name: string;
 	description?: string;
 	help_text?: string;
-	is_required?: boolean;
-	visible_web?: boolean;
-	visible_pdf?: boolean;
-	is_read_only?: boolean | string;
+	is_required?: ConditionalFlag;
+	visible_web?: ConditionalFlag;
+	visible_pdf?: ConditionalFlag;
+	is_read_only?: ConditionalFlag;
 	save_on_submit?: boolean;
 	order?: number;
 	options?: FormOption[] | any[];

@@ -1,5 +1,6 @@
 import type { FormDefinition, Item, FieldValue, FormData, SavedData } from '../types/form';
 import { ensureFreshToken } from '$lib/utils/keycloak';
+import { computeIsVisible } from '$lib/utils/helpers';
 
 function getContainerKey(item: Item): string {
   return (item as any)._containerInstanceKey ?? item.uuid;
@@ -325,7 +326,11 @@ export function isFieldVisible(
   ctx?: { container?: Item; rowIndex?: number }
 ): boolean {
   // Use visible_web or visible_pdf
-  let visible = mode === 'pdf' ? item.visible_pdf !== false : item.visible_web !== false;
+  //let visible = mode === 'pdf' ? item.visible_pdf !== false : item.visible_web !== false;
+
+  let visible = computeIsVisible(
+    mode === 'pdf' ? item.visible_pdf : item.visible_web
+  );
   // Final gate: DOM visibility
   if (includeDOMCheck && mode === 'web') {
     try {

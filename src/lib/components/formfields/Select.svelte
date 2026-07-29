@@ -9,9 +9,18 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
+	import {
+		filterAttributes,
+		buildFieldAria,
+		getFieldLabel,
+		computeIsRequired,
+		computeIsReadOnly
+	} from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
+	import { scriptErrors } from "$lib/utils/scriptErrors";
+	import { isFieldVisible } from '$lib/utils/form';
+
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -22,12 +31,19 @@
 		item?.value ?? item.attributes?.selected ?? item.attributes?.defaultSelected ?? ''
 	);
 	let error = $state(item.attributes?.error ?? '');
-	let readOnly = $state(item.is_read_only ?? false);
+
+	// Compute effective required/read-only from enum values
+	const isRequired = $derived.by(() => computeIsRequired(item.is_required));
+	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only));
+	const isVisible = $derived(isFieldVisible(item));
+
+	// Use computed isReadOnly for local state (bindings, UI)
+	let readOnly = $state(computeIsReadOnly(item.is_read_only));
 	let labelText = $state(getFieldLabel(item));
-	let helperText = item.help_text ?? '';
-	let hideLabel = item.attributes?.hideLabel ?? false;
+	const helperText = item.help_text ?? '';
+	const hideLabel = item.attributes?.hideLabel ?? false;
 	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
-	let options = item.options ?? [];
+	const options = item.options ?? [];
 	let touched = $state(false);
 
 	let extAttrs = $state<Record<string, any>>({});
@@ -37,13 +53,18 @@
 		return option?.label || selected;
 	});
 
-	const rules = $derived.by(() =>
-		rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'string' })
+	const rules = $derived(
+		rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'string' })
 	);
+
+	const scriptError = $derived.by(() => $scriptErrors?.[item.uuid] ?? "");
+
 	const anyError = $derived.by(() => {
 		if (!touched) return '';
 		if (error) return error;
 		if (readOnly) return '';
+		 // script-driven error from global store
+ 		if (scriptError) return scriptError;
 		return (
 			validateValue(selected, rules, {
 				type: 'string',
@@ -91,8 +112,8 @@
 			uuid: item.uuid,
 			labelText,
 			helperText,
-			isRequired: item.is_required,
-			readOnly: readOnly
+			isRequired,
+			readOnly: isReadOnly
 		})
 	);
 </script>
@@ -100,7 +121,7 @@
 <div class="field-container select-field">
 	<PrintRow {item} {printing} {labelText} value={selectedLabel || ''} />
 
-	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
+	<div class="web-input" class:visible={!printing && isVisible}>
 		<Select
 			{...filterAttributes(item?.attributes)}
 			id={item.uuid}
@@ -118,7 +139,7 @@
 			<span
 				slot="labelChildren"
 				id={a11y.labelId}
-				class:required={item.is_required}
+				class:required={isRequired}
 				class:moustache={enableVarSub}>{@html labelText}</span
 			>
 			<SelectItem value="" text="Please select an option" />
@@ -127,7 +148,12 @@
 			{/each}
 		</Select>
 		{#if anyError}
-			<div id={a11y.errorId} class="bx--form-requirement" class:moustache={enableVarSub} role="alert">
+			<div
+				id={a11y.errorId}
+				class="bx--form-requirement"
+				class:moustache={enableVarSub}
+				role="alert"
+			>
 				{anyError}
 			</div>
 		{/if}
@@ -140,21 +166,5 @@
 </div>
 
 <style>
-	:global(
-			input:disabled,
-			textarea:disabled,
-			select:disabled,
-			button:disabled,
-			checkbox:disabled,
-			textinput:disabled
-		) {
-		background-color: white !important;
-		color: black !important;
-		cursor: text !important;
-	}
-
-	:global(input:disabled::placeholder, textarea:disabled::placeholder) {
-		color: black !important;
-		opacity: 1 !important;
-	}
+	
 </style>

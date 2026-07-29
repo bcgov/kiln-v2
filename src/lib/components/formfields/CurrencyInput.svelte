@@ -9,11 +9,19 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
+	import {
+		filterAttributes,
+		buildFieldAria,
+		getFieldLabel,
+		computeIsRequired,
+		computeIsReadOnly
+	} from '$lib/utils/helpers';
 	import { preprocessDecimalInput, unmaskNumberString } from '$lib/utils/mask';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
 	import { MaskInput } from 'maska';
+	import { scriptErrors } from "$lib/utils/scriptErrors";
+	import { isFieldVisible } from '$lib/utils/form';
 
 	let {
 		item,
@@ -26,28 +34,40 @@
 	let value: string = $state(
 		item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? ''
 	);
-	let unmaskedValue: string = $derived(unmaskNumberString(value));
+	const unmaskedValue: string = $derived(unmaskNumberString(value));
 
-	let readOnly = $derived(item.is_read_only === true || item.is_read_only === 'true' || false);
-	let labelText = $derived(getFieldLabel(item));
-	let enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
-	let placeholder = $derived(item.attributes?.placeholder ?? '');
-	let helperText = $derived(item.help_text ?? item.description ?? '');
+	// Compute effective required/read-only from enum values
+	const isRequired = $derived.by(() => computeIsRequired(item.is_required));
+	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only));
 
-	let hideLabel = $derived(item.attributes?.hideLabel ?? false);
+	const isVisible = $derived(isFieldVisible(item));
+
+	// Use computed isReadOnly for local state
+	let readOnly = $state(computeIsReadOnly(item.is_read_only));
+	const labelText = $derived(getFieldLabel(item));
+	const enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
+	const placeholder = $derived(item.attributes?.placeholder ?? '');
+	const helperText = $derived(item.help_text ?? item.description ?? '');
+
+	const hideLabel = $derived(item.attributes?.hideLabel ?? false);
 
 	let touched = $state(false);
 	let extAttrs = $state<Record<string, any>>({});
 
 	let ref = $state<HTMLInputElement | null>(null);
 
-	let rules = $derived.by(() => ({
-		...rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'number' }),
+	const rules = $derived({
+		...rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'number' }),
 		isInteger: false
-	}));
-	let anyError = $derived.by(() => {
+	});
+
+	const scriptError = $derived.by(() => $scriptErrors?.[item.uuid] ?? "");
+
+	const anyError = $derived.by(() => {
 		if (!touched) return '';
 		if (readOnly) return '';
+		 // script-driven error from global store
+ 		if (scriptError) return scriptError;
 		return (
 			validateValue(unmaskedValue, rules, {
 				type: 'number',
@@ -98,13 +118,13 @@
 		publishToGlobalFormState({ item, value: unmaskedValue });
 	});
 
-	const a11y = $derived(
+	const a11y = $derived.by(() =>
 		buildFieldAria({
 			uuid: item.uuid,
 			labelText,
 			helperText,
-			isRequired: item.is_required,
-			readOnly: readOnly
+			isRequired,
+			readOnly: isReadOnly
 		})
 	);
 
@@ -132,7 +152,7 @@
 <div class="field-container text-input-field">
 	<PrintRow {item} {printing} {labelText} value={value || ''} />
 
-	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
+	<div class="web-input" class:visible={!printing && isVisible}>
 		<TextInput
 			{...filterAttributes(item?.attributes)}
 			id={item.uuid}
@@ -156,7 +176,7 @@
 			<span
 				slot="labelChildren"
 				id={a11y.labelId}
-				class:required={item.is_required}
+				class:required={isRequired}
 				class:moustache={enableVarSub}>{@html labelText}</span
 			>
 		</TextInput>

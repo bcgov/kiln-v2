@@ -377,6 +377,12 @@
 
 		targetButton?.click();
 	};
+	function isDateInteractionActive() {
+		return (
+			document.querySelector('.flatpickr-calendar.open') ||
+			document.activeElement?.closest('[data-kiln-date]')
+		);
+}
 
 	onMount(() => {
 		const handleMessage = (event: MessageEvent) => {
@@ -395,7 +401,11 @@
 				}
 			}
 			if (event.data?.type === "CLICK_BUTTON_BY_TEXT") {
-				console.log("Message recieved");				
+				console.log("Message recieved");
+				if (isDateInteractionActive()) {
+					console.log("Skipping autosave: Date interaction active");
+					return;
+				}				
 				clickButtonByText(event.data.text);
 			}
 		};

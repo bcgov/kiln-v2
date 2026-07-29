@@ -4,8 +4,9 @@ on:
   push:
     branches:
       - main
-      - dev
       - test
+      - staging
+      - dev
   workflow_dispatch:
 
 env:
@@ -72,7 +73,7 @@ jobs:
   deploy:
     needs: build_and_push
     runs-on: ubuntu-latest
-    environment: ${{ github.ref == 'refs/heads/main' && 'prod-formfoundry-portal' || (github.ref == 'refs/heads/dev' && 'dev-formfoundry-portal') || github.ref == 'refs/heads/test' && 'test-formfoundry-portal' }}
+    environment: ${{ github.ref == 'refs/heads/main' && 'prod-formfoundry-portal' || (github.ref == 'refs/heads/dev' && 'dev-formfoundry-portal') || (github.ref == 'refs/heads/staging' && 'staging-formfoundry-portal') || github.ref == 'refs/heads/test' && 'test-formfoundry-portal' }}
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v4
@@ -96,6 +97,8 @@ jobs:
             RELEASE_NAME="kiln-v2-dev"
           elif [[ "$BRANCH" == "test" ]]; then
             RELEASE_NAME="kiln-v2-test"
+          elif [[ "$BRANCH" == "staging" ]]; then
+            RELEASE_NAME="kiln-v2-staging"
           else
             RELEASE_NAME="kiln-v2"
           fi
@@ -115,6 +118,8 @@ jobs:
             DEPLOYMENT_NAME="kiln-v2-dev"
           elif [[ "$BRANCH" == "test" ]]; then
             DEPLOYMENT_NAME="kiln-v2-test"
+          elif [[ "$BRANCH" == "staging" ]]; then
+            DEPLOYMENT_NAME="kiln-v2-staging"
           else
             DEPLOYMENT_NAME="kiln-v2"
           fi

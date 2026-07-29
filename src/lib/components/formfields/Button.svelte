@@ -1,14 +1,24 @@
 <script lang="ts">
 	import { Button } from 'carbon-components-svelte';
 	import type { Item } from '$lib/types/form';
-	import { filterAttributes, getFieldLabel } from '$lib/utils/helpers';
+	import {
+		filterAttributes,
+		getFieldLabel,
+		computeIsReadOnly,
+		buildFieldAria
+	} from '$lib/utils/helpers';
 	import { syncExternalAttributes } from '$lib/utils/valueSync';
-	import { buildFieldAria } from '$lib/utils/helpers';
+	import { isFieldVisible } from '$lib/utils/form';
 
-	let { item, printing = false } = $props<{ item: Item; printing?: boolean; [key: string]: any }>();
-	let labelText = $derived(getFieldLabel(item));
-	let enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
-	let readonly = $state(item.is_read_only ?? false);
+	const { item, printing = false } = $props<{
+		item: Item;
+		printing?: boolean;
+		[key: string]: any;
+	}>();
+	const labelText = $derived(getFieldLabel(item));
+	const enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
+	const readonly = $state(computeIsReadOnly(item.is_read_only));
+	const isVisible = $derived(isFieldVisible(item));
 
 	let extAttrs = $state<Record<string, any>>({});
 	let ariaLabel = $derived(labelText || item.name || 'button');
@@ -32,8 +42,8 @@
 </script>
 
 <div
-	class="field-container button-field no-print" 
-	class:visible={!printing && item.visible_web !== false && !readonly}
+	class="field-container button-field no-print"
+	class:visible={!printing && isVisible && !readonly}
 	class:moustache={enableVarSub}
 >
 	<Button

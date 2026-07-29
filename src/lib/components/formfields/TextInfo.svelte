@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Item } from '$lib/types/form';
 	import './fields.css';
+	import { isFieldVisible } from '$lib/utils/form';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -11,7 +12,7 @@
 	const labelText = item.attributes?.labelText ?? item.attributes?.text ?? '';
 
 	const isVisible = $derived(
-		(!printing && item.visible_web !== false) || (printing && item.visible_pdf !== false)
+		(!printing && isFieldVisible(item)) || (printing && isFieldVisible(item,'pdf'))
 	);
 </script>
 
