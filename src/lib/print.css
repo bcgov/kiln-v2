@@ -1,10 +1,22 @@
 /* Print-only styles consolidated for the entire form experience */
+
+/* Default page margins */
+:root {
+  --page-margin-top: 12mm;
+  --page-margin-right: 15mm;
+  --page-margin-bottom: 20mm;
+  --page-margin-left: 15mm;
+
+  --page-margin-top-first: var(--page-margin-top);
+}
+
 @media print {
-
-
   @page {
     size: letter;
-    margin: 5mm 15mm 20mm 15mm;
+    margin: var(--page-margin-top-first)
+            var(--page-margin-right)
+            var(--page-margin-bottom)
+            var(--page-margin-left);
 
     /* Top Right Bottom Left */
     @top-left {
@@ -286,6 +298,12 @@
     margin: 0 !important;
     padding: 0 !important;
   }
+  
+  .page-start {
+    padding-top: calc(
+      var(--page-margin-top) - var(--page-margin-top-first)
+      ) !important;
+  }
 
   #barcode-placeholder {
     display: block !important;
@@ -296,5 +314,4 @@
   #barcode-placeholder svg {
     display: block;
   }
-
 }

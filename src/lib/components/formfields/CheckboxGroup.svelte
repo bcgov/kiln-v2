@@ -2,10 +2,20 @@
 	import { Checkbox, CheckboxGroup } from 'carbon-components-svelte';
 	import type { FormOption, Item } from '$lib/types/form';
 	import { publishToGlobalFormState, syncExternalAttributes } from '$lib/utils/valueSync';
-	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
+	import {
+		filterAttributes,
+		buildFieldAria,
+		getFieldLabel,
+		computeIsRequired,
+		computeIsReadOnly
+	} from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import PrintRow from './common/PrintRow.svelte';
 	import './fields.css';
+	import CheckboxIcon from "carbon-icons-svelte/lib/Checkbox.svelte";
+	import CheckboxFilledIcon from "carbon-icons-svelte/lib/CheckboxCheckedFilled.svelte";
+	import { scriptErrors } from "$lib/utils/scriptErrors";	
+	import { isFieldVisible } from '$lib/utils/form';
 
 	const { item, printing = false } = $props<{ item: Item; printing?: boolean }>();
 
@@ -21,7 +31,14 @@
 	let error = $state(item.attributes?.error ?? '');
 	let extAttrs = $state<Record<string, any>>({});
 
-	let readOnly = $derived(item.is_read_only ?? false);
+	// Compute effective required/read-only from enum values
+	const isRequired = $derived.by(() => computeIsRequired(item.is_required));
+	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only));
+
+	const isVisible = $derived(isFieldVisible(item));
+
+	// Use computed isReadOnly for local state
+	let readOnly = $state(computeIsReadOnly(item.is_read_only));
 	// Derived
 	const options = $derived((item.options ?? []) as FormOption[]);
 	const labelText = $derived(getFieldLabel(item));
@@ -29,22 +46,26 @@
 	const helperText = $derived(item.help_text ?? '');
 	const enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
 
-	const a11y = $derived(
+	const a11y = $derived.by(() =>
 		buildFieldAria({
 			uuid: item.uuid,
 			labelText,
 			helperText,
-			isRequired: item.is_required,
-			readOnly
+			isRequired,
+			readOnly: isReadOnly
 		})
 	);
 
 	const rules = $derived(
-		rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'string' })
+		rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'string' })
 	);
+
+	const scriptError = $derived.by(() => $scriptErrors?.[item.uuid] ?? "");
 
 	const anyError = $derived.by(() => {
 		if (!touched || readOnly) return error || '';
+		 // script-driven error from global store
+ 		if (scriptError) return scriptError;
 		return (
 			validateValue(selected, rules, {
 				type: 'string',
@@ -53,19 +74,11 @@
 		);
 	});
 
-	const printValue = $derived(
-		options
-			.map((opt) => {
-				const prefix = selected.includes(opt.value) ? '☑ ' : '☐ ';
-				return prefix + (opt.label || opt.value);
-			})
-			.join('\n')
-	);
-
 	const filteredAttributes = $derived(() => {
 		const attrs = { ...(item.attributes ?? {}) };
 		delete attrs.defaultSelected;
 		delete attrs.disabled;
+		delete attrs.options;
 		return attrs;
 	});
 
@@ -109,11 +122,26 @@
 </script>
 
 <div class="field-container checkbox-group-field">
-	<PrintRow {item} {printing} {labelText} value={printValue} />
+	<PrintRow {item} {printing} {labelText}>
+		{#snippet value()}
+			{#each options as opt (opt.value)}
+				<div class="checkbox-print-option">
+					<span class="checkbox-icon">
+						{#if selected.includes(opt.value)}
+							<CheckboxFilledIcon aria-label="Checked" />
+						{:else}
+							<CheckboxIcon aria-label="Unchecked" />
+						{/if}
+					</span>
+					<span>{@html opt.label || opt.value}</span>
+				</div>
+			{/each}
+		{/snippet}
+	</PrintRow>
 
 	<div
 		class="web-input checkbox-group-wrapper"
-		class:visible={!printing && item.visible_web !== false}
+		class:visible={!printing && isVisible}
 		data-selected={selected}
 	>
 		<CheckboxGroup
@@ -130,7 +158,7 @@
 			<span
 				slot="legendChildren"
 				id={a11y.labelId}
-				class:required={item.is_required}
+				class:required={isRequired}
 				class:moustache={enableVarSub}>{@html labelText}</span
 			>
 
@@ -194,5 +222,14 @@
 		max-height: 12.5rem;
 		font-weight: 400;
 		color: var(--cds-text-error, #da1e28);
+	}
+	.checkbox-print-option {
+		display: flex;
+		gap: 0.375rem;
+		align-items: center;
+	}
+	.checkbox-icon {
+		display: flex;
+		flex-shrink: 0;
 	}
 </style>

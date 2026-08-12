@@ -1,3 +1,5 @@
+const isPortalIntegrated =  import.meta.env.VITE_IS_PORTAL_INTEGRATED === 'true';
+import type { Item, ConditionalFlag } from '$lib/types/form';
 /**
  * Resolve an API URL considering dev overrides and hosted path prefixes.
  */
@@ -21,6 +23,54 @@ export function getApiUrl(path: string, envVar?: string): string {
         return `${prefix}/api${cleanPath}`;
       }
       return `/api${path}`;
+}
+
+export function computeConditionalFlag(
+  value: ConditionalFlag
+): boolean {
+  if (
+    value === null ||
+    value === undefined ||
+    value === false ||
+    value === 'never'
+  ) {
+    return false;
+  }
+
+  if (value === true || value === 'always') {
+    return true;
+  }
+
+  if (value === 'portal') {
+    return isPortalIntegrated;
+  }
+
+  if (value === 'icm') {
+    return !isPortalIntegrated;
+  }
+
+  return false;
+}
+
+/**
+ * Compute effective isRequired boolean from enum value.
+ * @param value - The is_required enum value ('always', 'portal', 'icm', true, false, or null)
+ * @param isPortalIntegrated - Whether portal integration is enabled
+ */
+export function computeIsRequired(value: ConditionalFlag) {
+  return computeConditionalFlag(value);
+}
+/**
+ * Compute effective isReadOnly boolean from enum value.
+ * @param value - The is_read_only enum value ('always', 'portal','icm', true, false, or null)
+ * @param isPortalIntegrated - Whether portal integration is enabled
+ */
+export function computeIsReadOnly(value: ConditionalFlag) {
+  return computeConditionalFlag(value);
+}
+
+export function computeIsVisible(value: ConditionalFlag) {
+  return computeConditionalFlag(value);
 }
 
 /** Set is_read_only on all items under formData.elements. */
@@ -87,7 +137,7 @@ export function buildFieldAria(cfg: BuildFieldAriaConfig) {
 	};
 }
 
-import type { Item } from '$lib/types/form';
+
 
 export function getFieldLabel(item: Item): string {
 	return item.attributes?.labelText ?? item.attributes?.text ?? item.name ?? '';

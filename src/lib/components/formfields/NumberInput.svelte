@@ -9,11 +9,19 @@
 		syncExternalAttributes
 	} from '$lib/utils/valueSync';
 	import './fields.css';
-	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
+	import {
+		filterAttributes,
+		buildFieldAria,
+		getFieldLabel,
+		computeIsRequired,
+		computeIsReadOnly
+	} from '$lib/utils/helpers';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import { preprocessDecimalInput, unmaskNumberString } from '$lib/utils/mask';
 	import PrintRow from './common/PrintRow.svelte';
 	import { MaskInput } from 'maska';
+	import { scriptErrors } from "$lib/utils/scriptErrors";
+	import { isFieldVisible } from '$lib/utils/form';
 
 	let {
 		item,
@@ -26,14 +34,21 @@
 	let value: string = $state(
 		item?.value ?? item.attributes?.value ?? item.attributes?.defaultValue ?? ''
 	);
-	let unmaskedValue: string = $derived(unmaskNumberString(value));
+	const unmaskedValue: string = $derived(unmaskNumberString(value));
 	let error = $state(item.attributes?.error ?? ''); // this seems unused or broken
-	let readonly = $derived(item.is_read_only === true || item.is_read_only === 'true' || false);
-	let labelText = $derived(getFieldLabel(item));
-	let helperText = item.help_text ?? '';
-	let hideLabel = item.attributes?.hideLabel ?? false;
-	let enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
-	let maskType = $derived(item.attributes?.maskType ?? 'integer');
+
+	// Compute effective required/read-only from enum values
+	const isRequired = $derived.by(() => computeIsRequired(item.is_required));
+	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only));
+	const isVisible = $derived(isFieldVisible(item));
+
+	// Use computed isReadOnly for local state
+	let readonly = $state(computeIsReadOnly(item.is_read_only));
+	const labelText = $derived(getFieldLabel(item));
+	const helperText = item.help_text ?? '';
+	const hideLabel = item.attributes?.hideLabel ?? false;
+	const enableVarSub = $derived(item.attributes?.enableVarSub ?? false);
+	const maskType = $derived(item.attributes?.maskType ?? 'integer');
 	let fractionDigits = $derived.by(() => {
 		return item.attributes?.step
 			? (item.attributes?.step.toString().split('.')[1]?.length ?? 0)
@@ -42,7 +57,7 @@
 
 	// carbon's NumberInput has UX issues with decimal values, even with allowDecimal
 	// keep using it for integer for form script compatability
-	let FieldComponent = $derived(maskType === 'decimal' ? TextInput : NumberInput);
+	const FieldComponent = $derived(maskType === 'decimal' ? TextInput : NumberInput);
 
 	let touched = $state(false);
 	let ref = $state<HTMLInputElement | null>(null);
@@ -53,19 +68,24 @@
 		return value?.toString() || '';
 	});
 
-	let rules = $derived.by(() => {
+	const rules = $derived.by(() => {
 		const r = rulesFromAttributes(item.attributes, {
-			is_required: item.is_required,
+			is_required: isRequired,
 			type: 'number'
 		});
 		// If maskType indicates integer, enforce integer rule
 		if (maskType === 'integer') r.isInteger = true;
 		return r;
 	});
-	let anyError = $derived.by(() => {
+
+	const scriptError = $derived.by(() => $scriptErrors?.[item.uuid] ?? "");
+
+	const anyError = $derived.by(() => {
 		if (!touched) return '';
-		if (error) return error; // would force display an error that can never change
+		//if (error) return error; // would force display an error that can never change
 		if (readonly) return '';
+		 // script-driven error from global store
+ 		if (scriptError) return scriptError;
 		return (
 			validateValue(unmaskedValue, rules, {
 				type: 'number',
@@ -119,8 +139,8 @@
 			uuid: item.uuid,
 			labelText,
 			helperText,
-			isRequired: item.is_required,
-			readOnly: readonly
+			isRequired,
+			readOnly: isReadOnly
 		})
 	);
 
@@ -141,13 +161,22 @@
 			mask?.destroy();
 		};
 	});
+
+	const numberInputAttrs = $derived.by(() => {
+		const attrs = filterAttributes(item.attributes);
+		if (attrs && typeof attrs === 'object') {
+			const { min, max, ...rest } = attrs;
+			return rest;
+		}
+		return attrs;
+	});
 </script>
 
 <div class="field-container number-input-field">
 	<PrintRow {item} {printing} {labelText} value={printValue} />
-	<div class="web-input" class:visible={!printing && item.visible_web !== false}>
+	<div class="web-input" class:visible={!printing && isVisible}>
 		<FieldComponent
-			{...filterAttributes(item?.attributes)}
+			{...numberInputAttrs}
 			{...a11y.ariaProps}
 			{...extAttrs as any}
 			id={item.uuid}
@@ -169,7 +198,7 @@
 			<span
 				slot="labelChildren"
 				id={a11y.labelId}
-				class:required={item.is_required}
+				class:required={isRequired}
 				class:moustache={enableVarSub}>{@html labelText}</span
 			>
 		</FieldComponent>

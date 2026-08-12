@@ -10,8 +10,18 @@
 	} from '$lib/utils/valueSync';
 	import { validateValue, rulesFromAttributes } from '$lib/utils/validation';
 	import './fields.css';
-	import { filterAttributes, buildFieldAria, getFieldLabel } from '$lib/utils/helpers';
+	import {
+		filterAttributes,
+		buildFieldAria,
+		getFieldLabel,
+		computeIsRequired,
+		computeIsReadOnly
+	} from '$lib/utils/helpers';
 	import PrintRow from './common/PrintRow.svelte';
+	import RadioIcon from 'carbon-icons-svelte/lib/RadioButton.svelte';
+	import RadioFilledIcon from 'carbon-icons-svelte/lib/RadioButtonChecked.svelte';
+	import { scriptErrors } from "$lib/utils/scriptErrors";
+	import { isFieldVisible } from '$lib/utils/form';
 
 	const { item, printing = false } = $props<{
 		item: Item;
@@ -22,23 +32,35 @@
 		item?.value ?? item.attributes?.selected ?? item.attributes?.defaultSelected ?? ''
 	);
 	let error = $state(item.attributes?.error ?? '');
-	let readonly = $state(item.is_read_only ?? false);
+
+	// Compute effective required/read-only from enum values
+	const isRequired = $derived.by(() => computeIsRequired(item.is_required));
+	const isReadOnly = $derived.by(() => computeIsReadOnly(item.is_read_only));
+	const isVisible = $derived(isFieldVisible(item));
+
+	// Use computed isReadOnly for local state
+	let readonly = $state(computeIsReadOnly(item.is_read_only));
 	let labelText = $state(getFieldLabel(item));
-	let hideLabel = item.attributes?.hideLabel ?? false;
+	const hideLabel = item.attributes?.hideLabel ?? false;
 	let enableVarSub = $state(item.attributes?.enableVarSub ?? false);
-	let helperText = item.help_text ?? '';
-	let options = item.options ?? [];
+	const helperText = item.help_text ?? '';
+	const options = item.options ?? [];
 	let touched = $state(false);
 
 	let extAttrs = $state<Record<string, any>>({});
 
-	const rules = $derived.by(() =>
-		rulesFromAttributes(item.attributes, { is_required: item.is_required, type: 'string' })
+	const rules = $derived(
+		rulesFromAttributes(item.attributes, { is_required: isRequired, type: 'string' })
 	);
+
+	const scriptError = $derived.by(() => $scriptErrors?.[item.uuid] ?? "");
+
 	const anyError = $derived.by(() => {
 		if (!touched) return '';
 		if (error) return error;
 		if (readonly) return '';
+		 // script-driven error from global store
+ 		if (scriptError) return scriptError;
 		return (
 			validateValue(selected, rules, {
 				type: 'string',
@@ -81,22 +103,32 @@
 		publishToGlobalFormState({ item, value: selected });
 	});
 
-	const a11y = buildFieldAria({
-		uuid: item.uuid,
-		labelText,
-		helperText,
-		isRequired: item.is_required,
-		readOnly: readonly
-	});
+	const a11y = $derived.by(() =>
+		buildFieldAria({
+			uuid: item.uuid,
+			labelText,
+			helperText,
+			isRequired,
+			readOnly: isReadOnly
+		})
+	);
 </script>
 
 {#snippet value()}
-	{#each options as opt (opt.id)}
-		<div class="bx--radio-button-wrapper" style="display: flex; align-items: center; gap: 10px;">
-			<div>{selected === opt.value ? '◉' : '○'}</div>
-			<div>{opt.label}</div>
-		</div>
-	{/each}
+	<div class="radio-print-options" class:horizontal={item.attributes?.orientation === 'horizontal'}>
+		{#each options as opt (opt.id)}
+			<div class="radio-print-option">
+				<span class="radio-icon">
+					{#if selected === opt.value}
+						<RadioFilledIcon aria-label="Selected" />
+					{:else}
+						<RadioIcon aria-label="Not selected" />
+					{/if}
+				</span>
+				<span>{@html opt.label || opt.value}</span>
+			</div>
+		{/each}
+	</div>
 {/snippet}
 
 <div class="field-container radio-button-field">
@@ -104,8 +136,8 @@
 
 	<div
 		class="web-input radio-group-wrapper"
-		style={readonly ? 'pointer-events: none;' : ''}
-		class:visible={!printing && item.visible_web !== false}
+		class:readonly={readonly}
+		class:visible={!printing && isVisible}
 		data-selected={selected}
 	>
 		<RadioButtonGroup
@@ -116,6 +148,7 @@
 			bind:selected
 			hideLegend={hideLabel}
 			role="radiogroup"
+			disabled={readonly}
 			{...a11y.ariaProps}
 			{onchange}
 			{...extAttrs as any}
@@ -123,7 +156,7 @@
 			<span
 				slot="legendChildren"
 				id={a11y.labelId}
-				class:required={item.is_required}
+				class:required={isRequired}
 				class:moustache={enableVarSub}>{@html labelText}</span
 			>
 
@@ -162,5 +195,19 @@
 		max-height: 12.5rem;
 		font-weight: 400;
 		color: var(--cds-text-error, #da1e28);
+	}
+	.radio-print-options.horizontal {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 1rem;
+	}
+	.radio-print-option {
+		display: flex;
+		gap: 0.375rem;
+		align-items: center;
+	}
+	.radio-icon {
+		display: flex;
+		flex-shrink: 0;
 	}
 </style>

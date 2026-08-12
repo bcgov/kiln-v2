@@ -24,6 +24,11 @@
 	import { bindDataToForm } from './utils/databinder';
 	import { formatWithAppTokens } from '$lib/utils/dateFormats';
 	import OriginStyleOverride from './components/OriginStyleOverride.svelte';
+	import {
+		setScriptError,
+		clearScriptError,
+		clearAllScriptErrors
+		} from "$lib/utils/scriptErrorApi";
 
 	let {
 		saveData = undefined,
@@ -49,6 +54,10 @@
 
 	let barcode = $derived<{ content: string } | undefined>(formData?.barcode);
 	let securityClassification = $derived<string | undefined>(formData?.security_classification);
+
+	(window as any).setScriptError = setScriptError;
+	(window as any).clearScriptError = clearScriptError;
+	(window as any).clearAllScriptErrors = clearAllScriptErrors;
 
 	function resetModalRuntime() {
 		modalMode = 'info';
@@ -213,6 +222,10 @@
 		const pageBreak = document.createElement('div');
 		pageBreak.className = 'page-break';
 		el.parentNode?.insertBefore(pageBreak, el);
+		// Add page-start marker to first el after page break
+		// Used for non-first page top margin adjustment via top padding
+		// Only way this can be done since first page margin is smaller than other pages
+		el.classList.add('page-start');
 	}
 
 	function paginateContentForPrint(): () => void {
@@ -237,13 +250,29 @@
 		const LETTER_WIDTH_PX = LETTER_WIDTH_INCHES * INCH_TO_PX; // 816px
 		const LETTER_HEIGHT_PX = LETTER_HEIGHT_INCHES * INCH_TO_PX; // 1056px
 
-		const PAGE_MARGIN_TOP_MM = 5;
-		const PAGE_MARGIN_RIGHT_MM = 15;
-		const PAGE_MARGIN_BOTTOM_MM = 20;
-		const PAGE_MARGIN_LEFT_MM = 15;
+		function getPrintMarginPx(varName: string): number {
+			const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
 
-		const PAGE_MARGIN_TOP_PX = PAGE_MARGIN_TOP_MM * MM_TO_PX; // ~19px
-		const PAGE_MARGIN_BOTTOM_PX = PAGE_MARGIN_BOTTOM_MM * MM_TO_PX; // ~76px
+			if (!value) return 0;
+
+			// Supports mm, px
+			if (value.endsWith('mm')) {
+				return parseFloat(value) * MM_TO_PX;
+			}
+
+			if (value.endsWith('px')) {
+				return parseFloat(value);
+			}
+
+			return 0;
+		}
+
+		const PAGE_MARGIN_TOP_PX = getPrintMarginPx('--page-margin-top');
+		const PAGE_MARGIN_BOTTOM_PX = getPrintMarginPx('--page-margin-bottom');
+		const PAGE_MARGIN_LEFT_PX = getPrintMarginPx('--page-margin-left');
+		const PAGE_MARGIN_RIGHT_PX = getPrintMarginPx('--page-margin-right');
+
+		const PAGE_MARGIN_TOP_FIRST_PX = PAGE_MARGIN_TOP_PX;
 
 		// Detect footer height
 		const printFooter = document.querySelector('.print-footer') as HTMLElement;
@@ -302,8 +331,13 @@
 			LETTER_HEIGHT_PX - PAGE_MARGIN_TOP_PX - PAGE_MARGIN_BOTTOM_PX - fakeFooterHeight
 		);
 
-		// First page has less space due to header
-		const firstPageContentHeight = Math.ceil(baseContentHeight - headerHeight);
+		// First page:
+		// Replace normal top margin with first-page top margin,
+		// then subtract header
+		const firstPageContentHeight = Math.ceil(
+			baseContentHeight + (PAGE_MARGIN_TOP_PX - PAGE_MARGIN_TOP_FIRST_PX) - headerHeight
+		);
+
 		const subsequentPageContentHeight = baseContentHeight;
 
 		// No safety margin - maximize content per page
@@ -317,7 +351,7 @@
 		};
 
 		// Make content visible for measurement:
-		const contentWidth = LETTER_WIDTH_PX - (PAGE_MARGIN_LEFT_MM + PAGE_MARGIN_RIGHT_MM) * MM_TO_PX;
+		const contentWidth = LETTER_WIDTH_PX - PAGE_MARGIN_LEFT_PX - PAGE_MARGIN_RIGHT_PX;
 		letterContent.style.display = 'block';
 		letterContent.style.visibility = 'hidden';
 		letterContent.style.position = 'absolute';
@@ -401,7 +435,13 @@
 		letterContent.style.width = originalStyles.width;
 
 		return () => {
+			// Remove inserted page break elements
 			document.querySelectorAll('.page-break').forEach((el) => el.remove());
+
+			// Remove page-start markers
+			document.querySelectorAll('.page-start').forEach((el) => {
+				el.classList.remove('page-start');
+			});
 		};
 	}
 
@@ -578,10 +618,11 @@
 						const root = document.querySelector<HTMLElement>(selectors(id));
 						if (!root) return;
 
-						const focusable =
-							(root.matches?.('input,select,textarea')
+						const focusable = root.matches?.('fieldset')
+							? root.querySelector('.custom-buttons-only button') || root
+							: root.matches?.('input,select,textarea')
 								? root
-								: root.querySelector('input,select,textarea')) || root;
+								: root.querySelector('input,select,textarea') || root;
 
 						try {
 							focusable.dispatchEvent(new Event('focus', { bubbles: true }));
