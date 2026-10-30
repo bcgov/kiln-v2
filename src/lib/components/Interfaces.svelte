@@ -386,19 +386,10 @@
 
 	onMount(() => {
 		const handleMessage = (event: MessageEvent) => {
-			const eventHostname = new URL(event.origin).hostname;			
-			const originalServer =getOriginalServerHeader()?.['X-Original-Server'];			
-			if (originalServer) {
-				if (eventHostname !== originalServer) {
-					console.warn("Rejected message from untrusted origin:", event.origin);
-					//return;
-				}
-			} else {
-				// No origin header → local dev → optionally allow localhost only				
-				if (eventHostname !== window.location.hostname.toLowerCase()) {
-					console.warn("Rejected message in local mode:", event.origin);
-					//return;
-				}
+			// Only accept messages from the parent portal			
+			if (event.source !== window.parent) {				
+				console.warn("Rejecting message from untrusted origin");
+				return;
 			}
 			if (event.data?.type === "CLICK_BUTTON_BY_TEXT") {
 				console.log("Message recieved");
